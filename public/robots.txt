@@ -12,3 +12,17 @@ Allow: /
 
 User-agent: *
 Allow: /
+
+# Sitemap location
+Sitemap: https://stanthonygbaja.org/sitemap.xml
+
+# Crawl delay for bots
+Crawl-delay: 1
+
+# Disallow admin areas
+Disallow: /admin/
+Disallow: /_next/
+Disallow: /api/
+Disallow: /dist/
+Disallow: /src/
+Disallow: /node_modules/

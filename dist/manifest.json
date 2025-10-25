@@ -1,0 +1,37 @@
+{
+  "name": "St. Anthony Catholic Church, Gbaja",
+  "short_name": "St. Anthony Gbaja",
+  "description": "Join us for worship, community, and spiritual growth at St. Anthony Catholic Church, Gbaja. Experience meaningful connections and life-changing messages.",
+  "theme_color": "#1e3a8a",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "start_url": "/",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "32x32",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/og-image.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["religion", "community", "lifestyle"],
+  "lang": "en-US",
+  "dir": "ltr"
+}
