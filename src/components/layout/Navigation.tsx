@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, ChevronDown, Church } from "lucide-react";
+import { Menu, X, ChevronDown, Church, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   NavigationMenu,
@@ -11,6 +11,7 @@ import {
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
 import { cn } from "@/lib/utils";
+import logo from "@/assets/images/logo.png";
 
 const Navigation = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -18,21 +19,48 @@ const Navigation = () => {
 
   const navItems = [
     { name: "Home", href: "/" },
-    { name: "About", href: "/about" },
     {
-      name: "Ministries",
+      name: "About", href: "/about",
+      children: [
+        { name: "Our Story", href: "/about#our-story" },
+        { name: "Leadership", href: "/about#leadership" },
+        { name: "Masses", href: "/about#services" },
+        { name: "Facilities", href: "/facilities" },
+        { name: "Gallery", href: "/gallery" },
+        { name: "FAQs", href: "/about#faqs" },
+      ],
+     },
+    {
+      name: "Organizations",
       href: "/ministries",
       children: [
-        { name: "Children", href: "/ministries/children" },
-        { name: "Youth", href: "/ministries/youth" },
-        { name: "Adults", href: "/ministries/adults" },
-        { name: "Outreach", href: "/ministries/outreach" },
+        { name: "Societies & Pious Organizations", href: "/ministries/societies-pious-organizations" },
+        { name: "Small Christians Communities", href: "/ministries/small-christians-communities" },
       ],
     },
-    { name: "Sermons", href: "/sermons" },
+    {
+      name: "Sermons", href: "/sermons",
+      children: [
+        { name: "Latest Sermons", href: "/sermons" },
+        { name: "Bulletin", href: "/bulletin" },
+      ],
+     },
     { name: "Events", href: "/events" },
-    { name: "Blog", href: "/blog" },
+    { name: "Visit", href: "/visit" },
+    // { name: "Blog", href: "/blog" },
+    { name: "News", href: "/news" },
+    // {
+    //   name: "Member Portal",
+    //   href: "/dashboard",
+    //   children: [
+    //     { name: "Dashboard", href: "/dashboard" },
+    //     { name: "Spiritual Growth", href: "/dashboard?tab=growth" },
+    //     { name: "My Calendar", href: "/dashboard?tab=calendar" },
+    //     { name: "Community", href: "/dashboard?tab=community" },
+    //   ],
+    // },
     { name: "Contact", href: "/contact" },
+    { name: "Give", href: "/charity" },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -43,12 +71,14 @@ const Navigation = () => {
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-3">
-            <div className="bg-gradient-church p-2 rounded-lg">
-              <Church className="h-8 w-8 text-church-charcoal" />
+            {/* <div className="bg-gradient-church p-2 rounded-lg"> */}
+            <div className="bg-transparent p-0 m-0 rounded-lg">
+              {/* <Church className="h-8 w-8 text-church-charcoal" /> */}
+              <img src={logo} alt="St. Anthony" className="h-15 w-16 object-contain" />
             </div>
-            <div>
-              <h1 className="text-xl font-heading font-bold text-foreground">Grace Church</h1>
-              <p className="text-xs text-muted-foreground">Welcome Home</p>
+            <div className="pl-0 ml-0">
+              <h1 className="text-xl font-heading font-bold text-foreground">St. Anthony</h1>
+              <p className="text-xs text-muted-foreground">Catholic Church</p>
             </div>
           </Link>
 
@@ -105,9 +135,20 @@ const Navigation = () => {
                 )}
               </NavigationMenuList>
             </NavigationMenu>
-            <Button variant="church" size="lg">
-              Give Online
-            </Button>
+            <div className="flex items-center gap-2">
+              <Link to="/dashboard">
+                <Button variant="outline" size="lg">
+                  <User className="h-4 w-4 mr-2" />
+                  {/* Member Portal */}
+                  Sign In
+                </Button>
+              </Link>
+              <Link to={'/live'}>
+                <Button variant="church" size="lg">
+                  Watch Live
+                </Button>
+              </Link>
+            </div>
           </div>
 
           {/* Mobile Menu Button */}
@@ -158,9 +199,19 @@ const Navigation = () => {
                   )}
                 </div>
               ))}
-              <Button variant="church" size="lg" className="w-full mt-4">
-                Give Online
-              </Button>
+              <div className="mt-4 space-y-2">
+                <Link to="/dashboard">
+                  <Button variant="outline" size="lg" className="w-full">
+                    <User className="h-4 w-4 mr-2" />
+                    Member Portal
+                  </Button>
+                </Link>
+                <Link to={'/live'}>
+                  <Button variant="church" size="lg" className="w-full">
+                    Watch Live
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
         )}

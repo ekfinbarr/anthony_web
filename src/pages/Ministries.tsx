@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Baby, Users, Heart, Globe, BookOpen, Music } from "lucide-react";
+import { Baby, Users, Heart, Globe, BookOpen, Music, ArrowRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -36,6 +36,41 @@ const Ministries = () => {
               );
             })}
           </div>
+        </div>
+      </section>
+
+      {/* Volunteer Call to Action */}
+      <section className="py-16 bg-gradient-to-r from-primary/10 to-primary-light/10 text-center">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-heading font-bold mb-4">Using Your Gifts</h2>
+          <p className="text-lg text-muted-foreground mb-6 max-w-2xl mx-auto">
+            "As each has received a gift, use it to serve one another, as good stewards of God's varied grace." - 1 Peter 4:10
+          </p>
+          <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
+            Every member of our parish has unique gifts and talents. Whether you're gifted in music, teaching, hospitality, or service, there's a place for you to use your abilities to build up the body of Christ.
+            </p>
+          {/* <Link to="/contact">
+            <Button variant="church" size="lg" className="group">
+              Volunteer Now
+              <Heart className="ml-2 group-hover:scale-110 transition-transform" />
+            </Button>
+          </Link> */}
+        </div>
+      </section>
+
+      {/* Questions About Ministries? */}
+      <section className="py-12 bg-accent text-center">
+        <div className="container mx-auto px-4">
+          <h2 className="text-2xl font-heading font-bold mb-4">Questions About Ministries?</h2>
+          <p className="text-lg text-white mb-6 max-w-2xl mx-auto">
+            We're here to help you find the right ministry for you. Reach out to our ministry coordinator for more information.
+          </p>
+          <Link to="/contact">
+            <Button variant="outline" size="lg" className="group">
+              Contact Us
+              <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
+            </Button>
+          </Link>
         </div>
       </section>
     </div>

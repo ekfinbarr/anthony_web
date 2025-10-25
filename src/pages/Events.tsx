@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Calendar, Clock, MapPin, Users, Filter, ChevronRight } from "lucide-react";
+import { Calendar, Clock, MapPin, Users, Filter, ChevronRight, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import bannerPhoto from "@/assets/images/church_banner.jpg";
 
 const Events = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -18,7 +19,7 @@ const Events = () => {
       category: "Conference",
       description: "Join us for our annual conference featuring inspiring speakers, workshops, and fellowship.",
       attendees: 250,
-      image: "/api/placeholder/600/300",
+      image: bannerPhoto,
       registration: true,
     },
     {
@@ -30,7 +31,7 @@ const Events = () => {
       category: "Youth",
       description: "An evening of praise, worship, and fellowship designed for our youth community.",
       attendees: 80,
-      image: "/api/placeholder/600/300",
+      image: bannerPhoto,
       registration: false,
     },
     {
@@ -42,7 +43,7 @@ const Events = () => {
       category: "Community",
       description: "Share a traditional Thanksgiving meal with our church family and community.",
       attendees: 150,
-      image: "/api/placeholder/600/300",
+      image: bannerPhoto,
       registration: true,
     },
     {
@@ -54,7 +55,7 @@ const Events = () => {
       category: "Bible Study",
       description: "Deep dive into scripture with fellowship and discussion for women of all ages.",
       attendees: 30,
-      image: "/api/placeholder/600/300",
+      image: bannerPhoto,
       registration: false,
     },
     {
@@ -66,7 +67,7 @@ const Events = () => {
       category: "Worship",
       description: "Celebrate the season with traditional carols and the Christmas story.",
       attendees: 400,
-      image: "/api/placeholder/600/300",
+      image: bannerPhoto,
       registration: false,
     },
     {
@@ -78,7 +79,7 @@ const Events = () => {
       category: "Fellowship",
       description: "Start your Saturday with prayer, fellowship, and a hearty breakfast.",
       attendees: 50,
-      image: "/api/placeholder/600/300",
+      image: bannerPhoto,
       registration: true,
     },
   ];
@@ -206,6 +207,65 @@ const Events = () => {
                 </Card>
               ))}
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Regular Activities */}
+      <section className="py-12 bg-church-pearl">
+        <div className="container mx-auto px-4 text-center">
+          <h2 className="text-3xl font-heading font-bold text-church-charcoal mb-4">Regular Activities</h2>
+          <p className="text-lg text-church-charcoal/80 mb-8 max-w-2xl mx-auto">
+            We have weekly gatherings and activities for all ages. Everyone is welcome!
+          </p>
+          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            <Card className="p-6 hover:shadow-lg transition-shadow">
+              <Users className="h-12 w-12 text-primary mx-auto mb-4" />
+              <h3 className="font-heading font-semibold text-lg mb-2">Sunday Masses</h3>
+              <p className="text-sm text-muted-foreground">
+                9:00 AM & 11:00 AM - Main Sanctuary
+              </p>
+            </Card>
+            {/* Confession */}
+            <Card className="p-6 hover:shadow-lg transition-shadow">
+              <MapPin className="h-12 w-12 text-primary mx-auto mb-4" />
+              <h3 className="font-heading font-semibold text-lg mb-2">Confession</h3>
+              <p className="text-sm text-muted-foreground">
+                Saturdays 4:00 PM - 5:00 PM - Reconciliation Room
+              </p>
+            </Card>
+            {/* Adoration */}
+            <Card className="p-6 hover:shadow-lg transition-shadow">
+              <Heart className="h-12 w-12 text-primary mx-auto mb-4" />
+              <h3 className="font-heading font-semibold text-lg mb-2">Eucharistic Adoration</h3>
+              <p className="text-sm text-muted-foreground">
+                Fridays 9:00 AM - 6:00 PM - Chapel
+              </p>
+            </Card>
+            {/* Bible Studies */}
+            <Card className="p-6 hover:shadow-lg transition-shadow">
+              <Clock className="h-12 w-12 text-primary mx-auto mb-4" />
+              <h3 className="font-heading font-semibold text-lg mb-2">Wednesday Bible Study</h3>
+              <p className="text-sm text-muted-foreground">
+                7:00 PM - Room 101
+              </p>
+            </Card>
+            {/* Youth Group */}
+            <Card className="p-6 hover:shadow-lg transition-shadow">
+              <MapPin className="h-12 w-12 text-primary mx-auto mb-4" />
+              <h3 className="font-heading font-semibold text-lg mb-2">Youth Group</h3>
+              <p className="text-sm text-muted-foreground">
+                Fridays 6:30 PM - Youth Hall
+              </p>
+            </Card>
+            {/* Choir Practice */}
+            <Card className="p-6 hover:shadow-lg transition-shadow">
+              <Users className="h-12 w-12 text-primary mx-auto mb-4" />
+              <h3 className="font-heading font-semibold text-lg mb-2">Choir Practice</h3>
+              <p className="text-sm text-muted-foreground">
+                Thursdays 7:00 PM - Music Room
+              </p>
+            </Card>
           </div>
         </div>
       </section>

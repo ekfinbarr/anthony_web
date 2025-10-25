@@ -3,23 +3,24 @@ import { Button } from "@/components/ui/button";
 import { ChevronRight, Calendar, Users, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 import churchHero from "@/assets/church-hero.jpg";
+import droneVideo from "@/assets/videos/drone_spec.mp4";
 
 const HeroSection = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
-  
+
   const slides = [
     {
       title: "Welcome Home",
-      subtitle: "Experience God's Love in Community",
+      subtitle: "To Live & Serve Like Christ",
       image: churchHero,
       cta: "Plan Your Visit",
       link: "/visit",
     },
     {
       title: "Join Us This Sunday",
-      subtitle: "Worship Services at 9:00 & 11:00 AM",
+      subtitle: "Holy Mass at Mornings and Evenings",
       image: churchHero,
-      cta: "Service Times",
+      cta: "Mass Times",
       link: "/about#services",
     },
     {
@@ -40,13 +41,21 @@ const HeroSection = () => {
 
   return (
     <section className="relative h-[600px] lg:h-[700px] overflow-hidden">
+      {/* Background Video */}
+      <video
+        src={droneVideo}
+        autoPlay
+        loop
+        muted
+        className="absolute inset-0 w-full h-full object-cover"
+      />
+
       {/* Background Images */}
-      {slides.map((slide, index) => (
+      {/* {slides.map((slide, index) => (
         <div
           key={index}
-          className={`absolute inset-0 transition-opacity duration-1000 ${
-            index === currentSlide ? "opacity-100" : "opacity-0"
-          }`}
+          className={`absolute inset-0 transition-opacity duration-1000 ${index === currentSlide ? "opacity-100" : "opacity-0"
+            }`}
         >
           <div
             className="absolute inset-0 bg-cover bg-center"
@@ -54,10 +63,10 @@ const HeroSection = () => {
           />
           <div className="absolute inset-0 hero-overlay" />
         </div>
-      ))}
+      ))} */}
 
       {/* Geometric Pattern Overlay */}
-      <div className="absolute inset-0 pattern-geometric pointer-events-none" />
+      {/* <div className="absolute inset-0 pattern-geometric pointer-events-none" /> */}
 
       {/* Content */}
       <div className="relative container mx-auto px-4 h-full flex items-center">
@@ -88,7 +97,7 @@ const HeroSection = () => {
           <div className="grid grid-cols-3 gap-4 mt-12 max-w-md">
             <div className="text-center">
               <Calendar className="h-8 w-8 text-primary mx-auto mb-2" />
-              <p className="text-sm text-church-pearl/80">Sunday Service</p>
+              <p className="text-sm text-church-pearl/80">Sunday Mass</p>
             </div>
             <div className="text-center">
               <Users className="h-8 w-8 text-primary mx-auto mb-2" />
@@ -96,7 +105,7 @@ const HeroSection = () => {
             </div>
             <div className="text-center">
               <Heart className="h-8 w-8 text-primary mx-auto mb-2" />
-              <p className="text-sm text-church-pearl/80">Ministries</p>
+              <p className="text-sm text-church-pearl/80">Organizations</p>
             </div>
           </div>
         </div>
@@ -108,11 +117,10 @@ const HeroSection = () => {
           <button
             key={index}
             onClick={() => setCurrentSlide(index)}
-            className={`w-2 h-2 rounded-full transition-all ${
-              index === currentSlide
+            className={`w-2 h-2 rounded-full transition-all ${index === currentSlide
                 ? "w-8 bg-primary"
                 : "bg-church-pearl/50 hover:bg-church-pearl/70"
-            }`}
+              }`}
           />
         ))}
       </div>

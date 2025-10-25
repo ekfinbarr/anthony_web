@@ -20,8 +20,8 @@ const Sermons = () => {
       series: "Faith Journey",
       description: "Discover how to strengthen your faith and trust in God's promises.",
       duration: "38:45",
-      thumbnail: "/api/placeholder/400/225",
-      videoUrl: "#",
+      thumbnail: "https://api.api-ninjas.com/v1/randomimage",
+      videoUrl: "https://www.youtube.com/watch?v=pKDC0bfjf0A",
       audioUrl: "#",
       notesUrl: "#",
     },
@@ -33,8 +33,8 @@ const Sermons = () => {
       series: "Faith Journey",
       description: "Learn how prayer transforms our lives and connects us with God.",
       duration: "42:15",
-      thumbnail: "/api/placeholder/400/225",
-      videoUrl: "#",
+      thumbnail: "https://api.api-ninjas.com/v1/randomimage",
+      videoUrl: "https://www.youtube.com/watch?v=pKDC0bfjf0A",
       audioUrl: "#",
       notesUrl: "#",
     },
@@ -46,8 +46,8 @@ const Sermons = () => {
       series: "Purpose Driven",
       description: "Understanding God's purpose for your life and how to fulfill it.",
       duration: "35:20",
-      thumbnail: "/api/placeholder/400/225",
-      videoUrl: "#",
+      thumbnail: "https://api.api-ninjas.com/v1/randomimage",
+      videoUrl: "https://www.youtube.com/watch?v=pKDC0bfjf0A",
       audioUrl: "#",
       notesUrl: "#",
     },
@@ -59,8 +59,8 @@ const Sermons = () => {
       series: "Love & Grace",
       description: "Experience the depth of God's love and how it changes everything.",
       duration: "40:10",
-      thumbnail: "/api/placeholder/400/225",
-      videoUrl: "#",
+      thumbnail: "https://api.api-ninjas.com/v1/randomimage",
+      videoUrl: "https://www.youtube.com/watch?v=pKDC0bfjf0A",
       audioUrl: "#",
       notesUrl: "#",
     },
@@ -251,6 +251,32 @@ const Sermons = () => {
                 </div>
               </Card>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA: Subscribe for more */}
+      <section className="py-16 bg-gradient-church">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-8">
+            <h2 className="text-4xl font-heading font-bold text-church-charcoal mb-4">
+              Never Miss a Message
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Subscribe to our newsletter and get the latest sermons delivered straight to your inbox.
+            </p>
+          </div>
+          <div className="max-w-xl mx-auto">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Input
+                type="email"
+                placeholder="Enter your email"
+                className="flex-grow"
+              />
+              <Button variant="church" size="lg" className="w-full sm:w-auto">
+                Subscribe
+              </Button>
+            </div>
           </div>
         </div>
       </section>

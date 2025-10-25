@@ -3,6 +3,7 @@ import { Church, MapPin, Phone, Mail, Facebook, Twitter, Instagram, Youtube } fr
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import logo from "@/assets/images/logo.png";
 
 const Footer = () => {
   const handleNewsletterSubmit = (e: React.FormEvent) => {
@@ -18,10 +19,12 @@ const Footer = () => {
           {/* Church Info */}
           <div>
             <div className="flex items-center space-x-3 mb-4">
-              <div className="bg-gradient-church p-2 rounded-lg">
-                <Church className="h-6 w-6 text-church-charcoal" />
+              {/* <div className="bg-gradient-church p-2 rounded-lg"> */}
+              <div className="bg-gradient-gold p-2 rounded-lg">
+                {/* <Church className="h-6 w-6 text-church-charcoal" /> */}
+                <img src={logo} alt="St. Anthony" className="h-15 w-16 object-contain" />
               </div>
-              <h3 className="text-xl font-heading font-bold">Grace Church</h3>
+              <h3 className="text-xl font-heading font-bold">St. Anthony Catholic Church, Gbaja</h3>
             </div>
             <p className="text-sm text-church-pearl/80 mb-4">
               A place where everyone is welcome, loved, and equipped to serve God and others.
@@ -63,7 +66,7 @@ const Footer = () => {
               </li>
               <li>
                 <Link to="/ministries" className="text-sm text-church-pearl/80 hover:text-primary transition-colors">
-                  Ministries
+                  Organizations
                 </Link>
               </li>
               <li>
@@ -76,19 +79,19 @@ const Footer = () => {
 
           {/* Service Times */}
           <div>
-            <h4 className="font-heading font-semibold text-lg mb-4">Service Times</h4>
+            <h4 className="font-heading font-semibold text-lg mb-4">Mass Times</h4>
             <div className="space-y-3">
               <div>
-                <p className="font-medium text-sm">Sunday Worship</p>
-                <p className="text-sm text-church-pearl/80">9:00 AM & 11:00 AM</p>
+                <p className="font-medium text-sm">Sunday Mass</p>
+                <p className="text-sm text-church-pearl/80">7:00 AM, 8:30 AM, 10:00 AM, 11:30 AM, & 6:00 PM</p>
               </div>
               <div>
-                <p className="font-medium text-sm">Wednesday Bible Study</p>
+                <p className="font-medium text-sm">Thursday Faith & Doctrinal Class</p>
                 <p className="text-sm text-church-pearl/80">7:00 PM</p>
               </div>
               <div>
-                <p className="font-medium text-sm">Youth Service</p>
-                <p className="text-sm text-church-pearl/80">Fridays at 7:00 PM</p>
+                <p className="font-medium text-sm">Confessions</p>
+                <p className="text-sm text-church-pearl/80">Saturday at 5:00 PM</p>
               </div>
             </div>
           </div>
@@ -99,15 +102,15 @@ const Footer = () => {
             <div className="space-y-3 mb-6">
               <div className="flex items-center space-x-2">
                 <MapPin className="h-4 w-4 text-primary" />
-                <p className="text-sm text-church-pearl/80">123 Church Street, City, ST 12345</p>
+                <p className="text-sm text-church-pearl/80">123 Gbaja Street, Surulere, Lagos.</p>
               </div>
               <div className="flex items-center space-x-2">
                 <Phone className="h-4 w-4 text-primary" />
-                <p className="text-sm text-church-pearl/80">(555) 123-4567</p>
+                <p className="text-sm text-church-pearl/80">(234) 234 567 8910</p>
               </div>
               <div className="flex items-center space-x-2">
                 <Mail className="h-4 w-4 text-primary" />
-                <p className="text-sm text-church-pearl/80">info@gracechurch.org</p>
+                <p className="text-sm text-church-pearl/80">info@stanthonygbaja.org</p>
               </div>
             </div>
             <form onSubmit={handleNewsletterSubmit} className="space-y-2">
@@ -129,7 +132,7 @@ const Footer = () => {
         {/* Copyright */}
         <div className="text-center">
           <p className="text-sm text-church-pearl/60">
-            © {new Date().getFullYear()} Grace Church. All rights reserved.
+            © {new Date().getFullYear()} St. Anthony, Gbaja. All rights reserved.
           </p>
         </div>
       </div>

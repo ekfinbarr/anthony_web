@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Target, Eye, Heart, Users, Clock, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
+import dap from "@/assets/images/DAP.png";
 
 const About = () => {
   const values = [
@@ -24,21 +25,21 @@ const About = () => {
 
   const leadership = [
     {
-      name: "Pastor John Smith",
-      role: "Senior Pastor",
-      bio: "Pastor John has been serving Grace Church for over 15 years with a heart for community and spiritual growth.",
+      name: "Very. Rev. Msgr. Bernard Okodua",
+      role: "Parish Priest",
+      bio: "Msgr. Okodua has been serving St. Anthony, Gbaja for over 18 years with a heart for community and spiritual growth.",
       image: "/api/placeholder/300/300",
     },
     {
-      name: "Sarah Johnson",
-      role: "Worship Leader",
-      bio: "Sarah leads our worship team with passion and creates an atmosphere for encountering God's presence.",
+      name: "Rev. Fr. Alexander Fatimehin",
+      role: "Associate Priest",
+      bio: "Fr. Alexander Fatimehin leads our parish teams with passion and creates an atmosphere for encountering God's presence.",
       image: "/api/placeholder/300/300",
     },
     {
-      name: "Michael Davis",
-      role: "Youth Pastor",
-      bio: "Michael is dedicated to mentoring the next generation and helping them grow in their faith journey.",
+      name: "Rev. Fr. Augustine A",
+      role: "Priest in Residence",
+      bio: "Dedicated to mentoring the next generation and helping them grow in their faith journey.",
       image: "/api/placeholder/300/300",
     },
   ];
@@ -49,7 +50,7 @@ const About = () => {
       <section className="relative py-24 bg-gradient-dark text-church-pearl">
         <div className="absolute inset-0 pattern-geometric" />
         <div className="container mx-auto px-4 relative">
-          <h1 className="text-5xl font-heading font-bold mb-4 text-center">About Grace Church</h1>
+          <h1 className="text-5xl font-heading font-bold mb-4 text-center">About St. Anthony, Gbaja</h1>
           <p className="text-xl text-center max-w-3xl mx-auto text-church-pearl/90">
             Discover our story, mission, and the heart behind everything we do
           </p>
@@ -63,7 +64,7 @@ const About = () => {
             <div>
               <h2 className="text-4xl font-heading font-bold mb-6 accent-line">Our Story</h2>
               <p className="text-muted-foreground mb-4">
-                Grace Church began in 1985 with a small group of families gathering in a living room, 
+                St. Anthony, Gbaja began in 1985 with a small group of families gathering in a living room, 
                 united by a shared vision to create a church that would impact our community with God's love.
               </p>
               <p className="text-muted-foreground mb-4">
@@ -72,14 +73,14 @@ const About = () => {
                 lives, and a deepening commitment to serve our city and beyond.
               </p>
               <p className="text-muted-foreground">
-                Today, Grace Church is home to over 1,500 members who are passionate about worship, 
+                Today, St. Anthony, Gbaja is home to over 1,500 members who are passionate about worship, 
                 discipleship, and making a difference in the world. We continue to be guided by the same 
                 vision that started it all: to be a beacon of hope and love in our community.
               </p>
             </div>
             <div className="relative">
               <img 
-                src="/api/placeholder/600/400" 
+                src={dap}
                 alt="Church History" 
                 className="rounded-lg shadow-xl"
               />
@@ -181,7 +182,7 @@ const About = () => {
               <MapPin className="h-12 w-12 text-primary mx-auto mb-4" />
               <h3 className="text-2xl font-heading font-semibold mb-4">Location</h3>
               <div className="text-muted-foreground">
-                <p className="font-semibold mb-2">Grace Church</p>
+                <p className="font-semibold mb-2">St. Anthony, Gbaja</p>
                 <p>123 Church Street</p>
                 <p>City, ST 12345</p>
                 <p className="mt-4">(555) 123-4567</p>

@@ -10,10 +10,10 @@ const SermonHighlight = () => {
     date: "November 10, 2024",
     series: "Faith Journey",
     description: "Discover how to strengthen your faith and trust in God's promises through life's challenges.",
-    videoUrl: "#",
+    videoUrl: "https://www.youtube.com/watch?v=pKDC0bfjf0A",
     audioUrl: "#",
     notesUrl: "#",
-    thumbnail: "/api/placeholder/800/450",
+    thumbnail: "https://i.ytimg.com/vi/pKDC0bfjf0A/maxresdefault.jpg?sqp=-oaymwEmCIAKENAF8quKqQMa8AEB-AH-CYAC0AWKAgwIABABGHIgTygyMA8=&rs=AOn4CLAcq8cxz9Dbv316dz-KZ7XApRMI5A",
   };
 
   return (

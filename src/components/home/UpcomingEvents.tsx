@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Calendar, Clock, MapPin, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import bannerPhoto from "@/assets/images/church_banner.jpg";
 
 const UpcomingEvents = () => {
   const events = [
@@ -13,7 +14,7 @@ const UpcomingEvents = () => {
       location: "Main Sanctuary",
       description: "Join us for our annual conference with special speakers and workshops.",
       category: "Conference",
-      image: "/api/placeholder/400/250",
+      image: bannerPhoto,
     },
     {
       id: 2,
@@ -23,7 +24,7 @@ const UpcomingEvents = () => {
       location: "Youth Hall",
       description: "An evening of praise, worship, and fellowship for our youth.",
       category: "Youth",
-      image: "/api/placeholder/400/250",
+      image: bannerPhoto,
     },
     {
       id: 3,
@@ -33,7 +34,7 @@ const UpcomingEvents = () => {
       location: "Fellowship Hall",
       description: "Share a meal and give thanks with our church family.",
       category: "Community",
-      image: "/api/placeholder/400/250",
+      image: bannerPhoto,
     },
   ];
 
