@@ -5,6 +5,12 @@ RewriteEngine On
 # Make sure to replace 'subfolder' with the actual folder name where your application is located.
 # Usage:
 # Place this .htaccess file in the root directory of your website.
+
+# ---------------------------------------------------------
+# 0️⃣ Custom Error Pages
+# ---------------------------------------------------------
+ErrorDocument 404 /404.html
+
 # ---------------------------------------------------------
 # 1️⃣ Force HTTPS
 # ---------------------------------------------------------

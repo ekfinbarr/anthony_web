@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Calendar, Bell, CheckCircle } from "lucide-react";
+import { Mail, Calendar, Bell, CheckCircle, MapPin, Clock, Coffee, Heart, Church, House } from "lucide-react";
 import { EmailService } from "@/services/emailService";
 
 const ComingSoon = () => {
@@ -103,16 +103,16 @@ const ComingSoon = () => {
           transition={{ duration: 0.8, delay: 0.2 }}
           className="space-y-3 sm:space-y-4 mb-8 sm:mb-12"
         >
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold tracking-tight leading-tight">
-            Something Amazing
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-tight">
+            St. Anthony Catholic Church
             <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-500 to-pink-400">
-              Is Coming
+              Gbaja
             </span>
           </h1>
           <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-200 max-w-2xl mx-auto leading-relaxed px-4">
-            We're working hard to bring you an incredible experience. 
-            Join our waiting list to be the first to know when we launch.
+            Welcome Home! Our new website is coming soon. <br />
+            Join our community and be the first to know when we launch.
           </p>
         </motion.div>
 
@@ -170,32 +170,106 @@ const ComingSoon = () => {
           )}
         </motion.div>
 
+        {/* Church Information */}
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.5 }}
+          className="max-w-4xl mx-auto mb-8 sm:mb-12 px-4"
+        >
+          <h2 className="text-2xl sm:text-3xl font-bold text-center mb-6 sm:mb-8 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
+            Visit Us
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 text-center">
+            {/* Church Address */}
+            <div className="p-4 sm:p-6 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20">
+              <MapPin className="h-6 w-6 text-red-400 mx-auto mb-4" />
+              <h3 className="text-lg sm:text-xl font-semibold mb-4">Church Address</h3>
+              <p className="text-gray-200 text-sm sm:text-base leading-relaxed">
+                St. Anthony Catholic Church<br />
+                Gbaja Road<br />
+                Surulere, Lagos State<br />
+                Nigeria
+              </p>
+            </div>
+
+            {/* Mass Times */}
+            <div className="p-4 sm:p-6 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20">
+              <Church className="h-6 w-6 text-green-400 mx-auto mb-4" />
+              <h3 className="text-lg sm:text-xl font-semibold mb-4">Mass Times</h3>
+              {/* <div className="flex items-center space-x-3 mb-4">
+                <Heart className="h-6 w-6 text-purple-400" />
+                <h3 className="text-lg sm:text-xl font-semibold">Mass Times</h3>
+              </div> */}
+              <div className="text-gray-200 text-sm sm:text-base space-y-2">
+                <div><span className="font-medium">Sunday:</span> 7:00 AM, 8:30 AM, 10:00 AM, 11:30 AM, & 6:00 PM</div>
+                <div><span className="font-medium">Weekdays:</span> 6:30 AM, 12:30 PM, & 6:30 PM</div>
+                <div><span className="font-medium">Saturday:</span> 7:00 AM</div>
+                <div><span className="font-medium">Holidays:</span> 8:00 AM</div>
+              </div>
+            </div>
+
+            {/* Confession Times */}
+            <div className="p-4 sm:p-6 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20">
+              <Heart className="h-6 w-6 text-purple-400 mx-auto mb-4" />
+              <h3 className="text-lg sm:text-xl font-semibold mb-4">Confession Times</h3>
+              {/* <div className="flex items-center space-x-3 mb-4">
+                <Clock className="h-6 w-6 text-green-400" />
+                <h3 className="text-lg sm:text-xl font-semibold">Confession Times</h3>
+              </div> */}
+              <div className="text-gray-200 text-sm sm:text-base space-y-2">
+                <div><span className="font-medium">1st Saturday:</span> 5:00 PM</div>
+                <div><span className="font-medium">2nd Saturday:</span> 5:00 PM</div>
+                <div><span className="font-medium">3rd Saturday:</span> 5:00 PM</div>
+                <div className="text-gray-300 text-xs mt-2">Or by appointment</div>
+              </div>
+            </div>
+
+            {/* Office Hours */}
+            <div className="p-4 sm:p-6 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20">
+              <House className="h-6 w-6 text-yellow-400 mx-auto mb-4" />
+              <h3 className="text-lg sm:text-xl font-semibold mb-4">Office Hours</h3>
+              {/* <div className="flex items-center space-x-3 mb-4">
+                <Coffee className="h-6 w-6 text-yellow-400" />
+                <h3 className="text-lg sm:text-xl font-semibold">Office Hours</h3>
+              </div> */}
+              <div className="text-gray-200 text-sm sm:text-base space-y-2">
+                <div><span className="font-medium">Monday - Friday:</span> 9:00 AM - 4:00 PM</div>
+                <div><span className="font-medium">Saturday:</span> Closed</div>
+                <div><span className="font-medium">Sunday:</span> Closed</div>
+                <div className="text-gray-300 text-xs mt-2">Call ahead for appointments</div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
         {/* Features Preview */}
         <motion.div
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.6 }}
+          transition={{ duration: 0.8, delay: 0.7 }}
           className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 max-w-3xl mx-auto mb-8 sm:mb-12 px-4"
         >
           <div className="p-4 sm:p-6 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20">
             <Calendar className="h-6 sm:h-8 w-6 sm:w-8 mx-auto mb-3 sm:mb-4 text-blue-400" />
-            <h3 className="text-base sm:text-lg font-semibold mb-2">Coming Soon</h3>
+            <h3 className="text-base sm:text-lg font-semibold mb-2">New Website</h3>
             <p className="text-gray-300 text-xs sm:text-sm">
-              We're putting the finishing touches on something special
+              Enhanced online experience for our parish community
             </p>
           </div>
           <div className="p-4 sm:p-6 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20">
             <Bell className="h-6 sm:h-8 w-6 sm:w-8 mx-auto mb-3 sm:mb-4 text-purple-400" />
-            <h3 className="text-base sm:text-lg font-semibold mb-2">Be First</h3>
+            <h3 className="text-base sm:text-lg font-semibold mb-2">Stay Connected</h3>
             <p className="text-gray-300 text-xs sm:text-sm">
-              Join our waitlist and be among the first to experience it
+              Get updates on events, masses, and parish announcements
             </p>
           </div>
           <div className="p-4 sm:p-6 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20">
             <CheckCircle className="h-6 sm:h-8 w-6 sm:w-8 mx-auto mb-3 sm:mb-4 text-green-400" />
-            <h3 className="text-base sm:text-lg font-semibold mb-2">Exclusive Access</h3>
+            <h3 className="text-base sm:text-lg font-semibold mb-2">Join Our Family</h3>
             <p className="text-gray-300 text-xs sm:text-sm">
-              Get early access and special launch day privileges
+              Be part of our growing parish community
             </p>
           </div>
         </motion.div>
@@ -205,9 +279,9 @@ const ComingSoon = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.8 }}
-          className="text-gray-400 text-xs sm:text-sm px-4"
+          className="text-gray-400 text-xs sm:text-sm px-4 mb-4 sm:mb-6"
         >
-          We respect your privacy. Unsubscribe at any time.
+          God bless you. We respect your privacy and will only send parish updates.
         </motion.p>
       </div>
     </div>
