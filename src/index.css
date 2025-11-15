@@ -184,7 +184,7 @@ All colors MUST be HSL.
   
   /* Button Variants */
   .btn-church {
-    @apply bg-gradient-church text-foreground font-semibold hover:shadow-glow transition-all duration-300;
+    @apply bg-gradient-church text-foreground font-semibold hover:shadow-lg transition-all duration-300;
   }
   
   .btn-secondary {

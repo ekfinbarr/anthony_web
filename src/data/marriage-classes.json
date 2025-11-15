@@ -1,0 +1,41 @@
+[
+  {
+    "id": "mc-001",
+    "title": "Pre-Cana Class – Session A",
+    "startDate": "2024-12-15",
+    "endDate": "2024-12-17",
+    "time": "7:00 PM - 9:00 PM",
+    "days": ["Sunday", "Monday", "Tuesday"],
+    "facilitator": "Fr. John Smith",
+    "venue": "Parish Hall",
+    "seatsAvailable": 15,
+    "totalSeats": 20,
+    "description": "Comprehensive preparation for the Sacrament of Holy Matrimony covering marriage theology, communication, and practical aspects."
+  },
+  {
+    "id": "mc-002",
+    "title": "Pre-Cana Class – Session B",
+    "startDate": "2025-01-10",
+    "endDate": "2025-01-12",
+    "time": "6:00 PM - 8:00 PM",
+    "days": ["Friday", "Saturday", "Sunday"],
+    "facilitator": "Sr. Mary Johnson",
+    "venue": "Catechetics Hall",
+    "seatsAvailable": 8,
+    "totalSeats": 15,
+    "description": "Focus on building strong foundations for married life through prayer, communication, and understanding."
+  },
+  {
+    "id": "mc-003",
+    "title": "Marriage Enrichment Workshop",
+    "startDate": "2025-02-05",
+    "endDate": "2025-02-05",
+    "time": "9:00 AM - 4:00 PM",
+    "days": ["Saturday"],
+    "facilitator": "Dr. Elizabeth Brown",
+    "venue": "Parish Center",
+    "seatsAvailable": 25,
+    "totalSeats": 30,
+    "description": "One-day intensive workshop for couples preparing for marriage, covering all essential topics."
+  }
+]

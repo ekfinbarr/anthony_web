@@ -39,7 +39,7 @@ export default function QuickActions({
       label: 'Log Activity',
       icon: Plus,
       color: 'bg-blue-500 hover:bg-blue-600',
-      description: 'Track spiritual activities'
+      description: 'Track activities'
     },
     {
       id: 'view_calendar',
@@ -54,14 +54,14 @@ export default function QuickActions({
       label: 'Daily Reading',
       icon: BookOpen,
       color: 'bg-purple-500 hover:bg-purple-600',
-      description: 'Scripture & devotionals'
+      description: 'Scriptures', // 'Scripture & devotionals'
     },
     {
       id: 'prayer_requests',
       label: 'Prayer',
       icon: Heart,
       color: 'bg-red-500 hover:bg-red-600',
-      description: 'Prayer requests & tracking'
+      description: 'Mass Requests', //'Prayer requests & tracking'
     },
     {
       id: 'community',
@@ -70,13 +70,13 @@ export default function QuickActions({
       color: 'bg-orange-500 hover:bg-orange-600',
       description: 'Connect with others'
     },
-    {
-      id: 'goals',
-      label: 'Goals',
-      icon: Target,
-      color: 'bg-indigo-500 hover:bg-indigo-600',
-      description: 'Spiritual goals & progress'
-    }
+    // {
+    //   id: 'goals',
+    //   label: 'Goals',
+    //   icon: Target,
+    //   color: 'bg-indigo-500 hover:bg-indigo-600',
+    //   description: 'Spiritual goals & progress'
+    // }
   ];
 
   return (

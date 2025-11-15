@@ -1,0 +1,69 @@
+{
+  "marriageBans": [
+    {
+      "id": 1,
+      "brideName": "Mary Elizabeth Johnson",
+      "groomName": "Michael Anthony Rodriguez",
+      "homeParish": "St. Mary's Cathedral",
+      "announcementDate": "2024-11-17",
+      "weddingDate": "2024-12-14",
+      "weddingTime": "2:00 PM",
+      "venue": "St. Anthony Catholic Church, Gbaja",
+      "priest": "Fr. Emmanuel Okon",
+      "announcementRound": 1,
+      "canonicalText": "If anyone knows of any reason why these two persons may not be lawfully joined together in Holy Matrimony, let them inform the Parish Priest."
+    },
+    {
+      "id": 2,
+      "brideName": "Grace Patricia Williams",
+      "groomName": "David Joseph Thompson",
+      "homeParish": "Our Lady of Fatima Parish",
+      "announcementDate": "2024-11-17",
+      "weddingDate": "2024-12-21",
+      "weddingTime": "3:30 PM",
+      "venue": "St. Anthony Catholic Church, Gbaja",
+      "priest": "Fr. Emmanuel Okon",
+      "announcementRound": 1,
+      "canonicalText": "If anyone knows of any reason why these two persons may not be lawfully joined together in Holy Matrimony, let them inform the Parish Priest."
+    },
+    {
+      "id": 3,
+      "brideName": "Sarah Catherine Davis",
+      "groomName": "James Patrick Murphy",
+      "homeParish": "St. Anthony Catholic Church, Gbaja",
+      "announcementDate": "2024-11-10",
+      "weddingDate": "2024-11-30",
+      "weddingTime": "11:00 AM",
+      "venue": "St. Anthony Catholic Church, Gbaja",
+      "priest": "Fr. Emmanuel Okon",
+      "announcementRound": 2,
+      "canonicalText": "If anyone knows of any reason why these two persons may not be lawfully joined together in Holy Matrimony, let them inform the Parish Priest."
+    },
+    {
+      "id": 4,
+      "brideName": "Elizabeth Mary Brown",
+      "groomName": "Christopher Thomas Wilson",
+      "homeParish": "Holy Cross Parish",
+      "announcementDate": "2024-11-10",
+      "weddingDate": "2024-12-07",
+      "weddingTime": "4:00 PM",
+      "venue": "St. Anthony Catholic Church, Gbaja",
+      "priest": "Fr. Emmanuel Okon",
+      "announcementRound": 2,
+      "canonicalText": "If anyone knows of any reason why these two persons may not be lawfully joined together in Holy Matrimony, let them inform the Parish Priest."
+    },
+    {
+      "id": 5,
+      "brideName": "Anna Rose Garcia",
+      "groomName": "Robert Francis Martinez",
+      "homeParish": "St. Anthony Catholic Church, Gbaja",
+      "announcementDate": "2024-11-03",
+      "weddingDate": "2024-11-23",
+      "weddingTime": "10:00 AM",
+      "venue": "St. Anthony Catholic Church, Gbaja",
+      "priest": "Fr. Emmanuel Okon",
+      "announcementRound": 3,
+      "canonicalText": "If anyone knows of any reason why these two persons may not be lawfully joined together in Holy Matrimony, let them inform the Parish Priest."
+    }
+  ]
+}

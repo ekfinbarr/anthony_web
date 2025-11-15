@@ -1,0 +1,113 @@
+{
+  "services": [
+    {
+      "id": 1,
+      "title": "General Consultation",
+      "description": "Comprehensive health assessment and medical advice",
+      "icon": "stethoscope",
+      "details": "Our doctors provide thorough health evaluations, diagnose common illnesses, and offer preventive care guidance. We focus on holistic healthcare that considers both physical and spiritual well-being."
+    },
+    {
+      "id": 2,
+      "title": "Blood Pressure Check",
+      "description": "Regular monitoring of blood pressure levels",
+      "icon": "activity",
+      "details": "Regular blood pressure monitoring is essential for cardiovascular health. Our clinic provides accurate readings and counseling on maintaining healthy blood pressure levels."
+    },
+    {
+      "id": 3,
+      "title": "First Aid & Wound Dressing",
+      "description": "Emergency first aid and professional wound care",
+      "icon": "bandage",
+      "details": "Professional wound dressing and first aid services for cuts, burns, and minor injuries. We ensure proper cleaning, dressing, and follow-up care to prevent infection."
+    },
+    {
+      "id": 4,
+      "title": "Antenatal Services",
+      "description": "Prenatal care and pregnancy monitoring",
+      "icon": "baby",
+      "details": "Comprehensive antenatal care including regular check-ups, nutritional guidance, and preparation for safe delivery. We work closely with expectant mothers to ensure healthy pregnancies."
+    },
+    {
+      "id": 5,
+      "title": "Child Wellness Clinic",
+      "description": "Pediatric care and child health monitoring",
+      "icon": "heart",
+      "details": "Specialized care for children including growth monitoring, vaccinations, nutritional assessment, and developmental check-ups. We provide a nurturing environment for young patients."
+    },
+    {
+      "id": 6,
+      "title": "Vaccinations",
+      "description": "Immunization services for all ages",
+      "icon": "shield",
+      "details": "Complete vaccination services following WHO and Nigerian health guidelines. We maintain proper cold chain storage and provide counseling on vaccine-preventable diseases."
+    },
+    {
+      "id": 7,
+      "title": "Pharmacy & Drug Dispensing",
+      "description": "Prescription medications and over-the-counter drugs",
+      "icon": "pill",
+      "details": "Licensed pharmacy services with quality medications. Our pharmacists provide medication counseling, dosage instructions, and ensure safe dispensing practices."
+    },
+    {
+      "id": 8,
+      "title": "Health Counseling",
+      "description": "Lifestyle and wellness guidance",
+      "icon": "message-circle",
+      "details": "Personalized health counseling covering nutrition, exercise, stress management, and lifestyle modifications. We integrate faith-based wellness principles into our counseling."
+    }
+  ],
+  "facilities": [
+    {
+      "id": 1,
+      "title": "Clinic Building",
+      "image": "/placeholder.svg",
+      "description": "Our modern clinic facility provides a clean and welcoming environment for healthcare services."
+    },
+    {
+      "id": 2,
+      "title": "Reception Area",
+      "image": "/placeholder.svg",
+      "description": "A comfortable waiting area where patients can relax before their appointments."
+    },
+    {
+      "id": 3,
+      "title": "Consultation Room",
+      "image": "/placeholder.svg",
+      "description": "Private consultation rooms equipped with medical examination tools and supplies."
+    },
+    {
+      "id": 4,
+      "title": "Pharmacy",
+      "image": "/placeholder.svg",
+      "description": "Our licensed pharmacy stocks essential medications and provides professional dispensing services."
+    },
+    {
+      "id": 5,
+      "title": "Waiting Area",
+      "image": "/placeholder.svg",
+      "description": "A peaceful space for patients and families to wait comfortably during visits."
+    },
+    {
+      "id": 6,
+      "title": "Medical Equipment",
+      "image": "/placeholder.svg",
+      "description": "Modern medical equipment ensures accurate diagnoses and effective treatment."
+    }
+  ],
+  "contact": {
+    "phone": "(234) 123 456 7899",
+    "whatsapp": "+234 123 456 7899",
+    "email": "clinic@stanthonygbaja.org",
+    "address": "St. Anthony Catholic Church Compound, Gbaja, Nigeria",
+    "hours": {
+      "monday": "8:00 AM - 5:00 PM",
+      "tuesday": "8:00 AM - 5:00 PM",
+      "wednesday": "8:00 AM - 5:00 PM",
+      "thursday": "8:00 AM - 5:00 PM",
+      "friday": "8:00 AM - 5:00 PM",
+      "saturday": "9:00 AM - 2:00 PM",
+      "sunday": "Closed"
+    }
+  }
+}

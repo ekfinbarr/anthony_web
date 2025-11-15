@@ -1,0 +1,170 @@
+{
+  "categories": [
+    {
+      "id": "bibles",
+      "name": "Bibles",
+      "icon": "📖",
+      "products": [
+        {
+          "id": 1,
+          "title": "Catholic Study Bible",
+          "description": "Comprehensive study Bible with Catholic commentary and notes.",
+          "price": 45.99,
+          "image": "/placeholder.svg",
+          "availability": "In Stock",
+          "variants": ["Hardcover", "Paperback"],
+          "fullDescription": "This Catholic Study Bible features extensive commentary, historical context, and theological insights to deepen your understanding of Scripture. Perfect for personal study or group discussions."
+        },
+        {
+          "id": 2,
+          "title": "Children's Bible Stories",
+          "description": "Illustrated Bible stories for young children.",
+          "price": 19.99,
+          "image": "/placeholder.svg",
+          "availability": "In Stock",
+          "variants": ["Board Book", "Paperback"],
+          "fullDescription": "Beautifully illustrated Bible stories designed specifically for young children. Each story is told in simple language with vibrant artwork to engage little ones."
+        }
+      ]
+    },
+    {
+      "id": "hymn-books",
+      "name": "Hymn Books",
+      "icon": "🎵",
+      "products": [
+        {
+          "id": 3,
+          "title": "Catholic Hymn Book",
+          "description": "Traditional Catholic hymns and songs.",
+          "price": 24.99,
+          "image": "/placeholder.svg",
+          "availability": "In Stock",
+          "variants": ["Spiral Bound", "Hardcover"],
+          "fullDescription": "A comprehensive collection of traditional Catholic hymns, including Gregorian chant notation and modern worship songs. Perfect for liturgical celebrations."
+        }
+      ]
+    },
+    {
+      "id": "devotionals",
+      "name": "Devotionals",
+      "icon": "🙏",
+      "products": [
+        {
+          "id": 4,
+          "title": "Daily Catholic Devotional",
+          "description": "365 days of Catholic reflections and prayers.",
+          "price": 29.99,
+          "image": "/placeholder.svg",
+          "availability": "In Stock",
+          "variants": ["Leather Bound", "Paperback"],
+          "fullDescription": "A year-long journey through Catholic spirituality with daily reflections, prayers, and meditations. Includes saints' feast days and liturgical seasons."
+        }
+      ]
+    },
+    {
+      "id": "rosaries-sacramentals",
+      "name": "Rosaries & Sacramentals",
+      "icon": "📿",
+      "products": [
+        {
+          "id": 5,
+          "title": "Wooden Rosary",
+          "description": "Beautiful handcrafted wooden rosary beads.",
+          "price": 15.99,
+          "image": "/placeholder.svg",
+          "availability": "In Stock",
+          "variants": ["Walnut", "Oak"],
+          "fullDescription": "Handcrafted wooden rosary beads made from sustainably sourced wood. Each bead is individually blessed and comes with a velvet pouch."
+        },
+        {
+          "id": 6,
+          "title": "Blessed Salt",
+          "description": "Sacramental blessed salt for spiritual protection.",
+          "price": 8.99,
+          "image": "/placeholder.svg",
+          "availability": "In Stock",
+          "variants": ["Small Container", "Large Container"],
+          "fullDescription": "Sacramental salt blessed by a priest for use in spiritual protection and blessings. Comes in a sealed container with blessing certificate."
+        }
+      ]
+    },
+    {
+      "id": "saint-statues",
+      "name": "Saint Statues",
+      "icon": "🕊️",
+      "products": [
+        {
+          "id": 7,
+          "title": "St. Anthony Statue",
+          "description": "Beautiful statue of St. Anthony of Padua.",
+          "price": 39.99,
+          "image": "/placeholder.svg",
+          "availability": "In Stock",
+          "variants": ["8 inch", "12 inch"],
+          "fullDescription": "Hand-painted resin statue of St. Anthony, patron saint of our parish. Perfect for home altars or as a devotional gift."
+        }
+      ]
+    },
+    {
+      "id": "catholic-literature",
+      "name": "Catholic Literature",
+      "icon": "📚",
+      "products": [
+        {
+          "id": 8,
+          "title": "Catholic Catechism",
+          "description": "Complete guide to Catholic doctrine and teachings.",
+          "price": 34.99,
+          "image": "/placeholder.svg",
+          "availability": "In Stock",
+          "variants": ["Hardcover", "Paperback"],
+          "fullDescription": "The complete Catechism of the Catholic Church, containing all the essential teachings of the faith in an accessible format."
+        }
+      ]
+    },
+    {
+      "id": "childrens-books",
+      "name": "Children's Books",
+      "icon": "👶",
+      "products": [
+        {
+          "id": 9,
+          "title": "Catholic Children's Prayer Book",
+          "description": "Simple prayers and stories for Catholic children.",
+          "price": 12.99,
+          "image": "/placeholder.svg",
+          "availability": "In Stock",
+          "variants": ["Board Book", "Paperback"],
+          "fullDescription": "A collection of simple prayers, Bible stories, and Catholic teachings designed specifically for young children. Includes colorful illustrations."
+        }
+      ]
+    },
+    {
+      "id": "sacramental-cards",
+      "name": "Sacramental Cards",
+      "icon": "💌",
+      "products": [
+        {
+          "id": 10,
+          "title": "Baptism Certificate Cards",
+          "description": "Beautiful baptism certificate cards.",
+          "price": 9.99,
+          "image": "/placeholder.svg",
+          "availability": "In Stock",
+          "variants": ["Pack of 10", "Pack of 25"],
+          "fullDescription": "Elegant baptism certificate cards with space for personalization. Perfect for recording this important sacrament."
+        },
+        {
+          "id": 11,
+          "title": "Wedding Blessing Cards",
+          "description": "Cards for wedding blessings and congratulations.",
+          "price": 7.99,
+          "image": "/placeholder.svg",
+          "availability": "In Stock",
+          "variants": ["Pack of 10", "Pack of 25"],
+          "fullDescription": "Beautiful cards to celebrate the sacrament of marriage. Includes traditional Catholic blessings and well-wishes."
+        }
+      ]
+    }
+  ]
+}

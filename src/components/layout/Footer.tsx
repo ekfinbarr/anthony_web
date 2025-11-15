@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import logo from "@/assets/images/logo.png";
+import SocialMediaLinks from "@/components/ui/SocialMediaLinks";
 
 const Footer = () => {
   const handleNewsletterSubmit = (e: React.FormEvent) => {
@@ -29,20 +30,7 @@ const Footer = () => {
             <p className="text-sm text-church-pearl/80 mb-4">
               A place where everyone is welcome, loved, and equipped to serve God and others.
             </p>
-            <div className="flex space-x-3">
-              <a href="#" className="hover:text-primary transition-colors">
-                <Facebook className="h-5 w-5" />
-              </a>
-              <a href="#" className="hover:text-primary transition-colors">
-                <Twitter className="h-5 w-5" />
-              </a>
-              <a href="#" className="hover:text-primary transition-colors">
-                <Instagram className="h-5 w-5" />
-              </a>
-              <a href="#" className="hover:text-primary transition-colors">
-                <Youtube className="h-5 w-5" />
-              </a>
-            </div>
+            <SocialMediaLinks size="small" color="white" variant="outline" />
           </div>
 
           {/* Quick Links */}

@@ -47,8 +47,14 @@ const Navigation = () => {
      },
     { name: "Events", href: "/events" },
     { name: "Visit", href: "/visit" },
+    { name: "Bookshop", href: "/bookshop" },
+    { name: "Clinic", href: "/clinic" },
+    { name: "Marriage Banns", href: "/marriage-bans" },
+    { name: "Marriage Classes", href: "/marriage-classes" },
     // { name: "Blog", href: "/blog" },
     { name: "News", href: "/news" },
+    // { name: "Gallery", href: "/gallery" },
+    { name: "Register", href: "/register" },
     // {
     //   name: "Member Portal",
     //   href: "/dashboard",
@@ -59,7 +65,13 @@ const Navigation = () => {
     //     { name: "Community", href: "/dashboard?tab=community" },
     //   ],
     // },
-    { name: "Contact", href: "/contact" },
+    {
+      name: "Contact", href: "/contact",
+      children: [
+        { name: "Contact us", href: "/contact"},
+        { name: "Visit", href: "/visit"}
+      ]
+    },
     { name: "Give", href: "/charity" },
   ];
 
@@ -77,8 +89,8 @@ const Navigation = () => {
               <img src={logo} alt="St. Anthony" className="h-15 w-16 object-contain" />
             </div>
             <div className="pl-0 ml-0">
-              <h1 className="text-xl font-heading font-bold text-foreground">St. Anthony</h1>
-              <p className="text-xs text-muted-foreground">Catholic Church</p>
+              <h1 className="text-xl font-heading font-bold text-foreground" style={{fontSize: '22px'}}>St. Anthony</h1>
+              <p className="text-xs text-muted-foreground">Catholic Church, Gbaja</p>
             </div>
           </Link>
 
@@ -136,13 +148,12 @@ const Navigation = () => {
               </NavigationMenuList>
             </NavigationMenu>
             <div className="flex items-center gap-2">
-              <Link to="/dashboard">
+              {/* <Link to="/dashboard">
                 <Button variant="outline" size="lg">
                   <User className="h-4 w-4 mr-2" />
-                  {/* Member Portal */}
                   Sign In
                 </Button>
-              </Link>
+              </Link> */}
               <Link to={'/live'}>
                 <Button variant="church" size="lg">
                   Watch Live

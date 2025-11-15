@@ -7,13 +7,14 @@ import { Card } from "@/components/ui/card";
 import { ArrowRight, Users, Clock, MapPin, Eye, Target, TrendingUp, User } from "lucide-react";
 import { Link } from "react-router-dom";
 import LatestNews from "@/components/home/LatestNews";
-import dap from "@/assets/images/DAP.png";
+// import dap from "@/assets/images/DAP.png";
 import stAnthony from "@/assets/images/st_anthony.png";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 
 const Home = () => {
+  const dap = "https://scontent-los2-1.xx.fbcdn.net/v/t39.30808-6/475925097_3233249990155896_2609915621922325122_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=cc71e4&_nc_eui2=AeHs4e6S97TLHHu3_KsYYpXLydM6fSGKwqXJ0zp9IYrCpSZ-0uCDk7j1sbGdCp7cTY5yUrQSZTon565I5hSH82Mc&_nc_ohc=4oaoaV8zGkwQ7kNvwFhqgLi&_nc_oc=AdlptfAIJThaEZDK29Ah4zRojvPQxuZ_kp6UnS5rBFRNZPJrSufg5PKGMlVtemzZTaE&_nc_zt=23&_nc_ht=scontent-los2-1.xx&_nc_gid=py2D-fEUBNUSP5Ni83CaXA&oh=00_Afi5Zo1X-TvWGXUxyrQ_BIMGFK269qiXLSsqsa2lrHIldg&oe=69155F36";
   return (
     <div>
       <HeroSection />
@@ -90,7 +91,7 @@ const Home = () => {
           <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto items-center">
             <div className="relative">
               <img
-                src={dap}
+                src={"https://scontent-los2-1.xx.fbcdn.net/v/t39.30808-6/475925097_3233249990155896_2609915621922325122_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=cc71e4&_nc_eui2=AeHs4e6S97TLHHu3_KsYYpXLydM6fSGKwqXJ0zp9IYrCpSZ-0uCDk7j1sbGdCp7cTY5yUrQSZTon565I5hSH82Mc&_nc_ohc=4oaoaV8zGkwQ7kNvwFhqgLi&_nc_oc=AdlptfAIJThaEZDK29Ah4zRojvPQxuZ_kp6UnS5rBFRNZPJrSufg5PKGMlVtemzZTaE&_nc_zt=23&_nc_ht=scontent-los2-1.xx&_nc_gid=py2D-fEUBNUSP5Ni83CaXA&oh=00_Afi5Zo1X-TvWGXUxyrQ_BIMGFK269qiXLSsqsa2lrHIldg&oe=69155F36"}
                 alt="Church History"
                 className="rounded-lg shadow-xl"
               />
