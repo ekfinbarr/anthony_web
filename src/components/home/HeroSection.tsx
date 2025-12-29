@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Calendar, Users, Heart } from "lucide-react";
+import { ChevronRight, Calendar, Users, Heart, Cross } from "lucide-react";
 import { Link } from "react-router-dom";
 import churchHero from "@/assets/church-hero.jpg";
 import droneVideo from "@/assets/videos/drone_spec.mp4";
@@ -17,11 +17,11 @@ const HeroSection = () => {
       link: "/visit",
     },
     {
-      title: "Join Us This Sunday",
+      title: "Join Us for Holy Mass",
       subtitle: "Holy Mass at Mornings and Evenings",
       image: churchHero,
       cta: "Mass Times",
-      link: "/about#services",
+      link: "/visit",
     },
     {
       title: "Making a Difference",
@@ -32,6 +32,15 @@ const HeroSection = () => {
     },
   ];
 
+  const teleport = (location) => {
+    if (location === "mass") {
+      window.location.href = "/visit";
+    } else if (location === "sacraments") {
+      window.location.href = "/sacraments";
+    } else if (location === "ministries") {
+      window.location.href = "/ministries";
+    }
+  }
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % slides.length);
@@ -95,16 +104,16 @@ const HeroSection = () => {
 
           {/* Quick Stats */}
           <div className="grid grid-cols-3 gap-4 mt-12 max-w-md">
-            <div className="text-center">
+            <div className="text-center cursor-pointer" onClick={() => teleport("mass")}>
               <Calendar className="h-8 w-8 text-primary mx-auto mb-2" />
-              <p className="text-sm text-church-pearl/80">Sunday Mass</p>
+              <p className="text-sm text-church-pearl/80">Mass Schedule</p>
             </div>
-            <div className="text-center">
+            <div className="text-center cursor-pointer" onClick={() => teleport("sacraments")}>
+              <Cross className="h-8 w-8 text-primary mx-auto mb-2" />
+              <p className="text-sm text-church-pearl/80">Sacraments</p>
+            </div>
+            <div className="text-center cursor-pointer" onClick={() => teleport("ministries")}>
               <Users className="h-8 w-8 text-primary mx-auto mb-2" />
-              <p className="text-sm text-church-pearl/80">Community</p>
-            </div>
-            <div className="text-center">
-              <Heart className="h-8 w-8 text-primary mx-auto mb-2" />
               <p className="text-sm text-church-pearl/80">Organizations</p>
             </div>
           </div>
@@ -118,8 +127,8 @@ const HeroSection = () => {
             key={index}
             onClick={() => setCurrentSlide(index)}
             className={`w-2 h-2 rounded-full transition-all ${index === currentSlide
-                ? "w-8 bg-primary"
-                : "bg-church-pearl/50 hover:bg-church-pearl/70"
+              ? "w-8 bg-primary"
+              : "bg-church-pearl/50 hover:bg-church-pearl/70"
               }`}
           />
         ))}

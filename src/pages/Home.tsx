@@ -12,6 +12,8 @@ import stAnthony from "@/assets/images/st_anthony.png";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
+import JsonpComponent from "@/components/home/JsonpComponent";
+import CatholicDailyReadings from "@/components/home/CatholicDailyReadings";
 
 const Home = () => {
   const dap = "https://scontent-los2-1.xx.fbcdn.net/v/t39.30808-6/475925097_3233249990155896_2609915621922325122_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=cc71e4&_nc_eui2=AeHs4e6S97TLHHu3_KsYYpXLydM6fSGKwqXJ0zp9IYrCpSZ-0uCDk7j1sbGdCp7cTY5yUrQSZTon565I5hSH82Mc&_nc_ohc=4oaoaV8zGkwQ7kNvwFhqgLi&_nc_oc=AdlptfAIJThaEZDK29Ah4zRojvPQxuZ_kp6UnS5rBFRNZPJrSufg5PKGMlVtemzZTaE&_nc_zt=23&_nc_ht=scontent-los2-1.xx&_nc_gid=py2D-fEUBNUSP5Ni83CaXA&oh=00_Afi5Zo1X-TvWGXUxyrQ_BIMGFK269qiXLSsqsa2lrHIldg&oe=69155F36";
@@ -83,7 +85,7 @@ const Home = () => {
 
 
       {/* Vision & Mission */}
-      <section className="py-16 bg-background">
+      {/* <section className="py-16 bg-background">
         <div className="container mx-auto px-4">
           <h2 className="text-4xl font-heading font-bold text-center mb-12 accent-line inline-block w-full">
             Our Vision & Mission
@@ -116,7 +118,7 @@ const Home = () => {
             </div>
           </div>
         </div>
-      </section>
+      </section> */}
 
       <LatestNews />
 
@@ -128,7 +130,7 @@ const Home = () => {
               Your Personal Spiritual Journey
             </h2>
             <p className="text-lg text-muted-foreground mb-8">
-              Access your personalized member dashboard with AI-powered recommendations, 
+              Access your personalized member dashboard with AI-powered recommendations,
               spiritual growth tracking, smart calendar, and community connections.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -165,6 +167,21 @@ const Home = () => {
               <p className="text-sm text-muted-foreground">
                 New member? Your dashboard is ready with personalized demo content to explore.
               </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Daily readings from Universalis */}
+      <section className="py-16 bg-background">
+        <div className="container mx-auto px-4">
+          <h2 className="text-4xl font-heading font-bold text-center mb-12 accent-line inline-block w-full">
+            Daily Readings
+          </h2>
+          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto items-center">
+            <div className="relative">
+  <CatholicDailyReadings />
+
             </div>
           </div>
         </div>

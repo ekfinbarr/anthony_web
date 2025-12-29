@@ -64,24 +64,24 @@ const About = () => {
             <div>
               <h2 className="text-4xl font-heading font-bold mb-6 accent-line">Our Story</h2>
               <p className="text-muted-foreground mb-4">
-                St. Anthony, Gbaja began in 1985 with a small group of families gathering in a living room, 
+                St. Anthony, Gbaja began in 1985 with a small group of families gathering in a living room,
                 united by a shared vision to create a church that would impact our community with God's love.
               </p>
               <p className="text-muted-foreground mb-4">
-                Over the years, we've grown from that humble beginning into a vibrant community of believers 
-                from all walks of life. Our journey has been marked by God's faithfulness, countless changed 
+                Over the years, we've grown from that humble beginning into a vibrant community of believers
+                from all walks of life. Our journey has been marked by God's faithfulness, countless changed
                 lives, and a deepening commitment to serve our city and beyond.
               </p>
               <p className="text-muted-foreground">
-                Today, St. Anthony, Gbaja is home to over 1,500 members who are passionate about worship, 
-                discipleship, and making a difference in the world. We continue to be guided by the same 
+                Today, St. Anthony, Gbaja is home to over 1,500 members who are passionate about worship,
+                discipleship, and making a difference in the world. We continue to be guided by the same
                 vision that started it all: to be a beacon of hope and love in our community.
               </p>
             </div>
             <div className="relative">
-              <img 
+              <img
                 src={dap}
-                alt="Church History" 
+                alt="Church History"
                 className="rounded-lg shadow-xl"
               />
               <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-gradient-church shape-diamond opacity-20" />
@@ -95,19 +95,19 @@ const About = () => {
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
             <div className="grid md:grid-cols-2 gap-8">
-              <Card className="p-8">
+              <Card className="p-8" id="vision">
                 <Eye className="h-12 w-12 text-primary mb-4" />
                 <h3 className="text-2xl font-heading font-bold mb-4">Our Vision</h3>
                 <p className="text-muted-foreground">
-                  To be a church where people encounter God, find community, and discover their purpose 
+                  To be a church where people encounter God, find community, and discover their purpose
                   in advancing God's kingdom on earth.
                 </p>
               </Card>
-              <Card className="p-8">
+              <Card className="p-8" id="mission">
                 <Target className="h-12 w-12 text-primary mb-4" />
                 <h3 className="text-2xl font-heading font-bold mb-4">Our Mission</h3>
                 <p className="text-muted-foreground">
-                  To lead people into a growing relationship with Jesus Christ through worship, 
+                  To lead people into a growing relationship with Jesus Christ through worship,
                   discipleship, fellowship, and service.
                 </p>
               </Card>
@@ -117,7 +117,7 @@ const About = () => {
       </section>
 
       {/* Core Values */}
-      <section className="py-16 bg-background">
+      <section className="py-16 bg-background" id="core-values">
         <div className="container mx-auto px-4">
           <h2 className="text-4xl font-heading font-bold text-center mb-12 accent-line inline-block w-full">
             Our Core Values
@@ -140,14 +140,14 @@ const About = () => {
       </section>
 
       {/* Leadership Team */}
-      <section className="py-16 bg-church-pearl">
+      <section id="leadership" className="py-16 bg-church-pearl">
         <div className="container mx-auto px-4">
           <h2 className="text-4xl font-heading font-bold text-center mb-12">Leadership Team</h2>
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             {leadership.map((leader) => (
               <Card key={leader.name} className="overflow-hidden">
-                <img 
-                  src={leader.image} 
+                <img
+                  src={leader.image}
                   alt={leader.name}
                   className="w-full h-64 object-cover"
                 />
@@ -163,7 +163,7 @@ const About = () => {
       </section>
 
       {/* Service Times */}
-      <section id="services" className="py-16 bg-gradient-church">
+      <section id="mass-schedule" className="py-16 bg-gradient-church">
         <div className="container mx-auto px-4">
           <h2 className="text-4xl font-heading font-bold text-center mb-12 text-church-charcoal">
             Join Us for Worship

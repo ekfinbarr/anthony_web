@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { href, Link, useLocation } from "react-router-dom";
 import { Menu, X, ChevronDown, Church, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,43 +18,72 @@ const Navigation = () => {
   const location = useLocation();
 
   const navItems = [
-    { name: "Home", href: "/" },
     {
-      name: "About", href: "/about",
+      name: "Home", href: "/"
+    },
+    {
+      name: "Parish Life",
+      href: "#",
+      children: [
+        // { name: "Ministries", href: "/ministries" },
+        { name: "Groups & Societies", href: "/groups" },
+        { name: "Past Priests", href: "/past-priests" },
+        { name: "Events", href: "/events" },
+        { name: "Gallery", href: "/gallery" },
+      ],
+    },
+    {
+      name: "Services",
+      href: "#",
+      children: [
+        { name: "Bookshop", href: "/bookshop" },
+        { name: "Clinic", href: "/clinic" },
+        { name: "Mass Booking", href: "/mass-booking" },
+        { name: "Hall & Rentals", href: "/rentals" },
+      ],
+    },
+    {
+      name: "Our Parish", href: "/about",
       children: [
         { name: "Our Story", href: "/about#our-story" },
         { name: "Leadership", href: "/about#leadership" },
-        { name: "Masses", href: "/about#services" },
-        { name: "Facilities", href: "/facilities" },
+        { name: "Masses", href: "/visit" },
+        { name: "Events", href: "/events" },
+        { name: "News", href: "/news" },
+        { name: "Bookshop", href: "/bookshop" },
+        { name: "Clinic", href: "/clinic" },
         { name: "Gallery", href: "/gallery" },
-        { name: "FAQs", href: "/about#faqs" },
-      ],
-     },
-    {
-      name: "Organizations",
-      href: "/ministries",
-      children: [
-        { name: "Societies & Pious Organizations", href: "/ministries/societies-pious-organizations" },
-        { name: "Small Christians Communities", href: "/ministries/small-christians-communities" },
+        { name: "FAQs", href: "/faq" },
       ],
     },
+    // {
+    //   name: "Organizations",
+    //   href: "/ministries",
+    //   children: [
+    //     { name: "Societies & Pious Organizations", href: "/ministries/societies-pious-organizations" },
+    //     { name: "Basic Christian Communities", href: "/ministries/small-christians-communities" },
+    //   ],
+    // },
     {
       name: "Sermons", href: "/sermons",
       children: [
         { name: "Latest Sermons", href: "/sermons" },
         { name: "Bulletin", href: "/bulletin" },
       ],
-     },
-    { name: "Events", href: "/events" },
-    { name: "Visit", href: "/visit" },
-    { name: "Bookshop", href: "/bookshop" },
-    { name: "Clinic", href: "/clinic" },
-    { name: "Marriage Banns", href: "/marriage-bans" },
-    { name: "Marriage Classes", href: "/marriage-classes" },
+    },
+    // {
+    //   name: "Sacraments", href: "/sacraments",
+    //   children: [
+    //     { name: "Marriage Classes", href: "/marriage-classes" },
+    //     { name: "Baptism", href: "/marriage-bans" },
+    //     { name: "Confessions", href: "/marriage-bans" },
+    //   ]
+    // },
+
+
     // { name: "Blog", href: "/blog" },
-    { name: "News", href: "/news" },
     // { name: "Gallery", href: "/gallery" },
-    { name: "Register", href: "/register" },
+    // { name: "Register", href: "/register" },
     // {
     //   name: "Member Portal",
     //   href: "/dashboard",
@@ -65,14 +94,14 @@ const Navigation = () => {
     //     { name: "Community", href: "/dashboard?tab=community" },
     //   ],
     // },
-    {
-      name: "Contact", href: "/contact",
-      children: [
-        { name: "Contact us", href: "/contact"},
-        { name: "Visit", href: "/visit"}
-      ]
-    },
-    { name: "Give", href: "/charity" },
+    // {
+    //   name: "Contact", href: "/contact",
+    //   children: [
+    //     { name: "Contact us", href: "/contact" },
+    //     { name: "Visit", href: "/visit" }
+    //   ]
+    // },
+    { name: "Contact", href: "/contact" },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -89,7 +118,7 @@ const Navigation = () => {
               <img src={logo} alt="St. Anthony" className="h-15 w-16 object-contain" />
             </div>
             <div className="pl-0 ml-0">
-              <h1 className="text-xl font-heading font-bold text-foreground" style={{fontSize: '22px'}}>St. Anthony</h1>
+              <h1 className="text-xl font-heading font-bold text-foreground" style={{ fontSize: '22px' }}>St. Anthony</h1>
               <p className="text-xs text-muted-foreground">Catholic Church, Gbaja</p>
             </div>
           </Link>
@@ -110,7 +139,9 @@ const Navigation = () => {
                         {item.name}
                       </NavigationMenuTrigger>
                       <NavigationMenuContent>
-                        <ul className="grid w-[200px] gap-3 p-4">
+
+                        <ul
+                          className="grid w-[500px] gap-3 p-4 bg-gradient-to-r from-primary/10 via-primary/10 to-accent/10">
                           {item.children.map((child) => (
                             <li key={child.name}>
                               <NavigationMenuLink asChild>
@@ -154,11 +185,17 @@ const Navigation = () => {
                   Sign In
                 </Button>
               </Link> */}
-              <Link to={'/live'}>
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/registration">Register</Link>
+              </Button>
+              <Button variant="church" size="sm" asChild>
+                <Link to="/donations">Give</Link>
+              </Button>
+              {/* <Link to={'/live'}>
                 <Button variant="church" size="lg">
                   Watch Live
                 </Button>
-              </Link>
+              </Link> */}
             </div>
           </div>
 
@@ -184,7 +221,7 @@ const Navigation = () => {
                   <Link
                     to={item.href}
                     className={cn(
-                      "block px-4 py-2 text-sm font-medium transition-colors hover:bg-accent rounded-md",
+                      "block px-4 py-2 text-md font-medium transition-colors hover:bg-accent bg-muted rounded-md",
                       isActive(item.href) && "bg-accent text-primary"
                     )}
                     onClick={() => setMobileMenuOpen(false)}
@@ -199,7 +236,7 @@ const Navigation = () => {
                           to={child.href}
                           className={cn(
                             "block px-4 py-2 text-sm transition-colors hover:bg-accent rounded-md",
-                            isActive(child.href) && "bg-accent text-primary"
+                            isActive(child.href) && "bg-accent text-white"
                           )}
                           onClick={() => setMobileMenuOpen(false)}
                         >
@@ -210,7 +247,15 @@ const Navigation = () => {
                   )}
                 </div>
               ))}
-              <div className="mt-4 space-y-2">
+              <div className="flex gap-2 pt-4 px-4">
+                <Button variant="outline" className="flex-1" asChild>
+                  <Link to="/registration" onClick={() => setMobileMenuOpen(false)}>Register</Link>
+                </Button>
+                <Button variant="church" className="flex-1" asChild>
+                  <Link to="/donations" onClick={() => setMobileMenuOpen(false)}>Give</Link>
+                </Button>
+              </div>
+              {/* <div className="mt-4 space-y-2">
                 <Link to="/dashboard">
                   <Button variant="outline" size="lg" className="w-full">
                     <User className="h-4 w-4 mr-2" />
@@ -222,7 +267,7 @@ const Navigation = () => {
                     Watch Live
                   </Button>
                 </Link>
-              </div>
+              </div> */}
             </div>
           </div>
         )}

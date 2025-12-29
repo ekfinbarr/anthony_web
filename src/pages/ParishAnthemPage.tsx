@@ -26,6 +26,26 @@ const ParishAnthemPage = () => {
 
       {/* Anthem Lyrics Section */}
       <section className="py-16 bg-background">
+        <div className="container mx-auto px-4 max-w-4xl text-center mb-5">
+          <h2 className="text-3xl font-heading font-bold text-church-charcoal mb-8">
+            Listen to the Anthem
+          </h2>
+          <Card className="p-8">
+            <div className="flex items-center justify-center mb-4">
+              <Play className="h-8 w-8 text-primary mr-2" />
+              <span className="text-lg font-semibold text-church-charcoal">Parish Anthem Audio</span>
+            </div>
+            {/* Placeholder audio player */}
+            <audio controls className="w-full">
+              <source src="/assets/audio/sample-anthem.mp3" type="audio/mpeg" />
+              Your browser does not support the audio element.
+            </audio>
+            <p className="text-sm text-muted-foreground mt-4">
+              Experience the melody that unites our community in worship.
+            </p>
+          </Card>
+        </div>
+
         <div className="container mx-auto px-4 max-w-4xl">
           <div className="space-y-8">
             {/* Verse 1 */}
@@ -42,11 +62,11 @@ const ParishAnthemPage = () => {
             </Card>
 
             {/* Chorus */}
-            <Card className="p-8 hover:shadow-lg transition-shadow bg-church-pearl">
+            <Card className="p-8 hover:shadow-lg transition-shadow bg-church-pearl  bg-gradient-to-r from-primary/10 via-primary/5 to-accent/10">
               <h2 className="text-2xl font-heading font-bold text-church-charcoal mb-6 uppercase tracking-wide">
                 Chorus
               </h2>
-              <div className="text-lg text-muted-foreground leading-relaxed space-y-4">
+              <div className="text-lg text-black leading-relaxed space-y-4">
                 <p>Viva Anthony! Model of perfection</p>
                 <p>Viva Anthony! Lover of the cross</p>
                 <p>As we sing with love for one another,</p>
@@ -71,7 +91,7 @@ const ParishAnthemPage = () => {
       </section>
 
       {/* Audio Section */}
-      <section className="py-16 bg-church-stone">
+      {/* <section className="py-16 bg-church-stone">
         <div className="container mx-auto px-4 max-w-2xl text-center">
           <h2 className="text-3xl font-heading font-bold text-church-charcoal mb-8">
             Listen to the Anthem
@@ -81,7 +101,6 @@ const ParishAnthemPage = () => {
               <Play className="h-8 w-8 text-primary mr-2" />
               <span className="text-lg font-semibold text-church-charcoal">Parish Anthem Audio</span>
             </div>
-            {/* Placeholder audio player */}
             <audio controls className="w-full">
               <source src="/assets/audio/sample-anthem.mp3" type="audio/mpeg" />
               Your browser does not support the audio element.
@@ -91,7 +110,7 @@ const ParishAnthemPage = () => {
             </p>
           </Card>
         </div>
-      </section>
+      </section> */}
 
       {/* Download Section */}
       <section className="py-16 bg-background">

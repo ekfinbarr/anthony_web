@@ -94,7 +94,7 @@ const NavigationMenuItem = NavigationMenuPrimitive.Item;
  * CVA styling for trigger button (unchanged)
  */
 const navigationMenuTriggerStyle = cva(
-  "group inline-flex h-10 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[active]:bg-accent/50 data-[state=open]:bg-accent/50",
+  "group inline-flex h-10 w-max items-center justify-center rounded-md bg-transparent px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[active]:bg-accent/50 data-[state=open]:bg-accent/50",
 );
 
 /**
@@ -252,10 +252,14 @@ const NavigationMenuViewport = React.forwardRef<
         // Default: center under trigger; if no trigger rect available, center in root
         let desiredCenterX: number;
         if (trigger) {
+          console.log('desiredCenterX', desiredCenterX);
           desiredCenterX = trigger.left + trigger.width / 2;
         } else {
+          console.log('desiredCenterX', desiredCenterX);
           desiredCenterX = rootRect.left + rootRect.width / 2;
         }
+
+        console.log('desiredCenterX', desiredCenterX);
 
         // convert to wrapper-local X (wrapper is left aligned to root)
         const desiredLeft = desiredCenterX - vpRect.width / 2;
