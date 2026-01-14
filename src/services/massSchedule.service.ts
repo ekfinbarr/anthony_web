@@ -30,6 +30,8 @@ export interface MassSchedule {
   updated_at: string;
 }
 
+export type MassScheduleTypes = 'multiple' | 'single' | 'recurring';
+
 /**
  * Create Mass Schedule Payload
  */
@@ -51,7 +53,7 @@ export interface CreateMassSchedulePayload {
 /**
  * Update Mass Schedule Payload
  */
-export interface UpdateMassSchedulePayload extends Partial<CreateMassSchedulePayload> {}
+export type UpdateMassSchedulePayload = Partial<CreateMassSchedulePayload>;
 
 /**
  * Query Parameters

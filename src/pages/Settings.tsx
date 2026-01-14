@@ -187,7 +187,7 @@ export default function Settings() {
   const handleSettingChange = (
     category: keyof GeneralSettings,
     setting: string,
-    value: any
+    value: unknown
   ) => {
     setSettings(prev => ({
       ...prev,

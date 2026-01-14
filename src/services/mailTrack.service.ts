@@ -29,7 +29,7 @@ export interface MailTrack {
   failed_at?: string | null;
   error_message?: string | null;
   bounce_reason?: string | null;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }

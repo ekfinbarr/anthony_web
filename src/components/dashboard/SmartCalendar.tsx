@@ -18,7 +18,7 @@ interface SmartCalendarProps {
   events: CalendarEvent[];
   recommendations: AIRecommendation[];
   onEventClick: (eventId: string) => void;
-  onFeatureClick: (feature: string, context?: Record<string, any>) => void;
+  onFeatureClick: (feature: string, context?: Record<string, unknown>) => void;
   userPreferences: UserPreferences;
 }
 

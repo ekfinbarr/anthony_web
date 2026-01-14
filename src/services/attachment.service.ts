@@ -9,6 +9,9 @@
 
 import { apiClient, PaginatedResponse } from '../lib/apiClient';
 
+type UnknownRecord = Record<string, unknown>;
+const isRecord = (v: unknown): v is UnknownRecord => typeof v === "object" && v !== null;
+
 /**
  * Attachment Model
  */
@@ -23,6 +26,20 @@ export interface Attachment {
   related_id: string;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * Backend response shape for uploads.
+ *
+ * NOTE:
+ * The Laravel controller returns:
+ *   { message: string, data: AttachmentResource }
+ * but some call sites historically treated uploads as returning the raw Attachment.
+ * We support BOTH shapes to keep this service reusable without breaking older code.
+ */
+export interface UploadAttachmentResponse {
+  message: string;
+  data: Attachment;
 }
 
 /**
@@ -90,30 +107,85 @@ export const create = async (payload: CreateAttachmentPayload): Promise<Attachme
   formData.append('related_type', payload.related_type);
   formData.append('related_id', payload.related_id);
 
-  // Use fetch directly for file uploads
-  const token = localStorage.getItem('church_user')
-    ? JSON.parse(localStorage.getItem('church_user') || '{}').token
-    : null;
+  // Use apiClient so uploads share the same baseURL/auth/error handling as the rest of the app.
+  // Backend usually returns: { message: string, data: Attachment }
+  // Some call sites historically treated uploads as returning the raw Attachment.
+  const response = await apiClient.postForm<UploadAttachmentResponse | Attachment>("attachments", formData);
+  const data = response.data as unknown;
 
-  const headers: HeadersInit = {};
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  // If the upload endpoint returns HTML, it almost always means you're hitting the frontend server,
+  // not the Laravel API (missing Vite proxy or wrong VITE_API_BASE_URL).
+  if (typeof data === "string") {
+    const text = data.trim();
+    if (text.startsWith("<!doctype") || text.startsWith("<html") || text.includes("/@vite/client")) {
+      throw new Error(
+        "Upload endpoint returned HTML instead of JSON. Check your API base URL / dev proxy (VITE_API_BASE_URL should point to the Laravel /api)."
+      );
+    }
+    throw new Error("Upload failed: unexpected non-JSON response from server.");
   }
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
-  const response = await fetch(`${API_BASE_URL}/attachments`, {
-    method: 'POST',
-    headers,
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Failed to upload attachment');
+  // Normalize to a single return shape (Attachment).
+  const maybe = data as UnknownRecord;
+  const attachment = (maybe?.data as Attachment | undefined) ?? (data as Attachment | undefined);
+  const attachmentId = (attachment as { id?: unknown } | undefined)?.id;
+  if (!attachment || typeof attachmentId !== "string" || !attachmentId) {
+    throw new Error("Upload succeeded but server response did not include an attachment record.");
   }
 
-  const data = await response.json();
-  return data;
+  return attachment;
+};
+
+/**
+ * Extract an attachment id from any known upload response shape.
+ *
+ * Supported:
+ * - { id: "..." }
+ * - { data: { id: "..." } }
+ */
+export const extractAttachmentId = (uploadResponse: unknown): string | null => {
+  if (!uploadResponse || typeof uploadResponse !== "object") return null;
+  const r = uploadResponse as UnknownRecord;
+  if (typeof r.id === "string" && r.id) return r.id;
+  const inner = r.data as UnknownRecord | undefined;
+  if (inner && typeof inner.id === "string" && inner.id) return inner.id;
+  return null;
+};
+
+/**
+ * High-level helper: upload a file AND immediately resolve its final URL.
+ *
+ * This is the recommended function for UI components (modals/forms),
+ * because most screens need the public URL, not just the attachment record.
+ */
+export const uploadAndGetUrl = async (
+  payload: CreateAttachmentPayload,
+  options?: { temporary?: boolean }
+): Promise<{ url: string; attachmentId: string; attachment?: Attachment }> => {
+  const uploadRes = (await create(payload)) as unknown;
+  const attachmentId = extractAttachmentId(uploadRes);
+
+  if (!attachmentId) {
+    // Try to surface a meaningful backend error if present.
+    if (isRecord(uploadRes) && typeof uploadRes.message === "string" && uploadRes.message) {
+      throw new Error(uploadRes.message);
+    }
+    throw new Error("Upload succeeded but no attachment id was returned.");
+  }
+
+  const url = await getUrl(attachmentId, options?.temporary ?? false);
+
+  // Provide the attachment record if available (best-effort).
+  const attachment = (() => {
+    if (!isRecord(uploadRes)) return undefined;
+    if (typeof uploadRes.id === "string") return uploadRes as unknown as Attachment;
+    if (isRecord(uploadRes.data) && typeof uploadRes.data.id === "string") {
+      return uploadRes.data as unknown as Attachment;
+    }
+    return undefined;
+  })();
+
+  return { url, attachmentId, attachment };
 };
 
 /**
@@ -182,6 +254,8 @@ const attachmentService = {
   getUrl,
   getByRelated,
   getByUploader,
+  // Convenience helper for UI layers
+  uploadAndGetUrl,
 };
 
 export default attachmentService;

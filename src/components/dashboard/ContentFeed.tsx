@@ -51,7 +51,7 @@ interface ContentFeedProps {
   content: ContentItem[];
   recommendations: AIRecommendation[];
   onEngagement: (contentId: string, type: 'view' | 'like' | 'share' | 'comment') => Promise<void>;
-  onFeatureClick: (feature: string, context?: Record<string, any>) => void;
+  onFeatureClick: (feature: string, context?: Record<string, unknown>) => void;
   isLoading: boolean;
 }
 
@@ -90,7 +90,7 @@ const ContentItemCard = ({
 }: { 
   item: ContentItem; 
   onEngagement: (contentId: string, type: 'view' | 'like' | 'share' | 'comment') => Promise<void>;
-  onFeatureClick: (feature: string, context?: Record<string, any>) => void;
+  onFeatureClick: (feature: string, context?: Record<string, unknown>) => void;
   isRecommended?: boolean;
 }) => {
   const [isEngaging, setIsEngaging] = useState<string | null>(null);

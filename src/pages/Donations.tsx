@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Heart, Building2, Gift, HandHeart, Upload, CreditCard, Copy, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import donationAccountService, { DonationAccount } from "@/services/donationAccount.service";
 
 const donationCategories = [
   {
@@ -63,7 +64,22 @@ const donationCategories = [
 const Donations = () => {
   const [selectedCategory, setSelectedCategory] = useState(donationCategories[0]);
   const [copiedAccount, setCopiedAccount] = useState("");
+  const [donationAccounts, setDonationAccounts] = useState<DonationAccount[]>([]);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const loadAccounts = async () => {
+      try {
+        const response = await donationAccountService.listActive();
+        setDonationAccounts(response.data || []);
+      } catch {
+        // Keep UI functional even if backend isn't reachable yet
+        setDonationAccounts([]);
+      }
+    };
+
+    loadAccounts();
+  }, []);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -170,50 +186,71 @@ const Donations = () => {
                   <div className="bg-muted rounded-lg p-6 space-y-4">
                     <h4 className="font-semibold">Bank Account Details</h4>
 
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center p-3 bg-background rounded-md">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Bank Name</p>
-                          <p className="font-medium">{selectedCategory.bankDetails.bankName}</p>
-                        </div>
+                    {donationAccounts.length === 0 ? (
+                      <div className="text-sm text-muted-foreground">
+                        Donation accounts are not available right now. Please contact the parish office for bank details.
                       </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {donationAccounts.map((acc) => (
+                          <div key={acc.id} className="p-4 bg-background rounded-md space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="font-medium">{acc.name}</div>
+                              <Badge variant="secondary">{acc.currency}</Badge>
+                            </div>
 
-                      <div className="flex justify-between items-center p-3 bg-background rounded-md">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Account Name</p>
-                          <p className="font-medium">{selectedCategory.bankDetails.accountName}</p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => copyToClipboard(selectedCategory.bankDetails.accountName, "Account name")}
-                        >
-                          {copiedAccount === selectedCategory.bankDetails.accountName ? (
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
+                            <div className="grid md:grid-cols-2 gap-3">
+                              <div className="p-3 bg-muted/40 rounded">
+                                <p className="text-sm text-muted-foreground">Bank Name</p>
+                                <p className="font-medium">{acc.bank_name}</p>
+                              </div>
 
-                      <div className="flex justify-between items-center p-3 bg-background rounded-md">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Account Number</p>
-                          <p className="font-medium text-xl">{selectedCategory.bankDetails.accountNumber}</p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => copyToClipboard(selectedCategory.bankDetails.accountNumber, "Account number")}
-                        >
-                          {copiedAccount === selectedCategory.bankDetails.accountNumber ? (
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
-                          )}
-                        </Button>
+                              <div className="p-3 bg-muted/40 rounded flex items-center justify-between gap-2">
+                                <div>
+                                  <p className="text-sm text-muted-foreground">Account Name</p>
+                                  <p className="font-medium">{acc.account_name}</p>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => copyToClipboard(acc.account_name, "Account name")}
+                                >
+                                  {copiedAccount === acc.account_name ? (
+                                    <CheckCircle className="h-4 w-4 text-green-500" />
+                                  ) : (
+                                    <Copy className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </div>
+
+                              <div className="p-3 bg-muted/40 rounded flex items-center justify-between gap-2 md:col-span-2">
+                                <div>
+                                  <p className="text-sm text-muted-foreground">Account Number</p>
+                                  <p className="font-medium text-xl">{acc.account_number}</p>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => copyToClipboard(acc.account_number, "Account number")}
+                                >
+                                  {copiedAccount === acc.account_number ? (
+                                    <CheckCircle className="h-4 w-4 text-green-500" />
+                                  ) : (
+                                    <Copy className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+
+                            {acc.instructions && (
+                              <p className="text-sm text-muted-foreground">
+                                <strong>Instructions:</strong> {acc.instructions}
+                              </p>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                    </div>
+                    )}
                   </div>
 
                   <p className="text-sm text-muted-foreground text-center">

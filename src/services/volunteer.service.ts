@@ -39,7 +39,7 @@ export interface CreateVolunteerPayload {
 /**
  * Update Volunteer Payload
  */
-export interface UpdateVolunteerPayload extends Partial<CreateVolunteerPayload> {}
+export type UpdateVolunteerPayload = Partial<CreateVolunteerPayload>;
 
 /**
  * Query Parameters

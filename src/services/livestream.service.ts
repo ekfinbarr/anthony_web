@@ -12,12 +12,21 @@ import { apiClient, PaginatedResponse } from '../lib/apiClient';
 /**
  * Livestream Model
  */
+/**
+ * Livestream Model
+ */
 export interface Livestream {
   id: string;
   title: string;
-  stream_url: string;
-  is_active: boolean;
-  scheduled_at: string | null;
+  description: string | null;
+  platform: 'youtube' | 'facebook' | 'tiktok' | 'twitch' | 'instagram' | 'twitter' | 'rumble' | 'bitchute' | 'brighteon' | 'odysee' | 'peerTube' | 'others' | 'vimeo';
+  platform_video_id: string | null;
+  embed_html: string | null;
+  scheduled_start_time: string | null;
+  actual_start_time: string | null;
+  end_time: string | null;
+  is_live: boolean;
+  created_by: string;
   created_at: string;
   updated_at: string;
 }
@@ -27,15 +36,21 @@ export interface Livestream {
  */
 export interface CreateLivestreamPayload {
   title: string;
-  stream_url: string;
-  is_active?: boolean;
-  scheduled_at?: string;
+  description?: string;
+  platform: 'youtube' | 'facebook' | 'tiktok' | 'twitch' | 'instagram' | 'twitter' | 'rumble' | 'bitchute' | 'brighteon' | 'odysee' | 'peerTube' | 'others' | 'vimeo';
+  platform_video_id?: string;
+  embed_html?: string;
+  scheduled_start_time?: string;
+  actual_start_time?: string;
+  end_time?: string;
+  is_live?: boolean;
+  created_by?: string;
 }
 
 /**
  * Update Livestream Payload
  */
-export interface UpdateLivestreamPayload extends Partial<CreateLivestreamPayload> {}
+export type UpdateLivestreamPayload = Partial<CreateLivestreamPayload>;
 
 /**
  * Query Parameters
@@ -43,7 +58,7 @@ export interface UpdateLivestreamPayload extends Partial<CreateLivestreamPayload
 export interface LivestreamQueryParams {
   page?: number;
   per_page?: number;
-  is_active?: boolean;
+  is_live?: boolean;
   search?: string;
 }
 

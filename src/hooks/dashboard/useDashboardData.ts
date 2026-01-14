@@ -15,7 +15,7 @@ import {
   CommunityConnection,
   AIRecommendation
 } from '@/types/dashboard';
-import { storageUtils, mockDataUtils } from '@/lib/dashboard-utils';
+import { storageUtils, mockDataUtils, contentUtils } from '@/lib/dashboard-utils';
 import { aiRecommendationEngine } from '@/lib/ai-recommendations';
 import { spiritualMetricsCalculator } from '@/lib/spiritual-metrics';
 import { usePersonalization } from './usePersonalization';
@@ -339,18 +339,14 @@ export function useDashboardData(config: DashboardConfig = {}) {
     filters?: import('@/types/dashboard').FilterOptions,
     sortOptions?: import('@/types/dashboard').SortOptions
   ) => {
-    let content = dashboardState.contentFeed;
+    let content: ContentItem[] = dashboardState.contentFeed;
 
     if (filters) {
-      content = import('@/lib/dashboard-utils').then(module => 
-        module.contentUtils.filterContent(content, filters)
-      ) as any;
+      content = contentUtils.filterContent(content, filters);
     }
 
     if (sortOptions) {
-      content = import('@/lib/dashboard-utils').then(module =>
-        module.contentUtils.sortContent(content, sortOptions)
-      ) as any;
+      content = contentUtils.sortContent(content, sortOptions);
     }
 
     return content;

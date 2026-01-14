@@ -219,7 +219,7 @@ export interface AIRecommendation {
   description: string;
   confidence: number; // 0-100
   reason: string;
-  data: any; // flexible data structure for different recommendation types
+  data: unknown; // flexible data structure for different recommendation types
   expiresAt?: Date;
   isActioned: boolean;
 }

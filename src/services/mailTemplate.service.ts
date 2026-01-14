@@ -40,7 +40,7 @@ export interface CreateMailTemplatePayload {
 /**
  * Update Mail Template Payload
  */
-export interface UpdateMailTemplatePayload extends Partial<CreateMailTemplatePayload> {}
+export type UpdateMailTemplatePayload = Partial<CreateMailTemplatePayload>;
 
 /**
  * Query Parameters

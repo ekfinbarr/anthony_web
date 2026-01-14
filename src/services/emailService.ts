@@ -11,11 +11,11 @@ interface EmailSubscription {
   source: string;
   status: string;
   subscribed_at: string;
-  metadata?: Record<string, any>;
-  email_verified?: Boolean
+  metadata?: Record<string, unknown>;
+  email_verified?: boolean;
 }
 
-interface ApiResponse<T = any> {
+interface ApiResponse<T = unknown> {
   success: boolean;
   message?: string;
   data?: T;
@@ -23,7 +23,7 @@ interface ApiResponse<T = any> {
 }
 
 interface EmailProvider {
-  subscribe(email: string, additionalData?: Record<string, any>): Promise<void>;
+  subscribe(email: string, additionalData?: Record<string, unknown>): Promise<void>;
   unsubscribe(email: string): Promise<void>;
   getSubscribers(): Promise<string[]>;
 }
@@ -36,7 +36,7 @@ class LaravelApiProvider implements EmailProvider {
     this.baseUrl = baseUrl || `${window.location.protocol}//${window.location.hostname}:8000/api`;
   }
 
-  async subscribe(email: string, additionalData: Record<string, any> = {}): Promise<void> {
+  async subscribe(email: string, additionalData: Record<string, unknown> = {}): Promise<void> {
     const response = await fetch(`${this.baseUrl}/waitinglist/subscribe`, {
       method: 'POST',
       headers: {
@@ -107,7 +107,7 @@ class LaravelApiProvider implements EmailProvider {
 class LocalStorageEmailProvider implements EmailProvider {
   private readonly storageKey = 'email_waitlist';
 
-  async subscribe(email: string, additionalData: Record<string, any> = {}): Promise<void> {
+  async subscribe(email: string, additionalData: Record<string, unknown> = {}): Promise<void> {
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 1000));
 

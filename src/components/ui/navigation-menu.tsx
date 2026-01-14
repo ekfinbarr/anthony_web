@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import * as React from "react";
 import * as NavigationMenuPrimitive from "@radix-ui/react-navigation-menu";
 import { cva } from "class-variance-authority";
@@ -38,6 +39,9 @@ const NavigationMenu = React.forwardRef<
 
   const setTriggerRect = React.useCallback((r: TriggerRect) => {
     triggerRectRef.current = r;
+    if (typeof window !== "undefined") {
+      window.__radixLastNavTriggerRect = r ?? undefined;
+    }
     // we force a small update so the viewport can read the new rect when it mounts/opens
     forceRerender((n) => n + 1);
   }, []);
@@ -110,7 +114,7 @@ const navigationMenuTriggerStyle = cva(
 const NavigationMenuTrigger = React.forwardRef<
   React.ElementRef<typeof NavigationMenuPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof NavigationMenuPrimitive.Trigger>
->(({ className, children, ...props }, ref) => {
+>(({ className, children, onPointerDown: userOnPointerDown, ...props }, ref) => {
   const ctx = React.useContext(NavigationMenuContext);
   const localRef = React.useRef<HTMLElement | null>(null);
 
@@ -123,9 +127,8 @@ const NavigationMenuTrigger = React.forwardRef<
 
   // pointerdown handler to capture the trigger's DOMRect before Radix toggles
   const onPointerDown: React.PointerEventHandler = (e) => {
-    // preserve any user-provided onPointerDown
-    const userHandler = (props as any).onPointerDown;
-    if (userHandler) userHandler(e);
+    // Preserve any user-provided handler.
+    if (userOnPointerDown) userOnPointerDown(e);
 
     if (!ctx) return;
     const el = localRef.current;
@@ -190,6 +193,14 @@ const NavigationMenuLink = NavigationMenuPrimitive.Link;
  *  - This avoids depending on ancestor `transform` and makes positioning explicit.
  *  - Measurements are done in useLayoutEffect (before paint) to avoid flicker.
  */
+declare global {
+  // Small shim used to store the last trigger rect so the viewport can position itself.
+  // (Avoids reaching into Radix internal context objects.)
+  interface Window {
+    __radixLastNavTriggerRect?: DOMRect;
+  }
+}
+
 const NavigationMenuViewport = React.forwardRef<
   React.ElementRef<typeof NavigationMenuPrimitive.Viewport>,
   React.ComponentPropsWithoutRef<typeof NavigationMenuPrimitive.Viewport>
@@ -211,13 +222,6 @@ const NavigationMenuViewport = React.forwardRef<
   React.useLayoutEffect(() => {
     if (!ctx) return;
     const root = ctx.rootRef.current;
-    const triggerRect = (ctx as any).triggerRectRef ?? null; // not exposed; we will re-access via closure below
-
-    // We can't access triggerRectRef directly from context (private in root),
-    // so instead we re-query for it using the last pointerdown update trick:
-    // - The rootRef will have a child NavigationMenuPrimitive.Viewport with inline style; when the menu opens,
-    //   Radix toggles the viewport's data-state attribute. We respond to that attribute change below.
-    const wrapper = root?.querySelector("[data-radix-navigation-menu-viewport-wrapper]");
     const viewportEl = viewportRef.current;
 
     // Instead, read the last known trigger rect from the document using a data-* attribute pattern:
@@ -225,7 +229,7 @@ const NavigationMenuViewport = React.forwardRef<
     // However, above Trigger implementation used context.setTriggerRect so we need to expose that rect; so let's
     // instead keep a ref on window. (Below we will attempt to read window.__radixLastNavTriggerRect which we set
     // in setTriggerRect — see NavigationMenu root for that global write.)
-    const lastTriggerRect = (window as any).__radixLastNavTriggerRect as DOMRect | undefined;
+    const lastTriggerRect = window.__radixLastNavTriggerRect;
 
     if (!viewportEl) return;
 
@@ -252,14 +256,10 @@ const NavigationMenuViewport = React.forwardRef<
         // Default: center under trigger; if no trigger rect available, center in root
         let desiredCenterX: number;
         if (trigger) {
-          console.log('desiredCenterX', desiredCenterX);
           desiredCenterX = trigger.left + trigger.width / 2;
         } else {
-          console.log('desiredCenterX', desiredCenterX);
           desiredCenterX = rootRect.left + rootRect.width / 2;
         }
-
-        console.log('desiredCenterX', desiredCenterX);
 
         // convert to wrapper-local X (wrapper is left aligned to root)
         const desiredLeft = desiredCenterX - vpRect.width / 2;
@@ -281,7 +281,8 @@ const NavigationMenuViewport = React.forwardRef<
       }
     });
     // re-run when root or viewport node changes
-  }, [ctx?.rootRef, viewportRef.current, className]);
+    // Note: do not include `viewportRef.current` in dependencies (lint rule).
+  }, [ctx, className]);
 
   // Apply the computed translateX as inline transform; keep existing style props intact.
   const mergedStyle = {

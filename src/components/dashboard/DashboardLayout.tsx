@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import type { User as AuthUser } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -46,6 +47,82 @@ const sidebarItems = [
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
+const getInitials = (name: string) => {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+};
+
+const SidebarContent = ({
+  onItemClick,
+  locationPathname,
+  user,
+}: {
+  onItemClick?: () => void;
+  locationPathname: string;
+  user: AuthUser | null;
+}) => (
+  <div className="flex flex-col h-full">
+    {/* Logo */}
+    <div className="p-6 border-b border-sidebar-border">
+      <Link to="/" className="flex items-center gap-3" onClick={onItemClick}>
+        <div className="w-10 h-10 rounded-lg bg-gradient-church flex items-center justify-center">
+          <Church className="h-5 w-5 text-primary-foreground" />
+        </div>
+        <div>
+          <h1 className="font-heading font-bold text-sm text-sidebar-foreground">St. Anthony</h1>
+          <p className="text-xs text-sidebar-foreground/70">Gbaja Parish</p>
+        </div>
+      </Link>
+    </div>
+
+    {/* Navigation */}
+    <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+      {sidebarItems.map((item) => {
+        const isActive = locationPathname === item.href;
+        return (
+          <Link
+            key={item.name}
+            to={item.href}
+            onClick={onItemClick}
+            className={cn(
+              "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
+              isActive
+                ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            )}
+          >
+            <item.icon className="h-5 w-5" />
+            <span>{item.name}</span>
+            {item.name === "Notifications" && (
+              <Badge className="ml-auto bg-destructive text-destructive-foreground text-xs">3</Badge>
+            )}
+          </Link>
+        );
+      })}
+    </nav>
+
+    {/* User Section */}
+    <div className="p-4 border-t border-sidebar-border">
+      <div className="flex items-center gap-3 px-4 py-3">
+        <Avatar className="h-10 w-10">
+          <AvatarImage src={user?.avatar} />
+          <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-sm">
+            {user?.name ? getInitials(user.name) : "U"}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-sm text-sidebar-foreground truncate">{user?.name}</p>
+          <p className="text-xs text-sidebar-foreground/70 truncate">{user?.email}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
 const DashboardLayout = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
@@ -57,85 +134,21 @@ const DashboardLayout = () => {
     navigate("/");
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  const SidebarContent = ({ onItemClick }: { onItemClick?: () => void }) => (
-    <div className="flex flex-col h-full">
-      {/* Logo */}
-      <div className="p-6 border-b border-sidebar-border">
-        <Link to="/" className="flex items-center gap-3" onClick={onItemClick}>
-          <div className="w-10 h-10 rounded-lg bg-gradient-church flex items-center justify-center">
-            <Church className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <div>
-            <h1 className="font-heading font-bold text-sm text-sidebar-foreground">St. Anthony</h1>
-            <p className="text-xs text-sidebar-foreground/70">Gbaja Parish</p>
-          </div>
-        </Link>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        {sidebarItems.map((item) => {
-          const isActive = location.pathname === item.href;
-          return (
-            <Link
-              key={item.name}
-              to={item.href}
-              onClick={onItemClick}
-              className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
-                isActive
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              )}
-            >
-              <item.icon className="h-5 w-5" />
-              <span>{item.name}</span>
-              {item.name === "Notifications" && (
-                <Badge className="ml-auto bg-destructive text-destructive-foreground text-xs">3</Badge>
-              )}
-            </Link>
-          );
-        })}
-      </nav>
-
-      {/* User Section */}
-      <div className="p-4 border-t border-sidebar-border">
-        <div className="flex items-center gap-3 px-4 py-3">
-          <Avatar className="h-10 w-10">
-            <AvatarImage src={user?.avatar} />
-            <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-sm">
-              {user?.name ? getInitials(user.name) : "U"}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <p className="font-medium text-sm text-sidebar-foreground truncate">{user?.name}</p>
-            <p className="text-xs text-sidebar-foreground/70 truncate">{user?.email}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <div className="min-h-screen flex bg-muted">
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-sidebar text-sidebar-foreground">
-        <SidebarContent />
+        <SidebarContent user={user} locationPathname={location.pathname} />
       </aside>
 
       {/* Mobile Sidebar */}
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
         <SheetContent side="left" className="p-0 w-72 bg-sidebar border-sidebar-border">
-          <SidebarContent onItemClick={() => setSidebarOpen(false)} />
+          <SidebarContent
+            user={user}
+            locationPathname={location.pathname}
+            onItemClick={() => setSidebarOpen(false)}
+          />
         </SheetContent>
       </Sheet>
 

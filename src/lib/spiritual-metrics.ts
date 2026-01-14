@@ -178,7 +178,7 @@ export class SpiritualMetricsCalculator {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    let checkDate = new Date(today);
+    const checkDate = new Date(today);
     let foundActivity = false;
 
     for (let i = 0; i < 365; i++) { // Check up to a year back
@@ -440,8 +440,9 @@ export class SpiritualMetricsCalculator {
 
     // Suggest new activities based on low activity types
     const activityCounts = this.ACTIVITY_POINTS;
-    const userActivityCounts = Object.keys(activityCounts).reduce((counts, type) => {
-      counts[type] = growth.activities.filter(a => a.type === type as any).length;
+    const activityTypes = Object.keys(activityCounts) as Array<keyof typeof activityCounts>;
+    const userActivityCounts = activityTypes.reduce((counts, type) => {
+      counts[type as string] = growth.activities.filter(a => a.type === type).length;
       return counts;
     }, {} as Record<string, number>);
 
@@ -513,7 +514,7 @@ export const spiritualMetricsUtils = {
 
     activities.forEach(activity => {
       const dayName = activity.date.toLocaleDateString('en-US', { weekday: 'long' });
-      if (weeklyData.hasOwnProperty(dayName)) {
+      if (Object.prototype.hasOwnProperty.call(weeklyData, dayName)) {
         weeklyData[dayName as keyof typeof weeklyData]++;
       }
     });

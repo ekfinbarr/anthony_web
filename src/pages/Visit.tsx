@@ -27,23 +27,23 @@ const Visit = () => {
 
     const leadership = [
         {
-      name: "Very. Rev. Msgr. Bernard Okodua",
-      role: "Parish Priest",
-      bio: "Msgr. Okodua has been serving St. Anthony, Gbaja for over 18 years with a heart for community and spiritual growth.",
-      image: "/api/placeholder/300/300",
-    },
-    {
-      name: "Rev. Fr. Alexander Fatimehin",
-      role: "Associate Priest",
-      bio: "Fr. Alexander Fatimehin leads our parish teams with passion and creates an atmosphere for encountering God's presence.",
-      image: "/api/placeholder/300/300",
-    },
-    {
-      name: "Rev. Fr. Augustine A",
-      role: "Priest in Residence",
-      bio: "Dedicated to mentoring the next generation and helping them grow in their faith journey.",
-      image: "/api/placeholder/300/300",
-    },
+            name: "Very. Rev. Msgr. Bernard Okodua",
+            role: "Parish Priest",
+            bio: "Msgr. Okodua has been serving St. Anthony, Gbaja for over 18 years with a heart for community and spiritual growth.",
+            image: "/api/placeholder/300/300",
+        },
+        {
+            name: "Rev. Fr. Alexander Fatimehin",
+            role: "Associate Priest",
+            bio: "Fr. Alexander Fatimehin leads our parish teams with passion and creates an atmosphere for encountering God's presence.",
+            image: "/api/placeholder/300/300",
+        },
+        {
+            name: "Rev. Fr. Augustine A",
+            role: "Priest in Residence",
+            bio: "Dedicated to mentoring the next generation and helping them grow in their faith journey.",
+            image: "/api/placeholder/300/300",
+        },
     ];
 
     return (
@@ -65,61 +65,49 @@ const Visit = () => {
                     <h2 className="text-4xl font-heading font-bold text-center mb-12 text-church-charcoal">
                         Mass Schedule
                     </h2>
-                    <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-                        <Card className="p-8 text-center hover:shadow-lg transition-shadow">
-                            <Clock className="h-12 w-12 text-primary mx-auto mb-4" />
+
+                    {/* Three vertical table columns for weekly mass schedule */}
+                    {/* Add beautiful grid lines to the columns to make it look like a table */}
+                    
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="p-6 bg-white/90 rounded-lg shadow-lift">
                             <h3 className="text-2xl font-heading font-semibold mb-4">Sunday Mass</h3>
-                            <div className="space-y-2 text-muted-foreground">
-                                <p>
-                                    <strong>Times:</strong>
-                                    <br />
-                                    7:00 AM
-                                    <br />
-                                    8:30 AM
-                                    <br />
-                                    <strong>10:00 AM (Yoruba)</strong>
-                                    <br />
-                                    11:30 AM
-                                    <br />
-                                    6:00 PM
-                                </p>
-                                <p><strong>Location:</strong> Main Church</p>
-                            </div>
-                        </Card>
-                        <Card className="p-8 text-center hover:shadow-lg transition-shadow">
-                            <Clock className="h-12 w-12 text-primary mx-auto mb-4" />
-                            <h3 className="text-2xl font-heading font-semibold mb-4">Weekday Mass</h3>
-                            <div className="space-y-2 text-muted-foreground">
-                                <p>
-                                    <strong>Time:</strong>
-                                    <br />
-                                    6:30 AM
-                                    <br />
-                                    12:30 PM
-                                    <br />
-                                    6:30 PM
-                                </p>
-                                <p><strong>Location:</strong> Main Church</p>
-                                <p><strong>Details:</strong>
-                                    A shorter, contemplative Mass with scripture and communion.
-                                </p>
-                            </div>
-                        </Card>
-                        <Card className="p-8 text-center hover:shadow-lg transition-shadow">
-                            <Clock className="h-12 w-12 text-primary mx-auto mb-4" />
+                            <ul className="space-y-2 text-muted-foreground">
+                                <li>7:00 AM - Morning Mass</li>
+                                <li>8:30 AM - Family Mass</li>
+                                <li>5:00 PM - Evening Mass</li>
+                            </ul>
+                        </div>
+                        <div className="p-6 bg-white/90 rounded-lg shadow-lift">
+                            <h3 className="text-2xl font-heading font-semibold mb-4">Tuesday Mass</h3>
+                            <ul className="space-y-2 text-muted-foreground">
+                                <li>6:30 AM - Morning Mass</li>
+                            </ul>
+                        </div>
+                        <div className="p-6 bg-white/90 rounded-lg shadow-lift">
+                            <h3 className="text-2xl font-heading font-semibold mb-4">Wednesday Mass</h3>
+                            <ul className="space-y-2 text-muted-foreground">
+                                <li>6:30 AM - Morning Mass</li>
+                            </ul>
+                        </div>
+                        <div className="p-6 bg-white/90 rounded-lg shadow-lift">
+                            <h3 className="text-2xl font-heading font-semibold mb-4">Thursday Mass</h3>
+                            <ul className="space-y-2 text-muted-foreground">
+                                <li>6:30 AM - Morning Mass</li>
+                            </ul>
+                        </div>
+                        <div className="p-6 bg-white/90 rounded-lg shadow-lift">
+                            <h3 className="text-2xl font-heading font-semibold mb-4">Friday Mass</h3>
+                            <ul className="space-y-2 text-muted-foreground">
+                                <li>6:30 AM - Morning Mass</li>
+                            </ul>
+                        </div>
+                        <div className="p-6 bg-white/90 rounded-lg shadow-lift">
                             <h3 className="text-2xl font-heading font-semibold mb-4">Saturday Mass</h3>
-                            <div className="space-y-2 text-muted-foreground">
-                                <p>
-                                    <strong>Time:</strong>
-                                    <br />
-                                    7:30 AM
-                                </p>
-                                <p><strong>Location:</strong> Main Church</p>
-                                <p><strong>Details:</strong>
-                                    A quiet Mass to start your weekend with prayer and reflection.
-                                </p>
-                            </div>
-                        </Card>
+                            <ul className="space-y-2 text-muted-foreground">
+                                <li>6:30 AM - Morning Mass</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </section>

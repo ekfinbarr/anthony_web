@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, Phone, Mail, MapPin, Clock, AlertTriangle } from 'lucide-react';
@@ -6,9 +6,10 @@ import ClinicServiceCard from '@/components/clinic/ClinicServiceCard';
 import ClinicGallery from '@/components/clinic/ClinicGallery';
 import ContactInfoSection from '@/components/clinic/ContactInfoSection';
 import clinicData from '@/data/clinic.json';
+import clinicService from '@/services/clinic.service';
 
 interface Service {
-  id: number;
+  id: string;
   title: string;
   description: string;
   icon: string;
@@ -23,15 +24,51 @@ interface Facility {
 }
 
 export default function ClinicPage() {
-  const [services] = useState<Service[]>(clinicData.services);
+  const [services, setServices] = useState<Service[]>(clinicData.services as unknown as Service[]);
   const [facilities] = useState<Facility[]>(clinicData.facilities);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Load clinic services from backend (fallback to bundled JSON if API is unavailable)
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const response = await clinicService.listServices();
+
+        // Map backend model into existing card-friendly shape
+        const mapped: Service[] = (response.data || []).map((s) => {
+          const category = (s.category || '').toLowerCase();
+          const icon =
+            category.includes('maternity') ? 'baby' :
+            category.includes('heart') ? 'heart' :
+            category.includes('lab') || category.includes('diagnostic') ? 'activity' :
+            category.includes('drug') || category.includes('pharmacy') ? 'pill' :
+            category.includes('counsel') || category.includes('mental') ? 'message-circle' :
+            'stethoscope';
+
+          return {
+            id: s.id,
+            title: s.name,
+            description: s.description || '',
+            icon,
+            details: s.description || '',
+          };
+        });
+
+        setServices(mapped.length ? mapped : (clinicData.services as unknown as Service[]));
+      } catch {
+        // keep bundled JSON
+      }
+    };
+    load();
+  }, []);
+
   // Filter services based on search
-  const filteredServices = services.filter(service =>
-    service.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    service.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredServices = useMemo(() => {
+    return services.filter(service =>
+      service.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      service.description.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [services, searchTerm]);
 
   return (
     <div className="min-h-screen bg-background">

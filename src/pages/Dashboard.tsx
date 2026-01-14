@@ -173,7 +173,7 @@ export default function Dashboard() {
   /**
    * Handle feature interactions
    */
-  const handleFeatureClick = (feature: string, context?: Record<string, any>) => {
+  const handleFeatureClick = (feature: string, context?: Record<string, unknown>) => {
     trackFeatureUsage(feature, context);
   };
 

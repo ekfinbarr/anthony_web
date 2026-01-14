@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Download, Play } from "lucide-react";
+import anthem from "@/assets/audio/Blessed New Year.MP3";
+import { useRef } from "react";
 
 /**
  * ParishAnthemPage Component
@@ -10,6 +12,18 @@ import { Download, Play } from "lucide-react";
  * Designed with a clean, liturgical-themed UI that respects the church's design system.
  */
 const ParishAnthemPage = () => {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const playAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.play();
+    }
+  };
+  const stopAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header Section */}
@@ -32,12 +46,12 @@ const ParishAnthemPage = () => {
           </h2>
           <Card className="p-8">
             <div className="flex items-center justify-center mb-4">
-              <Play className="h-8 w-8 text-primary mr-2" />
+              <Play className="h-8 w-8 text-primary mr-2 cursor-pointer" onClick={() => playAudio()} />
               <span className="text-lg font-semibold text-church-charcoal">Parish Anthem Audio</span>
             </div>
             {/* Placeholder audio player */}
-            <audio controls className="w-full">
-              <source src="/assets/audio/sample-anthem.mp3" type="audio/mpeg" />
+            <audio ref={audioRef} controls className="w-full">
+              <source src={anthem} type="audio/mpeg" />
               Your browser does not support the audio element.
             </audio>
             <p className="text-sm text-muted-foreground mt-4">

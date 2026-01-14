@@ -184,6 +184,26 @@ export const isMember = async (userId: string, ministryId: string): Promise<bool
   return response.data.is_member;
 };
 
+/**
+ * Add a member to a ministry (admin)
+ * 
+ * @param payload Data for adding a member
+ * @returns Created membership
+ */
+export const create = async (payload: { ministry_id: string; user_id: string }): Promise<MinistryUser> => {
+  const response = await apiClient.post<MinistryUser>('ministry-users', payload);
+  return response.data;
+};
+
+/**
+ * Remove a member (admin)
+ * 
+ * @param id Membership ID
+ */
+export const remove = async (id: string): Promise<void> => {
+  await apiClient.delete(`ministry-users/${id}`);
+};
+
 // Export all functions as default object
 const ministryUserService = {
   list,
@@ -196,6 +216,8 @@ const ministryUserService = {
   getByMinistry,
   getPending,
   isMember,
+  create,
+  remove,
 };
 
 export default ministryUserService;

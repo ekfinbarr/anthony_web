@@ -61,12 +61,18 @@ export function validateRedirectPath(path: string | null | undefined, defaultPat
   }
 
   // Reject paths containing control characters or suspicious patterns
-  if (/[\x00-\x1F\x7F]/.test(trimmedPath) || /\.\./.test(trimmedPath)) {
-    return defaultPath;
+  if (/\.\./.test(trimmedPath)) return defaultPath;
+
+  // Avoid control characters without using control-char regex literals (lint: no-control-regex)
+  for (let i = 0; i < trimmedPath.length; i++) {
+    const code = trimmedPath.charCodeAt(i);
+    if (code < 32 || code === 127) {
+      return defaultPath;
+    }
   }
 
   // Allow only alphanumeric, forward slashes, hyphens, underscores, and query strings
-  if (!/^\/[a-zA-Z0-9\/\-_?=&]*$/.test(trimmedPath)) {
+  if (!/^\/[a-zA-Z0-9/\-_?=&]*$/.test(trimmedPath)) {
     return defaultPath;
   }
 

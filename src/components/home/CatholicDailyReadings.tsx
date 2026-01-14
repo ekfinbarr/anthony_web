@@ -1,5 +1,5 @@
-import React from "react";
-import { useJsonp } from "@/hooks/useJsonp";
+import React, { useEffect, useState } from "react";
+import dailyReadingService, { DailyReading } from "@/services/dailyReading.service";
 
 /**
  * CatholicDailyReadings
@@ -8,21 +8,29 @@ import { useJsonp } from "@/hooks/useJsonp";
  * from the JSONP source at nugae.com / Universalis.
  */
 export default function CatholicDailyReadings() {
+  const [data, setData] = useState<DailyReading | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
   /**
-   * NOTE:
-   * - Use a unique callback function name for each request instance.
-   * - The server at Universalis (via nugae.com) must support JSONP by
-   *   wrapping its JSON in a callback named the same as our callbackName.
-   *
-   * Example:
-   *   server responds with:
-   *     handleUniversalis({"Date":"…","FirstReading":{…},…});
+   * Decision:
+   * We now load daily readings from our own backend cache (`/api/daily-readings/today`)
+   * instead of relying on third-party JSONP endpoints.
    */
-  const { data, loading, error } = useJsonp(
-    "http://www.nugae.com/jsonp.html",
-    "callback",              // parameter name
-    "handleUniversalis"      // callback function name
-  );
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const reading = await dailyReadingService.getToday();
+        setData(reading);
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e : new Error("Failed to load daily readings"));
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
 
   if (loading) return <p>Loading daily readings…</p>;
   if (error) return <p>Error loading readings: {error.message}</p>;
@@ -32,7 +40,7 @@ export default function CatholicDailyReadings() {
     <div>
       <h2>Catholic Daily Readings</h2>
       <pre style={{ whiteSpace: "pre-wrap" }}>
-        {JSON.stringify(data, null, 2)}
+        {JSON.stringify(data.payload, null, 2)}
       </pre>
     </div>
   );

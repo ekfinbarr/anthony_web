@@ -17,7 +17,7 @@ interface CommunityConnectionsProps {
   connections: CommunityConnection[];
   recommendations: AIRecommendation[];
   onConnectionClick: (connectionId: string) => void;
-  onFeatureClick: (feature: string, context?: Record<string, any>) => void;
+  onFeatureClick: (feature: string, context?: Record<string, unknown>) => void;
   userInterests: string[];
 }
 

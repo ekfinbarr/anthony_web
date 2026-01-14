@@ -4,15 +4,12 @@ const JsonpComponent = () => {
   const [data, setData] = useState(null);
 
   useEffect(() => {
-    const fetchJsonpData = (url) => {
+    const fetchJsonpData = (url: string) => {
       if (url) {
         fetch(url)
           .then(response => response.json())
           .then(data => setData(data))
           .catch(error => console.error('Error fetching JSONP data:', error));
-        setTimeout(() => {
-          console.log('DATA:', data);
-        }, 10000);
       } else {
         console.error('No URL provided');
       }
@@ -20,6 +17,11 @@ const JsonpComponent = () => {
 
     fetchJsonpData('https://www.nugae.com/jsonp.html'); // Replace with the actual JSONP URL
   }, []);
+
+  useEffect(() => {
+    // Debug helper: log whenever data changes
+    if (data) console.log('DATA:', data);
+  }, [data]);
 
   return (
     <div>

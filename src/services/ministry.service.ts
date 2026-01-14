@@ -20,7 +20,18 @@ export interface Ministry {
   vision?: string;
   is_active: boolean;
   accepting_members: boolean;
+  is_featured: boolean;
   leader_id?: string;
+  category_id?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  meeting_location?: string;
+  meeting_schedule?: any;
+  activities?: any;
+  requirements?: string;
+  image?: string;
+  sort_order: number;
+  status: 'active' | 'inactive' | 'suspended';
   created_at: string;
   updated_at: string;
 }
@@ -33,25 +44,38 @@ export interface CreateMinistryPayload {
   description?: string;
   mission?: string;
   vision?: string;
-  is_active?: boolean;
-  accepting_members?: boolean;
   leader_id?: string;
+  category_id?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  meeting_location?: string;
+  meeting_schedule?: any;
+  activities?: any;
+  requirements?: string;
+  image?: string;
+  is_active?: boolean;
+  is_featured?: boolean;
+  accepting_members?: boolean;
+  sort_order?: number;
+  status?: 'active' | 'inactive' | 'suspended';
 }
 
-/**
- * Update Ministry Payload
- */
-export interface UpdateMinistryPayload extends Partial<CreateMinistryPayload> {}
 
-/**
- * Query Parameters
- */
+
+export interface UpdateMinistryPayload extends Partial<CreateMinistryPayload> {
+  leader_id?: string;
+  image?: string;
+  meeting_schedule?: any;
+  requirements?: string;
+  activities?: any;
+}
 export interface MinistryQueryParams {
   page?: number;
   per_page?: number;
   is_active?: boolean;
   accepting_members?: boolean;
   search?: string;
+  [key: string]: string | number | boolean | undefined;
 }
 
 /**
@@ -138,8 +162,8 @@ export const getAcceptingMembers = async (
  * @param id Ministry ID
  * @returns Ministry statistics
  */
-export const getStatistics = async (id: string): Promise<any> => {
-  const response = await apiClient.get(`ministries/${id}/statistics`);
+export const getStatistics = async (id: string): Promise<unknown> => {
+  const response = await apiClient.get<unknown>(`ministries/${id}/statistics`);
   return response.data;
 };
 

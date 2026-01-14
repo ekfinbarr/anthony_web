@@ -29,6 +29,7 @@ const Navigation = () => {
         { name: "Groups & Societies", href: "/groups" },
         { name: "Past Priests", href: "/past-priests" },
         { name: "Events", href: "/events" },
+        { name: "Calendar", href: "/calendar" },
         { name: "Gallery", href: "/gallery" },
       ],
     },

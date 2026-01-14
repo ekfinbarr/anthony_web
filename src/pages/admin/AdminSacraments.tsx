@@ -1,207 +1,467 @@
-import { useState } from "react";
+/**
+ * Admin Sacraments Management Page
+ * 
+ * Comprehensive admin dashboard for managing sacraments with:
+ * - List view with search, filters, and pagination
+ * - Create/Edit functionality
+ * - Sacrament details view
+ * - Delete with confirmation
+ * 
+ * @package Lovable/src/pages/admin
+ */
+
+import { useState, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, Search, MoreVertical, Edit, Trash2, Download, Check, X, Eye, Bell, Settings } from "lucide-react";
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger,
+  DropdownMenuSeparator 
+} from "@/components/ui/dropdown-menu";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import { 
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
+import { Skeleton } from "@/components/ui/skeleton";
+import { 
+  Plus, 
+  Search, 
+  MoreVertical, 
+  Eye, 
+  Edit, 
+  Trash2, 
+  Church,
+  Phone,
+  Calendar,
+  AlertCircle
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-const mockSacraments = [
-  { id: 1, name: "Baptism", category: "Initiation", status: "active", registrationOpen: true, requirements: "Birth certificate, Parents' marriage cert", contact: "Fr. Anthony", requests: 12 },
-  { id: 2, name: "First Holy Communion", category: "Initiation", status: "active", registrationOpen: true, requirements: "Baptism certificate, Age 7+", contact: "Catechist Lead", requests: 25 },
-  { id: 3, name: "Confirmation", category: "Initiation", status: "active", registrationOpen: false, requirements: "Baptism & Communion certs", contact: "Fr. Peter", requests: 18 },
-  { id: 4, name: "Matrimony", category: "Service", status: "active", registrationOpen: true, requirements: "6 months notice, Marriage course", contact: "Marriage Committee", requests: 8 },
-  { id: 5, name: "Anointing of the Sick", category: "Healing", status: "active", registrationOpen: true, requirements: "Contact parish office", contact: "Fr. Anthony", requests: 3 },
-];
-
-const mockRequests = [
-  { id: 1, name: "John Adeyemi", sacrament: "Baptism", date: "2024-01-15", status: "pending", phone: "+234 801 234 5678" },
-  { id: 2, name: "Mary & David Okonkwo", sacrament: "Matrimony", date: "2024-01-14", status: "approved", phone: "+234 802 345 6789" },
-  { id: 3, name: "Grace Eze", sacrament: "First Holy Communion", date: "2024-01-13", status: "pending", phone: "+234 803 456 7890" },
-  { id: 4, name: "Peter Nnamdi", sacrament: "Confirmation", date: "2024-01-12", status: "rejected", phone: "+234 804 567 8901" },
-];
+import sacramentService, { Sacrament, SacramentQueryParams, CreateSacramentPayload, UpdateSacramentPayload } from "@/services/sacrament.service";
+import DeleteConfirmModal from "@/components/admin/shared/DeleteConfirmModal";
+import SacramentDetails from "@/components/admin/sacraments/SacramentDetails";
+import { StatusBadge } from "@/components/admin/shared/StatusBadge";
+import { GenericEmptyState } from "@/components/admin/shared/GenericEmptyState";
 
 const AdminSacraments = () => {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const handleExport = (format: string) => {
-    toast({ title: `Exporting as ${format.toUpperCase()}`, description: "Your download will start shortly." });
-  };
+  // State management
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(15);
+  const [selectedSacrament, setSelectedSacrament] = useState<Sacrament | null>(null);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      approved: "default",
-      pending: "outline",
-      rejected: "destructive",
+  // Build query parameters
+  const queryParams: SacramentQueryParams = useMemo(() => {
+    const params: SacramentQueryParams = {
+      page: currentPage,
+      per_page: pageSize,
     };
-    return <Badge variant={variants[status] || "secondary"}>{status}</Badge>;
+
+    if (searchQuery) {
+      params.search = searchQuery;
+    }
+
+    if (statusFilter !== "all") {
+      params.is_active = statusFilter === "active";
+    }
+
+    return params;
+  }, [currentPage, pageSize, searchQuery, statusFilter]);
+
+  // Fetch sacraments
+  const { 
+    data: sacramentsData, 
+    isLoading, 
+    error 
+  } = useQuery({
+    queryKey: ["sacraments", queryParams],
+    queryFn: () => sacramentService.list(queryParams),
+    placeholderData: (previousData) => previousData,
+  });
+
+  // Transform sacraments
+  const sacraments: Sacrament[] = useMemo(() => {
+    if (!sacramentsData || !('data' in sacramentsData) || !sacramentsData.data) return [];
+    return sacramentsData.data;
+  }, [sacramentsData]);
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => sacramentService.remove(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sacraments"] });
+      toast({
+        title: "Success",
+        description: "Sacrament deleted successfully",
+      });
+      setIsDeleteOpen(false);
+      setSelectedSacrament(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete sacrament",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleView = (sacrament: Sacrament) => {
+    setSelectedSacrament(sacrament);
+    setIsDetailsOpen(true);
   };
+
+  const handleEdit = (sacrament: Sacrament) => {
+    navigate(`/admin/sacraments/${sacrament.id}/edit`);
+  };
+
+  const handleDelete = (sacrament: Sacrament) => {
+    setSelectedSacrament(sacrament);
+    setIsDeleteOpen(true);
+  };
+
+  const handleCreate = () => {
+    navigate("/admin/sacraments/new");
+  };
+
+  const handleDeleteConfirm = () => {
+    if (selectedSacrament) {
+      deleteMutation.mutate(selectedSacrament.id);
+    }
+  };
+
+  // Pagination helpers
+  const totalPages = (sacramentsData && 'last_page' in sacramentsData) ? sacramentsData.last_page : 1;
+  const totalItems = (sacramentsData && 'total' in sacramentsData) ? sacramentsData.total : 0;
+  const from = (sacramentsData && 'from' in sacramentsData) ? sacramentsData.from : 0;
+  const to = (sacramentsData && 'to' in sacramentsData) ? sacramentsData.to : 0;
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-heading font-bold text-foreground">Sacraments Management</h1>
-          <p className="text-muted-foreground">Manage sacraments, requirements, and registration requests.</p>
+          <h1 className="text-3xl font-heading font-bold text-foreground">Sacraments Management</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage parish sacraments and their information.
+          </p>
         </div>
-        <div className="flex gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2"><Download className="h-4 w-4" /> Export</Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => handleExport("csv")}>Export as CSV</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport("excel")}>Export as Excel</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport("pdf")}>Export as PDF</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport("json")}>Export as JSON</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2"><Plus className="h-4 w-4" /> Add Sacrament</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>Add Sacrament</DialogTitle></DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>Sacrament Name</Label>
-                  <Input placeholder="e.g., Baptism" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Category</Label>
-                  <Select>
-                    <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="initiation">Initiation</SelectItem>
-                      <SelectItem value="healing">Healing</SelectItem>
-                      <SelectItem value="service">Service</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Requirements</Label>
-                  <Textarea placeholder="List requirements..." rows={3} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Contact Person</Label>
-                  <Input placeholder="e.g., Fr. Anthony" />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label>Enable Registration</Label>
-                  <Switch defaultChecked />
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-                  <Button onClick={() => { setIsCreateOpen(false); toast({ title: "Sacrament added successfully" }); }}>Add Sacrament</Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+        <Button onClick={handleCreate} className="gap-2">
+          <Plus className="h-4 w-4" /> New Sacrament
+        </Button>
       </div>
 
-      <Tabs defaultValue="sacraments" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="sacraments" className="gap-2"><Settings className="h-4 w-4" /> Sacraments</TabsTrigger>
-          <TabsTrigger value="requests" className="gap-2"><Bell className="h-4 w-4" /> Registration Requests</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="sacraments" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {mockSacraments.map((sacrament) => (
-              <Card key={sacrament.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{sacrament.name}</CardTitle>
-                      <Badge variant="secondary" className="mt-1">{sacrament.category}</Badge>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem><Edit className="mr-2 h-4 w-4" />Edit</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="text-sm">
-                    <p className="text-muted-foreground">Requirements:</p>
-                    <p className="font-medium">{sacrament.requirements}</p>
-                  </div>
-                  <div className="text-sm">
-                    <p className="text-muted-foreground">Contact:</p>
-                    <p className="font-medium">{sacrament.contact}</p>
-                  </div>
-                  <div className="flex items-center justify-between pt-2 border-t">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">Registration:</span>
-                      <Badge variant={sacrament.registrationOpen ? "default" : "secondary"}>
-                        {sacrament.registrationOpen ? "Open" : "Closed"}
-                      </Badge>
-                    </div>
-                    <Badge variant="outline">{sacrament.requests} requests</Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+      {/* Filters */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search sacraments..."
+                className="pl-9"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={(value) => {
+              setStatusFilter(value);
+              setCurrentPage(1);
+            }}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={pageSize.toString()} onValueChange={(value) => {
+              setPageSize(Number(value));
+              setCurrentPage(1);
+            }}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Page size" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10 per page</SelectItem>
+                <SelectItem value="15">15 per page</SelectItem>
+                <SelectItem value="25">25 per page</SelectItem>
+                <SelectItem value="50">50 per page</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        </TabsContent>
+        </CardContent>
+      </Card>
 
-        <TabsContent value="requests" className="space-y-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search requests..." className="pl-9" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+      {/* Sacraments Table */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>All Sacraments</CardTitle>
+            {totalItems > 0 && (
+              <span className="text-sm text-muted-foreground">
+                Showing {from}-{to} of {totalItems} sacraments
+              </span>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <Skeleton className="h-12 flex-1" />
+                  <Skeleton className="h-12 w-24" />
+                  <Skeleton className="h-12 w-32" />
+                </div>
+              ))}
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Error loading sacraments</h3>
+              <p className="text-muted-foreground mb-4">
+                {error instanceof Error ? error.message : "An unexpected error occurred"}
+              </p>
+              <Button onClick={() => queryClient.invalidateQueries({ queryKey: ["sacraments"] })}>
+                Try Again
+              </Button>
+            </div>
+          ) : sacraments.length === 0 ? (
+            <GenericEmptyState
+              title="No sacraments found"
+              description={
+                searchQuery || statusFilter !== "all"
+                  ? "Try adjusting your search or filters"
+                  : "Get started by creating your first sacrament"
+              }
+              actionLabel="Create Sacrament"
+              onAction={handleCreate}
+              icon="church"
+            />
+          ) : (
+            <>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Contact</TableHead>
+                      <TableHead>Schedule</TableHead>
+                      <TableHead>Requirements</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="w-[80px] text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sacraments.map((sacrament) => (
+                      <TableRow key={sacrament.id} className="hover:bg-muted/50">
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <Church className="h-4 w-4 text-muted-foreground" />
+                            {sacrament.name}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="max-w-md">
+                            <p className="text-sm text-muted-foreground line-clamp-2">
+                              {sacrament.description || "—"}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {sacrament.contact ? (
+                            <div className="flex items-center gap-2 text-sm">
+                              <Phone className="h-4 w-4 text-muted-foreground" />
+                              {sacrament.contact}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {sacrament.schedule ? (
+                            <div className="flex items-center gap-2 text-sm">
+                              <Calendar className="h-4 w-4 text-muted-foreground" />
+                              {sacrament.schedule}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {sacrament.requirements && sacrament.requirements.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {sacrament.requirements.slice(0, 2).map((req, idx) => (
+                                <span key={idx} className="text-xs bg-muted px-2 py-0.5 rounded">
+                                  {req}
+                                </span>
+                              ))}
+                              {sacrament.requirements.length > 2 && (
+                                <span className="text-xs text-muted-foreground">
+                                  +{sacrament.requirements.length - 2} more
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge status={sacrament.is_active ? "active" : "inactive"} />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem onClick={() => handleView(sacrament)}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleEdit(sacrament)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => handleDelete(sacrament)}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Sacrament</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-[120px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {mockRequests.map((request) => (
-                  <TableRow key={request.id}>
-                    <TableCell className="font-medium">{request.name}</TableCell>
-                    <TableCell><Badge variant="secondary">{request.sacrament}</Badge></TableCell>
-                    <TableCell>{request.phone}</TableCell>
-                    <TableCell>{request.date}</TableCell>
-                    <TableCell>{getStatusBadge(request.status)}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8"><Eye className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600"><Check className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><X className="h-4 w-4" /></Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
-        </TabsContent>
-      </Tabs>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="mt-6 flex items-center justify-between">
+                  <div className="text-sm text-muted-foreground">
+                    Page {currentPage} of {totalPages}
+                  </div>
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                          className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum: number;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        return (
+                          <PaginationItem key={pageNum}>
+                            <PaginationLink
+                              onClick={() => setCurrentPage(pageNum)}
+                              isActive={currentPage === pageNum}
+                              className="cursor-pointer"
+                            >
+                              {pageNum}
+                            </PaginationLink>
+                          </PaginationItem>
+                        );
+                      })}
+                      {totalPages > 5 && currentPage < totalPages - 2 && (
+                        <PaginationItem>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      )}
+                      <PaginationItem>
+                        <PaginationNext
+                          onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Modals */}
+      <SacramentDetails
+        open={isDetailsOpen}
+        onOpenChange={setIsDetailsOpen}
+        sacrament={selectedSacrament}
+        onEdit={() => {
+          setIsDetailsOpen(false);
+          if (selectedSacrament) handleEdit(selectedSacrament);
+        }}
+        onDelete={() => {
+          setIsDetailsOpen(false);
+          if (selectedSacrament) handleDelete(selectedSacrament);
+        }}
+      />
+
+      <DeleteConfirmModal
+        open={isDeleteOpen}
+        onOpenChange={setIsDeleteOpen}
+        title="Delete Sacrament"
+        description="This action cannot be undone. This will permanently delete the sacrament."
+        itemName={selectedSacrament?.name}
+        itemDetails={selectedSacrament?.description}
+        onConfirm={handleDeleteConfirm}
+        isLoading={deleteMutation.isPending}
+      />
     </div>
   );
 };

@@ -9,6 +9,7 @@
  * 
  * @package Lovable/src/contexts
  */
+/* eslint-disable react-refresh/only-export-components */
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { authService, BackendUser, LoginCredentials, RegisterData, PasswordResetData } from "@/services/auth.service";
@@ -43,6 +44,32 @@ export interface User {
   role: UserRole;
   token?: string; // Authentication token stored with user data
 }
+
+/**
+ * Extract a human-friendly error message from unknown errors.
+ * Works with both native Errors and our ApiClient error shape (Error & { data?: ... }).
+ */
+const getErrorMessage = (error: unknown, fallback: string): string => {
+  if (!error) return fallback;
+
+  if (error instanceof Error && typeof error.message === "string" && error.message.trim()) {
+    return error.message;
+  }
+
+  if (typeof error === "object") {
+    const e = error as Record<string, unknown>;
+    const data = e["data"];
+    if (data && typeof data === "object") {
+      const d = data as Record<string, unknown>;
+      const message = d["message"];
+      const err = d["error"];
+      if (typeof message === "string" && message.trim()) return message;
+      if (typeof err === "string" && err.trim()) return err;
+    }
+  }
+
+  return fallback;
+};
 
 /**
  * User registration data interface
@@ -143,12 +170,18 @@ const transformUser = (authUser: BackendUser, token: string): User => {
   // or as a simple string: "admin"
   let roleName = "user";
   
-  if (authUser.roles && Array.isArray(authUser.roles) && authUser.roles.length > 0) {
+  // Safely check if authUser exists and has roles
+  if (authUser && authUser.roles && Array.isArray(authUser.roles) && authUser.roles.length > 0) {
     // Extract role name from first role object
-    roleName = authUser.roles[0].name || "user";
-  } else if (authUser.role) {
+    roleName = authUser.roles[0]?.name || "user";
+  } else if (authUser && authUser.role) {
     // Use direct role string if available
     roleName = authUser.role;
+  }
+  
+  // Ensure authUser exists before accessing properties
+  if (!authUser) {
+    throw new Error("Invalid user data received from server");
   }
   
   return {
@@ -200,6 +233,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             try {
               // Fetch fresh user data from API to validate token
               const currentUser = await authService.getCurrentUser();
+              
+              // Validate that we received valid user data
+              if (!currentUser || !currentUser.id) {
+                throw new Error("Invalid user data received from server");
+              }
               
               // Update user data with fresh profile while preserving token
               const updatedUser = transformUser(currentUser, userData.token);
@@ -268,14 +306,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem("church_user", JSON.stringify(transformedUser));
       
       return { success: true };
-    } catch (error: any) {
-      // Extract error message from various possible error formats
-      const errorMessage = error?.data?.message || 
-                          error?.data?.error ||
-                          error?.message || 
-                          "Invalid email or password";
-      
-      return { success: false, error: errorMessage };
+    } catch (error: unknown) {
+      return { success: false, error: getErrorMessage(error, "Invalid email or password") };
     } finally {
       setIsLoading(false);
     }
@@ -314,13 +346,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem("church_user", JSON.stringify(transformedUser));
       
       return { success: true };
-    } catch (error: any) {
-      const errorMessage = error?.data?.message || 
-                          error?.data?.error ||
-                          error?.message || 
-                          "Registration failed";
-      
-      return { success: false, error: errorMessage };
+    } catch (error: unknown) {
+      return { success: false, error: getErrorMessage(error, "Registration failed") };
     } finally {
       setIsLoading(false);
     }
@@ -371,8 +398,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem("church_user", JSON.stringify(updatedUser));
       
       return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error?.message || "Update failed" };
+    } catch (error: unknown) {
+      return { success: false, error: getErrorMessage(error, "Update failed") };
     }
   };
 
@@ -388,13 +415,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await authService.forgotPassword({ email });
       return { success: true };
-    } catch (error: any) {
-      const errorMessage = error?.data?.message || 
-                          error?.data?.error ||
-                          error?.message || 
-                          "Failed to send reset link";
-      
-      return { success: false, error: errorMessage };
+    } catch (error: unknown) {
+      return { success: false, error: getErrorMessage(error, "Failed to send reset link") };
     }
   };
 
@@ -419,13 +441,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       await authService.resetPassword(resetData);
       return { success: true };
-    } catch (error: any) {
-      const errorMessage = error?.data?.message || 
-                          error?.data?.error ||
-                          error?.message || 
-                          "Failed to reset password";
-      
-      return { success: false, error: errorMessage };
+    } catch (error: unknown) {
+      return { success: false, error: getErrorMessage(error, "Failed to reset password") };
     }
   };
 

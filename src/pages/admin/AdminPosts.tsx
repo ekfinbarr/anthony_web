@@ -16,29 +16,29 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@/components/ui/table";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator 
+  DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from "@/components/ui/select";
-import { 
+import {
   Pagination,
   PaginationContent,
   PaginationItem,
@@ -48,19 +48,21 @@ import {
   PaginationEllipsis,
 } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  Plus, 
-  Search, 
-  MoreVertical, 
-  Eye, 
-  Edit, 
-  Trash2, 
+import {
+  Plus,
+  Search,
+  MoreVertical,
+  Eye,
+  Edit,
+  Trash2,
   CheckCircle2,
   XCircle,
   Calendar,
   User,
   FileText,
-  AlertCircle
+  AlertCircle,
+  Image,
+  Video
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -124,10 +126,10 @@ const AdminPosts = () => {
   }, [currentPage, pageSize, searchQuery, statusFilter, authorFilter, user]);
 
   // Fetch posts
-  const { 
-    data: postsData, 
-    isLoading, 
-    error 
+  const {
+    data: postsData,
+    isLoading,
+    error
   } = useQuery({
     queryKey: ["posts", queryParams],
     queryFn: () => postService.list(queryParams),
@@ -137,7 +139,7 @@ const AdminPosts = () => {
   // Transform posts with status
   const posts: PostWithStatus[] = useMemo(() => {
     if (!postsData || !('data' in postsData) || !postsData.data) return [];
-    
+
     return postsData.data.map((post): PostWithStatus => {
       // Determine status based on published and archived flags
       let status: PostStatus = "draft";
@@ -159,7 +161,7 @@ const AdminPosts = () => {
 
   // Update post mutation (for approval workflow)
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdatePostPayload }) => 
+    mutationFn: ({ id, data }: { id: string; data: UpdatePostPayload }) =>
       postService.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["posts"] });
@@ -322,6 +324,7 @@ const AdminPosts = () => {
                 <SelectItem value="15">15 per page</SelectItem>
                 <SelectItem value="25">25 per page</SelectItem>
                 <SelectItem value="50">50 per page</SelectItem>
+                <SelectItem value="100">100 per page</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -381,6 +384,7 @@ const AdminPosts = () => {
                     <TableRow>
                       <TableHead className="w-[300px]">Title</TableHead>
                       <TableHead>Author</TableHead>
+                      <TableHead>Type</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Created</TableHead>
                       <TableHead>Updated</TableHead>
@@ -393,7 +397,7 @@ const AdminPosts = () => {
                       <TableRow key={post.id} className="hover:bg-muted/50">
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <FileText className="h-4 w-4 text-muted-foreground" />
+
                             <div>
                               <div className="font-medium">{post.title}</div>
                               {post.summary && (
@@ -407,11 +411,21 @@ const AdminPosts = () => {
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <User className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">{post.author_name || "Unknown"}</span>
+                            <span className="text-sm">{post?.author?.name || post.author_name || "Unknown"}</span>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <PostStatusBadge status={post.status} />
+                          <div className="flex items-center gap-2">
+                            {post.type === 'text' && (<FileText className="h-4 w-4 text-muted-foreground" />)}
+                            {post.type === 'image' && (<Image className="h-4 w-4 text-muted-foreground" />)}
+                            {post.type === 'video' && (<Video className="h-4 w-4 text-muted-foreground" />)}
+                            <span className="text-sm">{post.type}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <PostStatusBadge status={post.status} />
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -447,14 +461,14 @@ const AdminPosts = () => {
                               <DropdownMenuSeparator />
                               {post.status === "pending" && (
                                 <>
-                                  <DropdownMenuItem 
+                                  <DropdownMenuItem
                                     onClick={() => handleApprove(post)}
                                     className="text-green-600"
                                   >
                                     <CheckCircle2 className="mr-2 h-4 w-4" />
                                     Approve
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem 
+                                  <DropdownMenuItem
                                     onClick={() => handleReject(post)}
                                     className="text-destructive"
                                   >
@@ -464,7 +478,7 @@ const AdminPosts = () => {
                                   <DropdownMenuSeparator />
                                 </>
                               )}
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 onClick={() => handleDelete(post)}
                                 className="text-destructive"
                               >

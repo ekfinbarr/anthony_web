@@ -23,7 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { SpiritualGrowth, CalendarEvent } from '@/types/dashboard';
 
 interface QuickActionsProps {
-  onActionClick: (action: string, context?: Record<string, any>) => void;
+  onActionClick: (action: string, context?: Record<string, unknown>) => void;
   spiritualGrowth: SpiritualGrowth | null;
   upcomingEvents: CalendarEvent[];
 }

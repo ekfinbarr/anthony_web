@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,60 +19,60 @@ interface RegistrationRecord {
   notes?: string;
 }
 
+// Mock data - in a real app, this would come from an API
+const MOCK_REGISTRATIONS: RegistrationRecord[] = [
+  {
+    id: 'reg-001',
+    classId: 'mc-001',
+    classTitle: 'Pre-Cana Class – Session A',
+    registrationDate: '2024-11-15T10:30:00Z',
+    status: 'confirmed',
+    startDate: '2024-12-15',
+    endDate: '2024-12-17',
+    time: '7:00 PM - 9:00 PM',
+    venue: 'Parish Hall',
+    facilitator: 'Fr. John Smith',
+    partnerName: 'Jane Doe',
+    notes: 'Looking forward to the preparation sessions'
+  },
+  {
+    id: 'reg-002',
+    classId: 'mc-002',
+    classTitle: 'Pre-Cana Class – Session B',
+    registrationDate: '2024-10-20T14:15:00Z',
+    status: 'completed',
+    startDate: '2024-11-10',
+    endDate: '2024-11-12',
+    time: '6:00 PM - 8:00 PM',
+    venue: 'Catechetics Hall',
+    facilitator: 'Sr. Mary Johnson',
+    partnerName: 'John Smith',
+    notes: 'Completed all sessions successfully'
+  }
+];
+
 const RegistrationHistory: React.FC = () => {
   const [registrations, setRegistrations] = useState<RegistrationRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Mock data - in a real app, this would come from an API
-  const mockRegistrations: RegistrationRecord[] = [
-    {
-      id: 'reg-001',
-      classId: 'mc-001',
-      classTitle: 'Pre-Cana Class – Session A',
-      registrationDate: '2024-11-15T10:30:00Z',
-      status: 'confirmed',
-      startDate: '2024-12-15',
-      endDate: '2024-12-17',
-      time: '7:00 PM - 9:00 PM',
-      venue: 'Parish Hall',
-      facilitator: 'Fr. John Smith',
-      partnerName: 'Jane Doe',
-      notes: 'Looking forward to the preparation sessions'
-    },
-    {
-      id: 'reg-002',
-      classId: 'mc-002',
-      classTitle: 'Pre-Cana Class – Session B',
-      registrationDate: '2024-10-20T14:15:00Z',
-      status: 'completed',
-      startDate: '2024-11-10',
-      endDate: '2024-11-12',
-      time: '6:00 PM - 8:00 PM',
-      venue: 'Catechetics Hall',
-      facilitator: 'Sr. Mary Johnson',
-      partnerName: 'John Smith',
-      notes: 'Completed all sessions successfully'
-    }
-  ];
-
   // Fetch user registration history
-  const fetchUserRegistrationHistory = async () => {
+  const fetchUserRegistrationHistory = useCallback(async () => {
     try {
       // In a real app, this would be an API call
       // For now, we'll use mock data
       await new Promise(resolve => setTimeout(resolve, 1000));
-      setRegistrations(mockRegistrations);
+      setRegistrations(MOCK_REGISTRATIONS);
     } catch (error) {
       console.error('Error fetching registration history:', error);
       setRegistrations([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchUserRegistrationHistory();
-  }, []);
+  }, [fetchUserRegistrationHistory]);
 
   const getStatusBadge = (status: RegistrationRecord['status']) => {
     const statusConfig = {

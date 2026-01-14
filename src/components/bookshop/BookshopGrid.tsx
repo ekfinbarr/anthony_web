@@ -4,12 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
 interface Product {
-  id: number;
+  id: string;
   title: string;
   description: string;
   price: number;
   image: string;
   availability: string;
+  currency?: string;
 }
 
 interface BookshopGridProps {
@@ -18,6 +19,14 @@ interface BookshopGridProps {
 }
 
 export default function BookshopGrid({ products, onProductClick }: BookshopGridProps) {
+  const formatPrice = (price: number, currency: string = "NGN") => {
+    try {
+      return new Intl.NumberFormat("en-NG", { style: "currency", currency }).format(price);
+    } catch {
+      return `${currency} ${price.toFixed(2)}`;
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-4">
       {products.map((product) => (
@@ -37,7 +46,9 @@ export default function BookshopGrid({ products, onProductClick }: BookshopGridP
             <h3 className="font-semibold text-lg mb-2 line-clamp-2">{product.title}</h3>
             <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{product.description}</p>
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xl font-bold text-primary">${product.price.toFixed(2)}</span>
+              <span className="text-xl font-bold text-primary">
+                {formatPrice(product.price, product.currency)}
+              </span>
               <Badge
                 variant={product.availability === 'In Stock' ? 'default' : 'secondary'}
                 className={product.availability === 'In Stock' ? 'bg-green-100 text-green-800' : ''}

@@ -21,6 +21,13 @@ export interface User {
   country?: string;
   avatar?: string;
   email_verified_at?: string | null;
+  /**
+   * Optional fields used by some deployments for admin enable/disable.
+   * Kept optional to avoid breaking existing callers.
+   */
+  is_active?: boolean;
+  status?: string;
+  roles?: Array<{ id?: string; name: string }>;
   created_at: string;
   updated_at: string;
 }
@@ -34,6 +41,8 @@ export interface UpdateUserProfilePayload {
   address?: string;
   country?: string;
   avatar?: string;
+  email?: string;
+  is_active?: boolean;
 }
 
 /**
@@ -43,6 +52,18 @@ export interface UpdatePasswordPayload {
   current_password: string;
   new_password: string;
   new_password_confirmation: string;
+}
+
+/**
+ * Admin create user payload (expected by standard REST user controllers).
+ * Note: some backends may not support role assignment in this payload.
+ */
+export interface CreateUserPayload {
+  name: string;
+  email: string;
+  password: string;
+  phone?: string | null;
+  is_active?: boolean;
 }
 
 /**
@@ -118,6 +139,33 @@ export const updatePassword = async (
 };
 
 /**
+ * Admin: create a user (if enabled on backend).
+ */
+export const create = async (payload: CreateUserPayload): Promise<{ message: string; user: User } | User> => {
+  const response = await apiClient.post<{ message: string; user: User } | User>("users", payload);
+  return response.data;
+};
+
+/**
+ * Admin: update a user (if enabled on backend).
+ */
+export const update = async (
+  id: string,
+  payload: Partial<Omit<CreateUserPayload, "password">> & { password?: string }
+): Promise<{ message: string; user: User } | User> => {
+  const response = await apiClient.put<{ message: string; user: User } | User>(`users/${id}`, payload);
+  return response.data;
+};
+
+/**
+ * Admin: delete a user (if enabled on backend).
+ */
+export const remove = async (id: string): Promise<{ message: string } | void> => {
+  const response = await apiClient.delete<{ message: string }>(`users/${id}`);
+  return response.data;
+};
+
+/**
  * Get users by role
  * 
  * @param role User role
@@ -164,6 +212,9 @@ const userService = {
   getByRole,
   getVerified,
   getUnverified,
+  create,
+  update,
+  remove,
 };
 
 export default userService;

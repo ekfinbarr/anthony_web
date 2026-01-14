@@ -12,7 +12,9 @@ import {
   CalendarEvent,
   CommunityConnection,
   ContentType,
-  SpiritualGrowth
+  SpiritualGrowth,
+  SpiritualGoal,
+  SpiritualStreak
 } from '@/types/dashboard';
 
 /**
@@ -244,7 +246,7 @@ export class AIRecommendationEngine {
    * Generate goal-specific recommendations
    */
   private generateGoalRecommendation(
-    goal: any,
+    goal: SpiritualGoal,
     growth: SpiritualGrowth
   ): AIRecommendation | null {
     const daysUntilTarget = Math.ceil(
@@ -271,7 +273,7 @@ export class AIRecommendationEngine {
   /**
    * Generate streak maintenance recommendations
    */
-  private generateStreakRecommendation(streak: any): AIRecommendation | null {
+  private generateStreakRecommendation(streak: SpiritualStreak): AIRecommendation | null {
     const daysSinceLastActivity = Math.ceil(
       (Date.now() - streak.lastActivity.getTime()) / (1000 * 60 * 60 * 24)
     );

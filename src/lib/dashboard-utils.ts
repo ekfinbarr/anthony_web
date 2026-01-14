@@ -185,8 +185,8 @@ export const contentUtils = {
     const sorted = [...content];
     
     sorted.sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
+      let aValue: number | string;
+      let bValue: number | string;
       
       switch (sortOptions.field) {
         case 'publishDate':
@@ -401,7 +401,7 @@ export const storageUtils = {
   /**
    * Date reviver for JSON parsing
    */
-  dateReviver: (key: string, value: any): any => {
+  dateReviver: (key: string, value: unknown): unknown => {
     // Check for ISO date strings
     if (typeof value === 'string') {
       // More comprehensive date pattern matching
@@ -422,11 +422,11 @@ export const storageUtils = {
   /**
    * Ensure all date fields are properly converted to Date objects
    */
-  ensureDatesAreConverted: (data: any): any => {
+  ensureDatesAreConverted: (data: unknown): unknown => {
     if (!data) return data;
     
     // Recursively convert date strings to Date objects
-    const convertDates = (obj: any): any => {
+    const convertDates = (obj: unknown): unknown => {
       if (obj === null || obj === undefined) return obj;
       
       if (typeof obj === 'string') {
@@ -446,8 +446,8 @@ export const storageUtils = {
       }
       
       if (typeof obj === 'object') {
-        const converted: any = {};
-        for (const [key, value] of Object.entries(obj)) {
+        const converted: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
           // Special handling for known date fields
           if (key.includes('Date') || key.includes('date') || 
               key === 'lastActivity' || key === 'publishDate' || 
@@ -475,7 +475,7 @@ export const storageUtils = {
   /**
    * Save user preferences
    */
-  saveUserPreferences: (preferences: any): void => {
+  saveUserPreferences: (preferences: unknown): void => {
     try {
       localStorage.setItem('userPreferences', JSON.stringify(preferences));
     } catch (error) {
@@ -486,7 +486,7 @@ export const storageUtils = {
   /**
    * Load user preferences
    */
-  loadUserPreferences: (): any => {
+  loadUserPreferences: (): unknown => {
     try {
       const stored = localStorage.getItem('userPreferences');
       return stored ? JSON.parse(stored) : {};
@@ -728,7 +728,7 @@ export const performanceUtils = {
   /**
    * Debounce function calls
    */
-  debounce: <T extends (...args: any[]) => void>(
+  debounce: <T extends (...args: unknown[]) => void>(
     func: T,
     delay: number
   ): (...args: Parameters<T>) => void => {
@@ -743,7 +743,7 @@ export const performanceUtils = {
   /**
    * Throttle function calls
    */
-  throttle: <T extends (...args: any[]) => void>(
+  throttle: <T extends (...args: unknown[]) => void>(
     func: T,
     delay: number
   ): (...args: Parameters<T>) => void => {

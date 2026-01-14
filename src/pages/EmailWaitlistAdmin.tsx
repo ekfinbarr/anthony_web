@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,7 +34,8 @@ const EmailWaitlistAdmin = () => {
   const [totalPages, setTotalPages] = useState(1);
   const { toast } = useToast();
 
-  const adminService = new AdminEmailService();
+  // Keep a stable service instance so hooks can safely depend on it.
+  const adminService = useMemo(() => new AdminEmailService(), []);
 
   // Set auth token if available (you would get this from your auth system)
   useEffect(() => {
@@ -42,12 +43,12 @@ const EmailWaitlistAdmin = () => {
     if (token) {
       adminService.setAuthToken(token);
     }
-  }, []);
+  }, [adminService]);
 
-  const loadSubscribers = async (page = 1) => {
+  const loadSubscribers = useCallback(async (page = 1) => {
     try {
       setLoading(true);
-      const params: any = {
+      const params = {
         page,
         per_page: 15,
         search: searchTerm || undefined,
@@ -74,9 +75,9 @@ const EmailWaitlistAdmin = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [adminService, searchTerm, sourceFilter, statusFilter, toast]);
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       const response: ApiResponse = await adminService.getStats();
       if (response.success && response.data) {
@@ -85,12 +86,12 @@ const EmailWaitlistAdmin = () => {
     } catch (error) {
       console.error('Load stats error:', error);
     }
-  };
+  }, [adminService]);
 
   useEffect(() => {
     loadSubscribers();
     loadStats();
-  }, [searchTerm, statusFilter, sourceFilter]);
+  }, [loadSubscribers, loadStats]);
 
   const handleDeleteSubscriber = async (id: number) => {
     if (!confirm('Are you sure you want to delete this subscriber?')) {

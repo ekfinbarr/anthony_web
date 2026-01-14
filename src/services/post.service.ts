@@ -10,6 +10,24 @@
 import { apiClient, PaginatedResponse } from '../lib/apiClient';
 
 /**
+ * Lightweight Category/Tag shapes (used in Post responses).
+ * We intentionally keep these minimal so this service does not depend on admin-only category/tag screens.
+ */
+export interface CategoryRef {
+  id: string;
+  label: string;
+  slug: string;
+  color?: string | null;
+}
+
+export interface TagRef {
+  id: string;
+  label: string;
+  slug: string;
+  color?: string | null;
+}
+
+/**
  * Post Model
  */
 export interface Post {
@@ -21,7 +39,16 @@ export interface Post {
   views: number;
   parent_id: string | null;
   author_id: string;
+  /**
+   * Content type (drives editor/media UI): text | image | video
+   * NOTE: this maps to the backend `posts.type`.
+   */
   type: string;
+  /**
+   * Post classification (drives post listing/grouping): post | news | announcement | article
+   * NOTE: this maps to the backend `posts.post_type`.
+   */
+  post_type?: string;
   published: boolean;
   image?: string;
   video?: string;
@@ -31,6 +58,9 @@ export interface Post {
   created_at: string;
   updated_at: string;
   deleted_at?: string | null;
+  /** Optional eager-loaded relations (if backend includes them). */
+  categories?: CategoryRef[];
+  tags?: TagRef[];
 }
 
 /**
@@ -44,16 +74,20 @@ export interface CreatePostPayload {
   parent_id?: string;
   author_id: string;
   type: string;
+  post_type?: string;
   published?: boolean;
   image?: string;
   video?: string;
   allow_comment?: boolean;
+  /** Selected taxonomy (UUIDs). */
+  category_ids?: string[];
+  tag_ids?: string[];
 }
 
 /**
  * Update Post Payload
  */
-export interface UpdatePostPayload extends Partial<CreatePostPayload> {}
+export type UpdatePostPayload = Partial<CreatePostPayload>;
 
 /**
  * Query Parameters
@@ -68,13 +102,30 @@ export interface PostQueryParams {
 }
 
 /**
+ * Convert typed params into a plain Record (matches `apiClient.get` typing).
+ */
+const toQueryParams = (params?: PostQueryParams): Record<string, string | number | boolean> | undefined => {
+  if (!params) return undefined;
+  const out: Record<string, string | number | boolean> = {};
+  Object.entries(params).forEach(([k, v]) => {
+    if (v === undefined || v === null) return;
+    if (typeof v === "boolean" || typeof v === "number") {
+      out[k] = v;
+    } else {
+      out[k] = String(v);
+    }
+  });
+  return out;
+};
+
+/**
  * List posts with optional filtering
  * 
  * @param params Query parameters
  * @returns Paginated list of posts
  */
 export const list = async (params?: PostQueryParams): Promise<PaginatedResponse<Post>> => {
-  const response = await apiClient.get<PaginatedResponse<Post>>('posts', params);
+  const response = await apiClient.get<PaginatedResponse<Post>>('posts', toQueryParams(params));
   return response.data;
 };
 
@@ -139,7 +190,7 @@ export const remove = async (id: string): Promise<void> => {
  * @returns Paginated list of published posts
  */
 export const getPublished = async (params?: PostQueryParams): Promise<PaginatedResponse<Post>> => {
-  const response = await apiClient.get<PaginatedResponse<Post>>('posts/published', params);
+  const response = await apiClient.get<PaginatedResponse<Post>>('posts/published', toQueryParams(params));
   return response.data;
 };
 
@@ -165,7 +216,7 @@ export const getByAuthor = async (
   authorId: string,
   params?: PostQueryParams
 ): Promise<PaginatedResponse<Post>> => {
-  const response = await apiClient.get<PaginatedResponse<Post>>(`posts/author/${authorId}`, params);
+  const response = await apiClient.get<PaginatedResponse<Post>>(`posts/author/${authorId}`, toQueryParams(params));
   return response.data;
 };
 
@@ -180,7 +231,7 @@ export const getByType = async (
   type: string,
   params?: PostQueryParams
 ): Promise<PaginatedResponse<Post>> => {
-  const response = await apiClient.get<PaginatedResponse<Post>>(`posts/type/${type}`, params);
+  const response = await apiClient.get<PaginatedResponse<Post>>(`posts/type/${type}`, toQueryParams(params));
   return response.data;
 };
 

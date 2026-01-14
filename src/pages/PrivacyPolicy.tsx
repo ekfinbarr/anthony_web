@@ -12,23 +12,29 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import jsPDF from "jspdf";
+import legalDocumentService from "@/services/legalDocument.service";
+
+const PRIVACY_SECTIONS = [
+  { id: "introduction", title: "Introduction" },
+  { id: "information-we-collect", title: "Information We Collect" },
+  { id: "how-we-use-information", title: "How We Use Your Information" },
+  { id: "information-sharing", title: "Information Sharing" },
+  { id: "data-security", title: "Data Security" },
+  { id: "your-rights", title: "Your Rights" },
+  { id: "cookies", title: "Cookies and Tracking" },
+  { id: "children-privacy", title: "Children's Privacy" },
+  { id: "changes", title: "Changes to This Policy" },
+  { id: "contact", title: "Contact Us" },
+] as const;
 
 const PrivacyPolicy = () => {
   const contentRef = useRef<HTMLDivElement>(null);
   const [activeSection, setActiveSection] = useState("");
+  const [remoteTitle, setRemoteTitle] = useState("Privacy Policy");
+  const [remoteContent, setRemoteContent] = useState<string | null>(null);
+  const [remoteLastUpdated, setRemoteLastUpdated] = useState<string>("January 15, 2024");
 
-  const sections = [
-    { id: "introduction", title: "Introduction" },
-    { id: "information-we-collect", title: "Information We Collect" },
-    { id: "how-we-use-information", title: "How We Use Your Information" },
-    { id: "information-sharing", title: "Information Sharing" },
-    { id: "data-security", title: "Data Security" },
-    { id: "your-rights", title: "Your Rights" },
-    { id: "cookies", title: "Cookies and Tracking" },
-    { id: "children-privacy", title: "Children's Privacy" },
-    { id: "changes", title: "Changes to This Policy" },
-    { id: "contact", title: "Contact Us" },
-  ];
+  const sections = PRIVACY_SECTIONS;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -46,7 +52,7 @@ const PrivacyPolicy = () => {
     window.addEventListener("scroll", handleScroll);
     handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [sections]);
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
@@ -118,7 +124,28 @@ const PrivacyPolicy = () => {
     }
   };
 
-  const lastUpdated = "January 15, 2024";
+  const lastUpdated = remoteLastUpdated;
+
+  // Load latest published legal doc from backend (falls back to static content if unavailable)
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const doc = await legalDocumentService.getLatest("privacy_policy");
+        setRemoteTitle(doc.title || "Privacy Policy");
+        setRemoteContent(doc.content || null);
+
+        const updated = doc.effective_at || doc.published_at;
+        if (updated) {
+          // Keep as ISO string for PDF generation; display is fine as-is for now
+          setRemoteLastUpdated(updated);
+        }
+      } catch {
+        // Keep default static content
+      }
+    };
+
+    load();
+  }, []);
 
   useEffect(() => {
     document.title = "Privacy Policy | St. Anthony Catholic Church, Gbaja";
@@ -164,7 +191,7 @@ const PrivacyPolicy = () => {
                 <FileText className="h-12 w-12 text-primary" />
               </div>
               <h1 className="text-4xl md:text-5xl font-heading font-bold mb-4 text-church-charcoal">
-                Privacy Policy
+                {remoteTitle}
               </h1>
               <p className="text-lg text-muted-foreground mb-6">
                 Your privacy is important to us. This policy explains how we collect, use, and protect your information.
@@ -216,7 +243,19 @@ const PrivacyPolicy = () => {
                 {/* Content */}
                 <div className="lg:col-span-3" ref={contentRef}>
                   <div className="prose prose-lg max-w-none">
-                    {/* Introduction */}
+                    {/* Remote legal document (if available) */}
+                    {remoteContent && (
+                      <section className="mb-12">
+                        <h2 className="text-2xl font-heading font-bold text-church-charcoal mb-3">
+                          Official Policy (Latest Published)
+                        </h2>
+                        <div className="whitespace-pre-wrap text-muted-foreground">
+                          {remoteContent}
+                        </div>
+                      </section>
+                    )}
+
+                    {/* Introduction (static fallback / structured content) */}
                     <section id="introduction" className="mb-12 scroll-mt-24">
                       <h2 className="text-3xl font-heading font-bold mb-4 text-church-charcoal">
                         1. Introduction

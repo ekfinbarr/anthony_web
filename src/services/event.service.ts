@@ -16,12 +16,28 @@ export interface Event {
   id: string;
   name: string;
   description?: string;
+  image?: string | File;
   start_date: string;
-  end_date: string;
+  start_time: string;
+  end_date?: string;
+  end_time?: string;
   location?: string;
   is_public: boolean;
   created_at: string;
   updated_at: string;
+  rsvp_enabled?: boolean;
+  max_attendees?: number;
+  status?: string;
+  created_by?: string;
+  approved_by?: string;
+  approved_at?: string;
+  approval_reason?: string;
+  rejected_at?: string;
+  rejection_reason?: string;
+  is_approved?: boolean;
+  is_rejected?: boolean;
+  is_published?: boolean;
+  published_at?: string;
 }
 
 /**
@@ -31,15 +47,20 @@ export interface CreateEventPayload {
   name: string;
   description?: string;
   start_date: string;
-  end_date: string;
+  start_time: string;
+  end_date?: string;
+  end_time?: string;
   location?: string;
   is_public?: boolean;
+  image?: string | File;
+  rsvp_enabled?: boolean;
+  max_attendees?: number;
 }
 
 /**
  * Update Event Payload
  */
-export interface UpdateEventPayload extends Partial<CreateEventPayload> {}
+export type UpdateEventPayload = Partial<CreateEventPayload>;
 
 /**
  * Query Parameters
@@ -51,6 +72,7 @@ export interface EventQueryParams {
   start_date?: string;
   end_date?: string;
   search?: string;
+  [key: string]: string | number | boolean | undefined;
 }
 
 /**
@@ -78,24 +100,77 @@ export const getById = async (id: string): Promise<Event> => {
 /**
  * Create a new event
  * 
- * @param payload Event data
+ * @param payload Event data (can include File for image upload)
  * @returns Created event
  */
 export const create = async (payload: CreateEventPayload): Promise<Event> => {
-  const response = await apiClient.post<Event>('events', payload);
-  return response.data;
+  // Check if payload contains a File object for image upload
+  const hasFile = payload.image instanceof File;
+  
+  if (hasFile) {
+    // Use FormData for file upload
+    const formData = new FormData();
+    
+    // Append all fields to FormData
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        if (value instanceof File) {
+          formData.append(key, value);
+        } else if (typeof value === 'boolean') {
+          formData.append(key, value ? '1' : '0');
+        } else {
+          formData.append(key, String(value));
+        }
+      }
+    });
+    
+    const response = await apiClient.postForm<Event>('events', formData);
+    return response.data;
+  } else {
+    // Use regular JSON POST if no file
+    const response = await apiClient.post<Event>('events', payload);
+    return response.data;
+  }
 };
 
 /**
  * Update an event
  * 
  * @param id Event ID
- * @param payload Updated event data
+ * @param payload Updated event data (can include File for image upload)
  * @returns Updated event
  */
 export const update = async (id: string, payload: UpdateEventPayload): Promise<Event> => {
-  const response = await apiClient.put<Event>(`events/${id}`, payload);
-  return response.data;
+  // Check if payload contains a File object for image upload
+  const hasFile = payload.image instanceof File;
+  
+  if (hasFile) {
+    // Use FormData for file upload
+    const formData = new FormData();
+    
+    // Append all fields to FormData
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        if (value instanceof File) {
+          formData.append(key, value);
+        } else if (typeof value === 'boolean') {
+          formData.append(key, value ? '1' : '0');
+        } else {
+          formData.append(key, String(value));
+        }
+      }
+    });
+    
+    // Use POST with _method=PUT for Laravel to handle multipart/form-data properly
+    // Laravel's method spoofing allows POST requests to be treated as PUT
+    formData.append('_method', 'PUT');
+    const response = await apiClient.postForm<Event>(`events/${id}`, formData);
+    return response.data;
+  } else {
+    // Use regular JSON PUT if no file
+    const response = await apiClient.put<Event>(`events/${id}`, payload);
+    return response.data;
+  }
 };
 
 /**
@@ -156,8 +231,8 @@ export const getByDateRange = async (
  * @param id Event ID
  * @returns RSVP statistics
  */
-export const getRSVPCounts = async (id: string): Promise<any> => {
-  const response = await apiClient.get(`events/${id}/rsvp-counts`);
+export const getRSVPCounts = async (id: string): Promise<unknown> => {
+  const response = await apiClient.get<unknown>(`events/${id}/rsvp-counts`);
   return response.data;
 };
 

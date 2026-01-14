@@ -16,7 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
@@ -25,10 +26,10 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Link } from "react-router-dom";
-import { 
-  Save, 
-  ArrowLeft, 
-  Image as ImageIcon, 
+import {
+  Save,
+  ArrowLeft,
+  Image as ImageIcon,
   X,
   FileText,
   AlertCircle
@@ -36,6 +37,10 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import postService, { Post, CreatePostPayload, UpdatePostPayload } from "@/services/post.service";
+import AttachmentUploadModal from "@/components/attachments/AttachmentUploadModal";
+import { MultiSelect } from "@/components/ui/multi-select";
+import categoryService from "@/services/category.service";
+import tagService from "@/services/tag.service";
 
 const PostFormPage = () => {
   const navigate = useNavigate();
@@ -47,18 +52,36 @@ const PostFormPage = () => {
 
   const [formData, setFormData] = useState({
     title: "",
+    type: "text",
     slug: "",
     summary: "",
     content: "",
-    type: "post",
     published: false,
     image: "",
+    // Video URL (optional). For video posts, this is the primary media URL.
+    video: "",
     allow_comment: true,
+    postType: "post",
+    // Taxonomy selections (UUID arrays)
+    category_ids: [] as string[],
+    tag_ids: [] as string[],
   });
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [autoGenerateSlug, setAutoGenerateSlug] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  /**
+   * Draft attachment group id:
+   * - Backend requires `related_id` for uploads.
+   * - For new posts (no id yet), we upload under a stable "draft" id so multiple uploads
+   *   in one session stay grouped.
+   */
+  const [draftAttachmentGroupId] = useState(() => `post-draft-${Date.now()}`);
+
+  // Shared open states for the reusable upload modal.
+  const [isImageUploadOpen, setIsImageUploadOpen] = useState(false);
+  const [isVideoUploadOpen, setIsVideoUploadOpen] = useState(false);
 
   // Fetch post if editing
   const { data: post, isLoading: isLoadingPost } = useQuery({
@@ -67,23 +90,41 @@ const PostFormPage = () => {
     enabled: isEditMode && !!id,
   });
 
+  // Fetch categories/tags for the multi-selects
+  const categoriesQuery = useQuery({
+    queryKey: ["categories", "active"],
+    queryFn: () => categoryService.list({ active: true }),
+  });
+
+  const tagsQuery = useQuery({
+    queryKey: ["tags", "active"],
+    queryFn: () => tagService.list({ active: true }),
+  });
+
   // Initialize form data
   useEffect(() => {
     // Use setTimeout to avoid synchronous state update in effect
     const timeoutId = setTimeout(() => {
       if (isEditMode && post) {
+        const postData = { ...(post as Post)?.data || {} };
         setFormData({
-          title: post.title || "",
-          slug: post.slug || "",
-          summary: post.summary || "",
-          content: post.content || "",
-          type: post.type || "post",
-          published: post.published || false,
-          image: post.image || "",
-          allow_comment: post.allow_comment ?? true,
+          title: postData.title || "",
+          slug: postData.slug || "",
+          summary: postData.summary || "",
+          content: postData.content || "",
+          type: postData.type || "text",
+          published: postData.published || false,
+          image: postData.image || "",
+          video: postData.video || "",
+          allow_comment: postData.allow_comment ?? true,
+          // Backend returns `post_type`. Keep a local `postType` for UI convenience.
+          postType: postData.post_type || "post",
+          category_ids: (postData.categories || []).map((c) => c.id),
+          tag_ids: (postData.tags || []).map((t) => t.id),
         });
-        setImagePreview(post.image || null);
+        setImagePreview(postData.image || null);
         setAutoGenerateSlug(false);
+
       } else if (!isEditMode) {
         // Reset form for new post
         setFormData({
@@ -91,23 +132,27 @@ const PostFormPage = () => {
           slug: "",
           summary: "",
           content: "",
-          type: "post",
+          type: "text",
           published: false,
           image: "",
+          video: "",
           allow_comment: true,
+          postType: "post",
+          category_ids: [],
+          tag_ids: [],
         });
         setImagePreview(null);
         setAutoGenerateSlug(true);
       }
     }, 0);
-    
+
     return () => clearTimeout(timeoutId);
   }, [post, isEditMode]);
 
   // Auto-generate slug from title
   useEffect(() => {
     if (!autoGenerateSlug || !formData.title || isEditMode) return;
-    
+
     const timeoutId = setTimeout(() => {
       const slug = formData.title
         .toLowerCase()
@@ -115,7 +160,7 @@ const PostFormPage = () => {
         .replace(/(^-|-$)/g, "");
       setFormData((prev) => ({ ...prev, slug }));
     }, 0);
-    
+
     return () => clearTimeout(timeoutId);
   }, [formData.title, autoGenerateSlug, isEditMode]);
 
@@ -142,7 +187,7 @@ const PostFormPage = () => {
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdatePostPayload }) => 
+    mutationFn: ({ id, data }: { id: string; data: UpdatePostPayload }) =>
       postService.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["posts"] });
@@ -165,28 +210,18 @@ const PostFormPage = () => {
 
   const handleInputChange = (
     field: keyof typeof formData,
-    value: string | boolean
+    value: string | boolean | string[]
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // In a real app, you'd upload to a server
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        setImagePreview(result);
-        setFormData((prev) => ({ ...prev, image: result }));
-      };
-      reader.readAsDataURL(file);
-    }
   };
 
   const removeImage = () => {
     setImagePreview(null);
     setFormData((prev) => ({ ...prev, image: "" }));
+  };
+
+  const removeVideo = () => {
+    setFormData((prev) => ({ ...prev, video: "" }));
   };
 
   const handleSubmit = (saveAsDraft: boolean = false) => {
@@ -216,10 +251,16 @@ const PostFormPage = () => {
       summary: formData.summary.trim() || undefined,
       content: formData.content.trim(),
       type: formData.type,
+      // Backend expects snake_case `post_type`
+      post_type: formData.postType || "post",
       published: saveAsDraft ? false : formData.published,
       image: formData.image || undefined,
+      video: formData.video || undefined,
       allow_comment: formData.allow_comment,
       author_id: user?.id || "",
+      // Taxonomy
+      category_ids: formData.category_ids,
+      tag_ids: formData.tag_ids,
     };
 
     if (isEditMode && id) {
@@ -322,6 +363,7 @@ const PostFormPage = () => {
                 />
               </div>
 
+              {/* Slug */}
               <div className="space-y-2">
                 <Label htmlFor="slug">Slug</Label>
                 <div className="flex items-center gap-2">
@@ -343,6 +385,112 @@ const PostFormPage = () => {
                 </div>
               </div>
 
+              {/* Select the type of content. Default is text */}
+              <div className="space-y-2">
+                <Label htmlFor="type">Content Type <span className="text-destructive">*</span></Label>
+                <Select
+                  value={formData.type}
+                  onValueChange={(value) => handleInputChange("type", value)}
+                  disabled={isSubmitting}
+                >
+                  <SelectTrigger id="type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="text">Text</SelectItem>
+                    <SelectItem value="image">Image</SelectItem>
+                    <SelectItem value="video">Video</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+
+              {/* Upload images form with preview. Only show if the post type is image */}
+              {formData.type === "image" && (
+                <div className="space-y-2">
+                  {imagePreview ? (
+                    <div className="relative">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="w-full h-64 object-cover rounded-lg border"
+                      />
+                      {/* Remove current image */}
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-2 right-2"
+                        onClick={removeImage}
+                        disabled={isSubmitting}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                      <ImageIcon className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Upload an image and we’ll return the final URL for this post.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsImageUploadOpen(true)}
+                        disabled={isSubmitting}
+                      >
+                        Upload Image
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Video section (upload OR paste a URL) */}
+              {formData.type === "video" && (
+                <div className="space-y-2">
+                  <Label>Video</Label>
+
+                  {/* Preview (if present) */}
+                  {formData.video ? (
+                    <div className="space-y-2">
+                      {/* If it looks like a direct video file URL, show a player. Otherwise, show a link. */}
+                      {/\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(formData.video) ? (
+                        <video src={formData.video} controls className="w-full h-64 rounded-lg border bg-black" />
+                      ) : (
+                        <a
+                          href={formData.video}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-sm text-primary underline break-all"
+                        >
+                          {formData.video}
+                        </a>
+                      )}
+
+                      <div className="flex gap-2">
+                        <Button type="button" variant="outline" onClick={() => setIsVideoUploadOpen(true)} disabled={isSubmitting}>
+                          Change Video
+                        </Button>
+                        <Button type="button" variant="destructive" onClick={removeVideo} disabled={isSubmitting}>
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Upload a video file (recommended) or paste a video URL.
+                      </p>
+                      <Button type="button" variant="outline" onClick={() => setIsVideoUploadOpen(true)} disabled={isSubmitting}>
+                        Upload / Paste Video URL
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="summary">Summary</Label>
                 <Textarea
@@ -358,23 +506,26 @@ const PostFormPage = () => {
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="content">
-                  Content <span className="text-destructive">*</span>
-                </Label>
-                <Textarea
-                  id="content"
-                  placeholder="Write your post content here..."
-                  value={formData.content}
-                  onChange={(e) => handleInputChange("content", e.target.value)}
-                  rows={16}
-                  className="font-mono text-sm min-h-[400px]"
-                  disabled={isSubmitting}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {formData.content.length} characters
-                </p>
-              </div>
+
+
+              {/* Content editor. Only show if the post type is text */}
+              {formData.type === "text" && (
+                <div className="space-y-2">
+                  <Label htmlFor="content">
+                    Content <span className="text-destructive">*</span>
+                  </Label>
+                  <RichTextEditor
+                    value={formData.content}
+                    onChange={(value) => handleInputChange("content", value)}
+                    placeholder="Write your post content here..."
+                    disabled={isSubmitting}
+                    minHeight="400px"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {formData.content.replace(/<[^>]*>/g, "").length} characters
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -408,22 +559,12 @@ const PostFormPage = () => {
               ) : (
                 <div className="border-2 border-dashed rounded-lg p-6 text-center">
                   <ImageIcon className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                  <Label htmlFor="image-upload" className="cursor-pointer">
-                    <span className="text-sm text-muted-foreground block mb-2">
-                      Click to upload or drag and drop
-                    </span>
-                    <input
-                      id="image-upload"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleImageChange}
-                      disabled={isSubmitting}
-                    />
-                    <Button type="button" variant="outline" size="sm" asChild>
-                      <span>Choose File</span>
-                    </Button>
-                  </Label>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Upload a cover image and we’ll store the returned URL in the post.
+                  </p>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setIsImageUploadOpen(true)} disabled={isSubmitting}>
+                    Upload Cover Image
+                  </Button>
                 </div>
               )}
             </CardContent>
@@ -440,11 +581,11 @@ const PostFormPage = () => {
               <div className="space-y-2">
                 <Label htmlFor="type">Post Type</Label>
                 <Select
-                  value={formData.type}
-                  onValueChange={(value) => handleInputChange("type", value)}
+                  value={formData.postType}
+                  onValueChange={(value) => handleInputChange("postType", value)}
                   disabled={isSubmitting}
                 >
-                  <SelectTrigger id="type">
+                  <SelectTrigger id="postType">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -456,7 +597,43 @@ const PostFormPage = () => {
                 </Select>
               </div>
 
+              {/* Categories: multi-select */}
+              <div className="space-y-2">
+                <Label htmlFor="categories">Categories</Label>
+                <MultiSelect
+                  label={undefined}
+                  options={(categoriesQuery.data?.data || []).map((c) => ({
+                    value: c.id,
+                    label: c.label,
+                    description: c.slug,
+                  }))}
+                  value={formData.category_ids}
+                  onValueChange={(next) => handleInputChange("category_ids", next)}
+                  placeholder={categoriesQuery.isLoading ? "Loading categories..." : "Select categories..."}
+                  searchPlaceholder="Search categories..."
+                  disabled={isSubmitting || categoriesQuery.isLoading}
+                />
+              </div>
+
               <Separator />
+
+              {/* Tags: multi-select */}
+              <div className="space-y-2">
+                <Label htmlFor="tags">Tags</Label>
+                <MultiSelect
+                  label={undefined}
+                  options={(tagsQuery.data?.data || []).map((t) => ({
+                    value: t.id,
+                    label: t.label,
+                    description: t.slug,
+                  }))}
+                  value={formData.tag_ids}
+                  onValueChange={(next) => handleInputChange("tag_ids", next)}
+                  placeholder={tagsQuery.isLoading ? "Loading tags..." : "Select tags..."}
+                  searchPlaceholder="Search tags..."
+                  disabled={isSubmitting || tagsQuery.isLoading}
+                />
+              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="published">Status</Label>
@@ -512,8 +689,8 @@ const PostFormPage = () => {
                     ? "Updating..."
                     : "Creating..."
                   : isEditMode
-                  ? "Update Post"
-                  : "Create Post"}
+                    ? "Update Post"
+                    : "Create Post"}
               </Button>
               <Button
                 variant="secondary"
@@ -536,6 +713,41 @@ const PostFormPage = () => {
           </Card>
         </div>
       </div>
+
+      {/* Reusable Attachment Upload Modals */}
+      {/* These modals upload to the backend and return a final public URL. */}
+      <AttachmentUploadModal
+        open={isImageUploadOpen}
+        onOpenChange={setIsImageUploadOpen}
+        title="Upload Image"
+        description="Upload a photo."
+        relatedType="post"
+        relatedId={isEditMode && id ? id : draftAttachmentGroupId}
+        kinds={["image"]}
+        onUploaded={(url) => {
+          // Store the returned URL in the form (this is what gets saved in the Post record).
+          setFormData((prev) => ({ ...prev, image: url }));
+          // if content type is image, add the image to the content
+          if (formData.type === "image") {
+            setFormData((prev) => ({ ...prev, content: prev.content ? prev.content + `<img src="${url}" alt="Image" />` : `<img src="${url}" alt="Image" />` }));
+          }
+          setImagePreview(url);
+        }}
+      />
+
+      <AttachmentUploadModal
+        open={isVideoUploadOpen}
+        onOpenChange={setIsVideoUploadOpen}
+        title="Upload Video"
+        description="Upload a video file or paste a URL."
+        relatedType="post"
+        relatedId={isEditMode && id ? id : draftAttachmentGroupId}
+        kinds={["video"]}
+        allowUrlPaste
+        onUploaded={(url) => {
+          setFormData((prev) => ({ ...prev, video: url, content: prev.content ? prev.content + `<video src="${url}" controls></video>` : `<video src="${url}" controls></video>` }));
+        }}
+      />
     </div>
   );
 };

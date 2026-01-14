@@ -126,7 +126,8 @@ export function useSpiritualGrowth(
       });
 
       // Update query cache
-      const dashboardData = queryClient.getQueryData(['dashboardData']) as any;
+      type DashboardDataCache = { spiritualGrowth?: SpiritualGrowth } & Record<string, unknown>;
+      const dashboardData = queryClient.getQueryData<DashboardDataCache>(['dashboardData']);
       if (dashboardData) {
         queryClient.setQueryData(['dashboardData'], {
           ...dashboardData,

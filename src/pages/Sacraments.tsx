@@ -329,7 +329,7 @@ const Sacraments = () => {
 
   // Filter and sort
   const filteredAndSortedSacraments = useMemo(() => {
-    let filtered = sacraments.filter((sacrament) => {
+    const filtered = sacraments.filter((sacrament) => {
       const matchesSearch =
         searchTerm === "" ||
         sacrament.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

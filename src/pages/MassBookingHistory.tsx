@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Calendar, Clock, User, FileText, Search, Filter, Eye, CheckCircle, Clock as ClockIcon, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
+import massBookingService, { MassBooking } from "@/services/massBooking.service";
 
 /**
  * MassBookingHistory Component
@@ -19,60 +21,31 @@ const MassBookingHistory = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [intentionFilter, setIntentionFilter] = useState("all");
+  const [bookings, setBookings] = useState<MassBooking[]>([]);
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
-  // Sample booking data - in real app, this would come from API
-  const bookings = [
-    {
-      id: 1,
-      date: new Date("2024-12-25"),
-      time: "morning",
-      intentionType: "thanksgiving",
-      persons: "John and Mary Smith",
-      status: "completed",
-      additionalNotes: "Thanksgiving for successful surgery",
-      bookedOn: new Date("2024-12-15"),
-    },
-    {
-      id: 2,
-      date: new Date("2024-12-28"),
-      time: "evening",
-      intentionType: "sick",
-      persons: "Grandmother Elizabeth",
-      status: "accepted",
-      additionalNotes: "Prayers for recovery from illness",
-      bookedOn: new Date("2024-12-18"),
-    },
-    {
-      id: 3,
-      date: new Date("2025-01-05"),
-      time: "morning",
-      intentionType: "anniversary",
-      persons: "Parents - 25th Wedding Anniversary",
-      status: "pending",
-      additionalNotes: "Special prayers for continued love and happiness",
-      bookedOn: new Date("2024-12-20"),
-    },
-    {
-      id: 4,
-      date: new Date("2024-12-22"),
-      time: "evening",
-      intentionType: "dead",
-      persons: "Uncle Michael (RIP)",
-      status: "completed",
-      additionalNotes: "Monthly remembrance Mass",
-      bookedOn: new Date("2024-12-10"),
-    },
-    {
-      id: 5,
-      date: new Date("2025-01-15"),
-      time: "morning",
-      intentionType: "birthday",
-      persons: "Daughter Sarah - 16th Birthday",
-      status: "accepted",
-      additionalNotes: "Prayers for guidance and protection",
-      bookedOn: new Date("2024-12-22"),
-    },
-  ];
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const response = await massBookingService.listMine();
+        setBookings(response.data || []);
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : "Failed to load your Mass bookings. Please ensure you are logged in.";
+        setBookings([]);
+        toast({
+          title: "Error",
+          description: message,
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, [toast]);
 
   const intentionOptions = [
     { value: "thanksgiving", label: "Thanksgiving" },
@@ -87,15 +60,17 @@ const MassBookingHistory = () => {
   const statusOptions = [
     { value: "all", label: "All Status" },
     { value: "pending", label: "Pending" },
-    { value: "accepted", label: "Accepted" },
-    { value: "completed", label: "Completed" },
+    { value: "approved", label: "Approved" },
+    { value: "rejected", label: "Rejected" },
+    { value: "cancelled", label: "Cancelled" },
   ];
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       pending: { variant: "secondary" as const, icon: ClockIcon, label: "Pending" },
-      accepted: { variant: "default" as const, icon: CheckCircle, label: "Accepted" },
-      completed: { variant: "default" as const, icon: CheckCircle, label: "Completed" },
+      approved: { variant: "default" as const, icon: CheckCircle, label: "Approved" },
+      rejected: { variant: "destructive" as const, icon: XCircle, label: "Rejected" },
+      cancelled: { variant: "secondary" as const, icon: XCircle, label: "Cancelled" },
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
@@ -113,21 +88,36 @@ const MassBookingHistory = () => {
     return intentionOptions.find(option => option.value === type)?.label || type;
   };
 
-  const getTimeLabel = (time: string) => {
-    return time === "morning" ? "Morning Mass (7:00 AM - 9:00 AM)" : "Evening Mass (6:00 PM - 7:00 PM)";
+  const getScheduleLabel = (booking: MassBooking) => {
+    const s = booking.mass_schedule;
+    if (!s) return "Mass schedule";
+    return `${s.title} — ${s.day_of_week} ${s.start_time}`;
   };
 
   // Filter bookings based on search and filters
-  const filteredBookings = bookings.filter(booking => {
-    const matchesSearch = booking.persons.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         booking.additionalNotes.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || booking.status === statusFilter;
-    const matchesIntention = intentionFilter === "all" || booking.intentionType === intentionFilter;
+  const filteredBookings = useMemo(() => {
+    return bookings.filter((booking) => {
+      const search = searchTerm.toLowerCase();
+      const offeredBy = (booking.offered_by || "").toLowerCase();
+      const intention = (booking.intention || "").toLowerCase();
+      const reference = (booking.reference || "").toLowerCase();
 
-    return matchesSearch && matchesStatus && matchesIntention;
-  });
+      const matchesSearch =
+        offeredBy.includes(search) || intention.includes(search) || reference.includes(search);
+      const matchesStatus = statusFilter === "all" || booking.status === statusFilter;
+      const metaIntentionType = (() => {
+        const meta = booking.metadata;
+        if (!meta || typeof meta !== "object") return undefined;
+        const v = (meta as Record<string, unknown>)["intention_type"];
+        return typeof v === "string" ? v : undefined;
+      })();
+      const matchesIntention = intentionFilter === "all" || metaIntentionType === intentionFilter;
 
-  if (bookings.length === 0) {
+      return matchesSearch && matchesStatus && matchesIntention;
+    });
+  }, [bookings, intentionFilter, searchTerm, statusFilter]);
+
+  if (!loading && bookings.length === 0) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <motion.div
@@ -227,6 +217,9 @@ const MassBookingHistory = () => {
       {/* Bookings List */}
       <section className="py-8 bg-background">
         <div className="container mx-auto px-4">
+          {loading ? (
+            <div className="text-center py-12 text-muted-foreground">Loading your bookings...</div>
+          ) : (
           <div className="space-y-6">
             {filteredBookings.length === 0 ? (
               <div className="text-center py-12">
@@ -250,13 +243,13 @@ const MassBookingHistory = () => {
                             <div className="flex items-center gap-2">
                               <Calendar className="h-5 w-5 text-primary" />
                               <span className="font-semibold text-church-charcoal">
-                                {format(booking.date, "EEEE, MMMM d, yyyy")}
+                                {format(new Date(booking.booking_date), "EEEE, MMMM d, yyyy")}
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
                               <Clock className="h-5 w-5 text-primary" />
                               <span className="text-muted-foreground">
-                                {getTimeLabel(booking.time)}
+                                {getScheduleLabel(booking)}
                               </span>
                             </div>
                             {getStatusBadge(booking.status)}
@@ -268,7 +261,7 @@ const MassBookingHistory = () => {
                                 <User className="h-4 w-4 text-primary" />
                                 <span className="font-medium text-church-charcoal">For:</span>
                               </div>
-                              <p className="text-muted-foreground ml-6">{booking.persons}</p>
+                              <p className="text-muted-foreground ml-6">{booking.offered_by || "—"}</p>
                             </div>
 
                             <div>
@@ -276,20 +269,29 @@ const MassBookingHistory = () => {
                                 <FileText className="h-4 w-4 text-primary" />
                                 <span className="font-medium text-church-charcoal">Intention:</span>
                               </div>
-                              <p className="text-muted-foreground ml-6">{getIntentionLabel(booking.intentionType)}</p>
+                              <p className="text-muted-foreground ml-6">
+                                {getIntentionLabel(
+                                  (() => {
+                                    const meta = booking.metadata;
+                                    if (!meta || typeof meta !== "object") return "special";
+                                    const v = (meta as Record<string, unknown>)["intention_type"];
+                                    return typeof v === "string" ? v : "special";
+                                  })()
+                                )}
+                              </p>
                             </div>
                           </div>
 
-                          {booking.additionalNotes && (
+                          {booking.intention && (
                             <div className="mt-4">
                               <p className="text-sm text-muted-foreground">
-                                <strong>Notes:</strong> {booking.additionalNotes}
+                                <strong>Notes:</strong> {booking.intention}
                               </p>
                             </div>
                           )}
 
                           <div className="mt-4 text-xs text-muted-foreground">
-                            Booked on {format(booking.bookedOn, "MMM d, yyyy 'at' h:mm a")}
+                            Booked on {format(new Date(booking.created_at), "MMM d, yyyy 'at' h:mm a")}
                           </div>
                         </div>
 
@@ -306,6 +308,7 @@ const MassBookingHistory = () => {
               ))
             )}
           </div>
+          )}
         </div>
       </section>
     </div>

@@ -343,7 +343,12 @@ export function usePersonalization(config: PersonalizationConfig = {}) {
   /**
    * Track feature usage
    */
-  const trackFeatureUsage = useCallback((feature: string, context?: Record<string, any>) => {
+  type FeatureContext = {
+    groupSize?: 'small' | 'medium' | 'large';
+    participationLevel?: 'observer' | 'participant' | 'leader';
+  } & Record<string, unknown>;
+
+  const trackFeatureUsage = useCallback((feature: string, context?: FeatureContext) => {
     updateActivityFrequency(`feature_${feature}`, 1);
     
     if (context?.groupSize) {

@@ -1,8 +1,35 @@
 class MessageParser {
-  actionProvider: any;
-  state: any;
+  actionProvider: {
+    greet: () => void;
+    handleMassTimes: () => void;
+    handleLocation: () => void;
+    handleContact: () => void;
+    handleDonations: () => void;
+    handleEvents: () => void;
+    handleVolunteer: () => void;
+    handleSermons: () => void;
+    handleYouthMinistry: () => void;
+    handleAdultMinistry: () => void;
+    handleOutreach: () => void;
+    handleLeadership: () => void;
+    handleMission: () => void;
+    handlePriest: () => void;
+    handleConfession: () => void;
+    handlePrayer: () => void;
+    handleClinic: () => void;
+    handleBaptism: () => void;
+    handleWedding: () => void;
+    handleFuneral: () => void;
+    handleFAQ: () => void;
+    handleNews: () => void;
+    handleHarvest: () => void;
+    handleThanks: () => void;
+    handleBye: () => void;
+    handleDefault: () => void;
+  };
+  state: unknown;
 
-  constructor(actionProvider: any, state: any) {
+  constructor(actionProvider: MessageParser["actionProvider"], state: unknown) {
     this.actionProvider = actionProvider;
     this.state = state;
   }
@@ -54,16 +81,11 @@ class MessageParser {
       this.actionProvider.handleFAQ();
     } else if (lowerCaseMessage.includes("news")) {
       this.actionProvider.handleNews();
-    } else if (lowerCaseMessage.includes("contact")) {
-      this.actionProvider.handleContact();
     } else if (lowerCaseMessage.includes("harvest")) {
       this.actionProvider.handleHarvest();
-    }
-    else if (lowerCaseMessage.includes("thank")) {
-      this.actionProvider.handleThanks();
     } else if (lowerCaseMessage.includes("bye")) {
       this.actionProvider.handleBye();
-    } else if (lowerCaseMessage.includes("thanks")) {
+    } else if (lowerCaseMessage.includes("thank")) {
       this.actionProvider.handleThanks();
     } else if (lowerCaseMessage.includes("goodbye")) {
       this.actionProvider.handleBye();
@@ -78,8 +100,6 @@ class MessageParser {
     } else if (lowerCaseMessage.includes("why")) {
       this.actionProvider.handleDefault();
     } else if (lowerCaseMessage.includes("who")) {
-      this.actionProvider.handleDefault();
-    } else if (lowerCaseMessage.includes("help")) {
       this.actionProvider.handleDefault();
     } else if (lowerCaseMessage.includes("cancel")) {
       this.actionProvider.handleDefault();

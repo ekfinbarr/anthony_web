@@ -40,7 +40,7 @@ export interface CreateNewsPayload {
 /**
  * Update News Payload
  */
-export interface UpdateNewsPayload extends Partial<CreateNewsPayload> {}
+export type UpdateNewsPayload = Partial<CreateNewsPayload>;
 
 /**
  * Query Parameters

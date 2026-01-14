@@ -18,9 +18,9 @@ import { spiritualMetricsUtils } from '@/lib/spiritual-metrics';
 interface SpiritualGrowthTrackerProps {
   spiritualGrowth: SpiritualGrowth | null;
   recommendations: AIRecommendation[];
-  onActivityAdd: (activity: any) => Promise<any>;
-  onGoalAdd: (goal: any) => Promise<any>;
-  onFeatureClick: (feature: string, context?: Record<string, any>) => void;
+  onActivityAdd: (activity: unknown) => Promise<unknown>;
+  onGoalAdd: (goal: unknown) => Promise<unknown>;
+  onFeatureClick: (feature: string, context?: Record<string, unknown>) => void;
   isLoading: boolean;
 }
 

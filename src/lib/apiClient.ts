@@ -94,7 +94,7 @@ class ApiClient {
   private buildHeaders(customHeaders?: Record<string, string>): HeadersInit {
     const headers: Record<string, string> = { ...this.defaultHeaders, ...customHeaders };
     const token = this.getAuthToken();
-    
+
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
@@ -115,15 +115,15 @@ class ApiClient {
   private handleUnauthorized(): void {
     // Clear authentication data from localStorage
     localStorage.removeItem('church_user');
-    
+
     // Only redirect if we're in a browser environment and not already on login page
     // This prevents infinite redirect loops
     if (typeof window !== 'undefined') {
       const currentPath = window.location.pathname;
-      const isAuthPage = currentPath.includes('/auth/login') || 
-                        currentPath.includes('/auth/register') ||
-                        currentPath === '/';
-      
+      const isAuthPage = currentPath.includes('/auth/login') ||
+        currentPath.includes('/auth/register') ||
+        currentPath === '/';
+
       if (!isAuthPage) {
         // Store the current path to redirect back after login
         const returnUrl = currentPath + window.location.search;
@@ -159,17 +159,17 @@ class ApiClient {
       if (response.status === 401) {
         this.handleUnauthorized();
       }
-      
+
       // Extract error message from response data
       // Backend may return error in different formats:
       // - { message: "Error message" }
       // - { error: "Error message" }
       // - { errors: { field: ["Error message"] } }
       let errorMessage = `HTTP error! status: ${response.status}`;
-      
+
       if (data && typeof data === 'object') {
         const errorData = data as Record<string, unknown>;
-        
+
         // Try to extract error message from various possible formats
         if (errorData.message) {
           errorMessage = String(errorData.message);
@@ -184,7 +184,7 @@ class ApiClient {
           }
         }
       }
-      
+
       // Create error object with status code and response data
       const error = new Error(errorMessage) as Error & { status: number; data: T };
       error.status = response.status;
@@ -209,6 +209,12 @@ class ApiClient {
   ): Promise<ApiResponse<T>> {
     const url = this.buildURL(endpoint);
     const headers = this.buildHeaders(options.headers as Record<string, string>);
+
+    // If sending FormData, DO NOT set Content-Type manually; the browser will set the multipart boundary.
+    // Keeping 'application/json' here breaks file uploads on many servers.
+    if (typeof FormData !== "undefined" && options.body instanceof FormData) {
+      delete (headers as Record<string, string>)["Content-Type"];
+    }
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
@@ -251,22 +257,73 @@ class ApiClient {
   /**
    * POST request
    */
-  async post<T = unknown>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
+  // async post<T = unknown>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
+  //   return this.makeRequest<T>(endpoint, {
+  //     method: 'POST',
+  //     body: data ? JSON.stringify(data) : undefined,
+  //   });
+  // }
+  /**
+ * POST request (JSON or FormData)
+ */
+  async post<T = unknown>(
+    endpoint: string,
+    data?: unknown | FormData,
+    headers?: Record<string, string>
+  ): Promise<ApiResponse<T>> {
+    const isFormData = data instanceof FormData;
+
     return this.makeRequest<T>(endpoint, {
-      method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
+      method: "POST",
+      body: data
+        ? isFormData
+          ? data
+          : JSON.stringify(data)
+        : undefined,
+      headers: { ...(isFormData ? undefined : { "Content-Type": "application/json" }), ...headers },  
+    });
+  }
+
+
+  /**
+   * POST multipart/form-data (file upload)
+   */
+  async postForm<T = unknown>(endpoint: string, formData: FormData): Promise<ApiResponse<T>> {
+    return this.makeRequest<T>(endpoint, {
+      method: "POST",
+      body: formData,
     });
   }
 
   /**
    * PUT request
    */
-  async put<T = unknown>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
+  // async put<T = unknown>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
+  //   return this.makeRequest<T>(endpoint, {
+  //     method: 'PUT',
+  //     body: data ? JSON.stringify(data) : undefined,
+  //   });
+  // }
+  /**
+ * PUT request (JSON or FormData)
+ */
+  async put<T = unknown>(
+    endpoint: string,
+    data?: unknown | FormData,
+    headers?: Record<string, string>
+  ): Promise<ApiResponse<T>> {
+    const isFormData = data instanceof FormData;
     return this.makeRequest<T>(endpoint, {
-      method: 'PUT',
-      body: data ? JSON.stringify(data) : undefined,
+      method: "PUT",
+      body: data
+        ? isFormData
+          ? data
+          : JSON.stringify(data)
+        : undefined,
+      headers: { ...(isFormData ? undefined : { "Content-Type": "application/json" }), ...headers },
     });
   }
+
 
   /**
    * PATCH request

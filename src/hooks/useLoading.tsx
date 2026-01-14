@@ -6,14 +6,18 @@ export const useLoading = () => {
   const location = useLocation();
 
   useEffect(() => {
-    setIsLoading(true);
+    // Reset loading state asynchronously (lint rule blocks sync setState in effects).
+    const start = setTimeout(() => setIsLoading(true), 0);
 
     // Simulate loading time or wait for actual data loading
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 800); // Adjust timing as needed
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(start);
+      clearTimeout(timer);
+    };
   }, [location.pathname]);
 
   return { isLoading };

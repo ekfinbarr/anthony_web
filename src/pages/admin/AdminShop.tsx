@@ -1,250 +1,441 @@
-import { useState } from "react";
+/**
+ * Admin Bookshop Management Page
+ * 
+ * Comprehensive admin dashboard for managing bookshop inventory with:
+ * - List view with search, filters, and pagination
+ * - Create/Edit functionality
+ * - Product details view
+ * - Delete with confirmation
+ * 
+ * @package Lovable/src/pages/admin
+ */
+
+import { useState, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, Search, MoreVertical, Edit, Trash2, Download, Eye, ShoppingBag, Package, Settings, Upload } from "lucide-react";
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger,
+  DropdownMenuSeparator 
+} from "@/components/ui/dropdown-menu";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import { 
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
+import { Skeleton } from "@/components/ui/skeleton";
+import { 
+  Plus, 
+  Search, 
+  MoreVertical, 
+  Eye, 
+  Edit, 
+  Trash2, 
+  ShoppingBag,
+  Package,
+  DollarSign,
+  AlertCircle
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import DeleteConfirmModal from "@/components/admin/shared/DeleteConfirmModal";
+import { StatusBadge } from "@/components/admin/shared/StatusBadge";
+import { GenericEmptyState } from "@/components/admin/shared/GenericEmptyState";
+import adminBookshopService, { BookshopProductAdmin } from "@/services/adminBookshop.service";
 
-const mockProducts = [
-  { id: 1, name: "Rosary Beads - Crystal", category: "Devotional Items", price: 5000, stock: 45, status: "published", featured: true, showPrice: true },
-  { id: 2, name: "Holy Bible (Revised Edition)", category: "Books", price: 12000, stock: 30, status: "published", featured: false, showPrice: true },
-  { id: 3, name: "Altar Candles (Pack of 6)", category: "Liturgical Items", price: 3500, stock: 100, status: "published", featured: false, showPrice: true },
-  { id: 4, name: "Saint Anthony Statue", category: "Statues", price: 25000, stock: 8, status: "draft", featured: true, showPrice: false },
-  { id: 5, name: "Church Hymn Book", category: "Books", price: 2500, stock: 75, status: "published", featured: false, showPrice: true },
-];
+// Note: These interfaces should match your backend API
+interface Product {
+  slug: string;
+  name: string;
+  category: string;
+  price: number;
+  stock: number;
+  status: "published" | "draft";
+  featured: boolean;
+  show_price: boolean;
+}
 
-const mockOrders = [
-  { id: 1, customer: "John Adeyemi", items: 3, total: 17500, status: "pending", date: "2024-01-15" },
-  { id: 2, customer: "Mary Okonkwo", items: 1, total: 12000, status: "completed", date: "2024-01-14" },
-  { id: 3, customer: "David Eze", items: 5, total: 45000, status: "processing", date: "2024-01-13" },
-];
+interface Order {
+  id: string;
+  customer_name: string;
+  items_count: number;
+  total: number;
+  status: "pending" | "processing" | "completed" | "cancelled";
+  date: string;
+}
 
 const AdminShop = () => {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const handleExport = (format: string) => {
-    toast({ title: `Exporting as ${format.toUpperCase()}`, description: "Your download will start shortly." });
+  // State management
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(15);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("products");
+
+  /**
+   * Products (admin)
+   *
+   * We fetch products from the backend and normalize them into the table UI model.
+   */
+  const productsQuery = useQuery({
+    queryKey: ["admin-bookshop-products"],
+    queryFn: () => adminBookshopService.listProducts({ per_page: 100 }),
+  });
+
+  const products: Product[] = useMemo(() => {
+    const list = (productsQuery.data?.data || []) as BookshopProductAdmin[];
+
+    return list.map((p) => {
+      const priceNumber =
+        p.price === null || p.price === undefined
+          ? 0
+          : typeof p.price === "string"
+            ? Number(p.price)
+            : p.price;
+
+      return {
+        slug: p.slug,
+        name: p.title,
+        category: p.category?.name || "—",
+        price: Number.isFinite(priceNumber) ? priceNumber : 0,
+        stock: p.stock_quantity ?? 0,
+        status: p.is_active ? "published" : "draft",
+        featured: Boolean(p.is_featured),
+        show_price: Boolean(p.price && Number(priceNumber) > 0),
+      };
+    });
+  }, [productsQuery.data]);
+
+  // Orders (not wired yet; kept as placeholder)
+  const orders: Order[] = [];
+
+  const handleCreate = () => {
+    navigate("/admin/shop/new");
   };
 
-  const formatAmount = (amount: number) => new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount);
+  const handleEdit = (product: Product) => {
+    navigate(`/admin/shop/${product.slug}/edit`);
+  };
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      published: "default",
-      draft: "secondary",
-      pending: "outline",
-      processing: "outline",
-      completed: "default",
-    };
-    return <Badge variant={variants[status] || "secondary"}>{status}</Badge>;
+  const handleDelete = (product: Product) => {
+    setSelectedProduct(product);
+    setIsDeleteOpen(true);
+  };
+
+  const deleteMutation = useMutation({
+    mutationFn: (slug: string) => adminBookshopService.deleteProduct(slug),
+    onSuccess: () => {
+      toast({
+        title: "Deleted",
+        description: "Product deleted successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["admin-bookshop-products"] });
+      setIsDeleteOpen(false);
+      setSelectedProduct(null);
+    },
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : "Failed to delete product";
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const formatAmount = (amount: number) => {
+    return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount);
   };
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-heading font-bold text-foreground">Articles & Liturgical Shop</h1>
-          <p className="text-muted-foreground">Manage shop items, orders, and settings.</p>
+          <h1 className="text-3xl font-heading font-bold text-foreground">Bookshop Management</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage liturgical items, books, and gift shop inventory.
+          </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" className="gap-2" onClick={() => setIsSettingsOpen(true)}>
-            <Settings className="h-4 w-4" /> Shop Settings
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2"><Download className="h-4 w-4" /> Export</Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => handleExport("csv")}>Export as CSV</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport("excel")}>Export as Excel</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport("pdf")}>Export as PDF</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport("json")}>Export as JSON</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2"><Plus className="h-4 w-4" /> Add Product</Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader><DialogTitle>Add Product</DialogTitle></DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
-                  <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">Upload product images</p>
-                  <Button variant="outline" size="sm" className="mt-2">Browse</Button>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Product Name</Label>
-                    <Input placeholder="e.g., Rosary Beads" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Category</Label>
-                    <Select>
-                      <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="devotional">Devotional Items</SelectItem>
-                        <SelectItem value="books">Books</SelectItem>
-                        <SelectItem value="liturgical">Liturgical Items</SelectItem>
-                        <SelectItem value="statues">Statues</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Price (₦)</Label>
-                    <Input type="number" placeholder="5000" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Stock Quantity</Label>
-                    <Input type="number" placeholder="50" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Description</Label>
-                  <Textarea placeholder="Product description..." rows={3} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label>Show Price to Public</Label>
-                  <Switch defaultChecked />
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-                  <Button onClick={() => { setIsCreateOpen(false); toast({ title: "Product added successfully" }); }}>Add Product</Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+        <Button onClick={handleCreate} className="gap-2">
+          <Plus className="h-4 w-4" /> New Product
+        </Button>
       </div>
 
-      <Tabs defaultValue="products" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
-          <TabsTrigger value="products" className="gap-2"><Package className="h-4 w-4" /> Products</TabsTrigger>
-          <TabsTrigger value="orders" className="gap-2"><ShoppingBag className="h-4 w-4" /> Orders</TabsTrigger>
+          <TabsTrigger value="products">Products</TabsTrigger>
+          <TabsTrigger value="orders">Orders</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="products" className="space-y-4">
+        {/* Products Tab */}
+        <TabsContent value="products" className="space-y-6">
+          {/* Filters */}
           <Card>
             <CardContent className="p-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search products..." className="pl-9" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search products..."
+                    className="pl-9"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                  />
+                </div>
+                <Select value={categoryFilter} onValueChange={(value) => {
+                  setCategoryFilter(value);
+                  setCurrentPage(1);
+                }}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    <SelectItem value="books">Books</SelectItem>
+                    <SelectItem value="devotional">Devotional Items</SelectItem>
+                    <SelectItem value="liturgical">Liturgical Items</SelectItem>
+                    <SelectItem value="statues">Statues</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={statusFilter} onValueChange={(value) => {
+                  setStatusFilter(value);
+                  setCurrentPage(1);
+                }}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="published">Published</SelectItem>
+                    <SelectItem value="draft">Draft</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </CardContent>
           </Card>
+
+          {/* Products Table */}
           <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead>Stock</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-[80px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {mockProducts.map((product) => (
-                  <TableRow key={product.id}>
-                    <TableCell className="font-medium">{product.name}</TableCell>
-                    <TableCell><Badge variant="secondary">{product.category}</Badge></TableCell>
-                    <TableCell className="font-semibold text-primary">{product.showPrice ? formatAmount(product.price) : "Contact for price"}</TableCell>
-                    <TableCell>{product.stock} units</TableCell>
-                    <TableCell>{getStatusBadge(product.status)}</TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem><Eye className="mr-2 h-4 w-4" />View</DropdownMenuItem>
-                          <DropdownMenuItem><Edit className="mr-2 h-4 w-4" />Edit</DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <CardHeader>
+              <CardTitle>All Products</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {productsQuery.isLoading ? (
+                <div className="py-10">
+                  <Skeleton className="h-10 w-full mb-3" />
+                  <Skeleton className="h-10 w-full mb-3" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : products.length === 0 ? (
+                <GenericEmptyState
+                  title="No products found"
+                  description="Get started by adding your first product"
+                  actionLabel="Add Product"
+                  onAction={handleCreate}
+                  icon="shopping"
+                />
+              ) : (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Product</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Price</TableHead>
+                        <TableHead>Stock</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="w-[80px] text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {products
+                        .filter((p) => {
+                          const matchesSearch =
+                            !searchQuery ||
+                            p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            p.category.toLowerCase().includes(searchQuery.toLowerCase());
+                          const matchesStatus =
+                            statusFilter === "all" || p.status === statusFilter;
+                          return matchesSearch && matchesStatus;
+                        })
+                        .map((product) => (
+                        <TableRow key={product.slug} className="hover:bg-muted/50">
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+                              {product.name}
+                            </div>
+                          </TableCell>
+                          <TableCell>{product.category}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <DollarSign className="h-4 w-4 text-muted-foreground" />
+                              {product.show_price ? formatAmount(product.price) : "Contact"}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Package className="h-4 w-4 text-muted-foreground" />
+                              {product.stock}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge 
+                              status={product.status === "published" ? "active" : "inactive"}
+                              customLabel={product.status}
+                            />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuItem asChild>
+                                  <Link to={`/admin/shop/${product.slug}`}>
+                                    <Eye className="mr-2 h-4 w-4" />View
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleEdit(product)}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  onClick={() => handleDelete(product)}
+                                  className="text-destructive"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="orders" className="space-y-4">
+        {/* Orders Tab */}
+        <TabsContent value="orders" className="space-y-6">
           <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Order ID</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Items</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="w-[80px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {mockOrders.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell className="font-medium">#{order.id.toString().padStart(5, '0')}</TableCell>
-                    <TableCell>{order.customer}</TableCell>
-                    <TableCell>{order.items} items</TableCell>
-                    <TableCell className="font-semibold text-primary">{formatAmount(order.total)}</TableCell>
-                    <TableCell>{getStatusBadge(order.status)}</TableCell>
-                    <TableCell>{order.date}</TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <CardHeader>
+              <CardTitle>Orders</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {orders.length === 0 ? (
+                <GenericEmptyState
+                  title="No orders found"
+                  description="Orders will appear here"
+                  icon="shopping"
+                />
+              ) : (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Customer</TableHead>
+                        <TableHead>Items</TableHead>
+                        <TableHead>Total</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="w-[80px] text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {orders.map((order) => (
+                        <TableRow key={order.id} className="hover:bg-muted/50">
+                          <TableCell className="font-medium">{order.customer_name}</TableCell>
+                          <TableCell>{order.items_count}</TableCell>
+                          <TableCell>{formatAmount(order.total)}</TableCell>
+                          <TableCell>{new Date(order.date).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            <StatusBadge 
+                              status={
+                                order.status === "completed" ? "active" :
+                                order.status === "cancelled" ? "cancelled" : "pending"
+                              }
+                              customLabel={order.status}
+                            />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuItem>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Details
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
 
-      {/* Shop Settings Dialog */}
-      <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Shop Settings</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Shop Name</Label>
-              <Input defaultValue="St. Anthony Liturgical Shop" />
-            </div>
-            <div className="space-y-2">
-              <Label>Contact Phone</Label>
-              <Input defaultValue="+234 801 234 5678" />
-            </div>
-            <div className="space-y-2">
-              <Label>Operating Hours</Label>
-              <Input defaultValue="Mon-Fri: 9AM-5PM, Sat: 10AM-2PM" />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label>Enable Online Orders</Label>
-              <Switch defaultChecked />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsSettingsOpen(false)}>Cancel</Button>
-              <Button onClick={() => { setIsSettingsOpen(false); toast({ title: "Settings saved" }); }}>Save Settings</Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Delete Modal */}
+      <DeleteConfirmModal
+        open={isDeleteOpen}
+        onOpenChange={setIsDeleteOpen}
+        title="Delete Product"
+        description="This action cannot be undone. This will permanently delete the product."
+        itemName={selectedProduct?.name}
+        onConfirm={() => selectedProduct && deleteMutation.mutate(selectedProduct.slug)}
+        isLoading={deleteMutation.isPending}
+      />
     </div>
   );
 };

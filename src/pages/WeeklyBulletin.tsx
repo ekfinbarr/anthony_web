@@ -87,7 +87,7 @@ const WeeklyBulletin = () => {
 
   // Filter and sort bulletins
   const filteredAndSortedBulletins = useMemo(() => {
-    let filtered = bulletins.filter((bulletin) => {
+    const filtered = bulletins.filter((bulletin) => {
       // Search filter
       const matchesSearch =
         searchTerm === "" ||

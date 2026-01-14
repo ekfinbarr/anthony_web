@@ -170,8 +170,9 @@ export const authService = {
    * ```
    */
   async getCurrentUser(): Promise<BackendUser> {
-    const response = await apiClient.get<{ user: BackendUser }>('auth/user');
-    return response.data.user;
+    // Backend returns user directly, not wrapped in { user: ... }
+    const response = await apiClient.get<BackendUser>('auth/user');
+    return response.data;
   },
 
   /**

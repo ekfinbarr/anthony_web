@@ -38,7 +38,7 @@ export interface CreateCommentPayload {
 /**
  * Update Comment Payload
  */
-export interface UpdateCommentPayload extends Partial<CreateCommentPayload> {}
+export type UpdateCommentPayload = Partial<CreateCommentPayload>;
 
 /**
  * Query Parameters

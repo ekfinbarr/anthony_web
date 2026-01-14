@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { motion } from "framer-motion";
 import { CalendarIcon, Clock, Heart, User, FileText, Send, CheckCircle, Mail, Phone } from "lucide-react";
@@ -14,6 +14,8 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
+import { apiClient } from "@/lib/apiClient";
+import massBookingService from "@/services/massBooking.service";
 
 /**
  * GuestMassBookingPage Component
@@ -24,9 +26,21 @@ import { Link } from "react-router-dom";
  */
 const GuestMassBookingPage = () => {
   const [selectedDate, setSelectedDate] = useState<Date>();
+  type MassSchedule = { id: string; day_of_week: string; title?: string; start_time?: string };
+  const [schedules, setSchedules] = useState<MassSchedule[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const { toast } = useToast();
+
+  type GuestMassBookingForm = {
+    massScheduleId: string;
+    intentionType: string;
+    persons: string;
+    additionalNotes: string;
+    fullName: string;
+    email: string;
+    phone: string;
+  };
 
   const {
     register,
@@ -35,11 +49,11 @@ const GuestMassBookingPage = () => {
     setValue,
     watch,
     reset,
-  } = useForm({
+  } = useForm<GuestMassBookingForm>({
     defaultValues: {
+      massScheduleId: "",
       intentionType: "",
       persons: "",
-      preferredTime: "",
       additionalNotes: "",
       fullName: "",
       email: "",
@@ -48,6 +62,26 @@ const GuestMassBookingPage = () => {
   });
 
   const intentionType = watch("intentionType");
+  const massScheduleId = watch("massScheduleId");
+
+  useEffect(() => {
+    const loadSchedules = async () => {
+      try {
+        const response = await apiClient.get<{ data: MassSchedule[] }>("mass-schedules");
+        const items = response.data?.data || [];
+        setSchedules(items);
+      } catch {
+        setSchedules([]);
+      }
+    };
+    loadSchedules();
+  }, []);
+
+  const filteredSchedules = useMemo(() => {
+    if (!selectedDate || schedules.length === 0) return schedules;
+    const day = format(selectedDate, "EEEE").toLowerCase();
+    return schedules.filter((s) => String(s.day_of_week).toLowerCase() === day);
+  }, [selectedDate, schedules]);
 
   const intentionOptions = [
     { value: "thanksgiving", label: "Thanksgiving", icon: Heart },
@@ -59,12 +93,7 @@ const GuestMassBookingPage = () => {
     { value: "special", label: "Special Intentions", icon: FileText },
   ];
 
-  const timeOptions = [
-    { value: "morning", label: "Morning Mass (7:00 AM - 9:00 AM)" },
-    { value: "evening", label: "Evening Mass (6:00 PM - 7:00 PM)" },
-  ];
-
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: GuestMassBookingForm) => {
     if (!selectedDate) {
       toast({
         title: "Date Required",
@@ -74,22 +103,50 @@ const GuestMassBookingPage = () => {
       return;
     }
 
+    if (!data.massScheduleId) {
+      toast({
+        title: "Mass Schedule Required",
+        description: "Please select a Mass schedule/time for your chosen date.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    try {
+      const bookingDate = format(selectedDate, "yyyy-MM-dd");
 
-    setIsSubmitting(false);
-    setIsSubmitted(true);
+      await massBookingService.createGuest(data.massScheduleId, {
+        guest_name: data.fullName,
+        guest_email: data.email,
+        guest_phone: data.phone,
+        booking_date: bookingDate,
+        intention: `${data.intentionType}: ${data.additionalNotes || "No additional notes"}`,
+        offered_by: data.persons,
+        metadata: {
+          intention_type: data.intentionType,
+        },
+      });
 
-    toast({
-      title: "Mass Intention Booked",
-      description: "Your Mass intention has been successfully submitted. You will receive a confirmation email shortly.",
-    });
+      setIsSubmitted(true);
+      toast({
+        title: "Mass Intention Submitted",
+        description: "Your Mass intention request has been submitted. You will receive a confirmation shortly.",
+      });
 
-    // Reset form after successful submission
-    reset();
-    setSelectedDate(undefined);
+      reset();
+      setSelectedDate(undefined);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to submit your Mass intention. Please try again.";
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isSubmitted) {
@@ -305,26 +362,28 @@ const GuestMassBookingPage = () => {
                     </Popover>
                   </div>
 
-                  {/* Preferred Time */}
+                  {/* Mass Schedule / Time */}
                   <div className="space-y-2">
-                    <Label htmlFor="preferredTime" className="flex items-center gap-2">
+                    <Label htmlFor="massScheduleId" className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-primary" />
-                      Preferred Mass Time
+                      Mass Schedule / Time
                     </Label>
-                    <Select onValueChange={(value) => setValue("preferredTime", value)}>
+                    <Select onValueChange={(value) => setValue("massScheduleId", value)}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select preferred time" />
+                        <SelectValue placeholder="Select a Mass schedule" />
                       </SelectTrigger>
                       <SelectContent>
-                        {timeOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
+                        {(filteredSchedules.length ? filteredSchedules : schedules).map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.title} — {s.day_of_week} {s.start_time} ({s.language})
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    {errors.preferredTime && (
-                      <p className="text-sm text-destructive">{errors.preferredTime.message}</p>
+                    {!massScheduleId && (
+                      <p className="text-xs text-muted-foreground">
+                        Tip: pick a date first to see schedules for that weekday.
+                      </p>
                     )}
                   </div>
 

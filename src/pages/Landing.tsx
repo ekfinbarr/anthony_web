@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   Calendar,
@@ -25,6 +25,7 @@ import {
   HandHeart,
   Music,
   Eye,
+  Church,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -185,13 +186,113 @@ const Landing = () => {
     },
   });
 
+  const navigate = useNavigate();
+
+  const quickToolClicked = (tool: string) => {
+    console.log(`${tool} clicked`);
+    if (tool) {
+      switch (tool) {
+        case "register":
+          navigate("/register");
+          break;
+        case "visit":
+          navigate("/visit");
+          break;
+        case "book-mass":
+          navigate("/book-mass");
+          break;
+        case "request-sacrament":
+          navigate("/request-sacrament");
+          break;
+        case "join-group":
+          break;
+        case "support":
+          navigate("/support");
+          break;
+        default:
+          console.log(`${tool} not found`);
+          break;
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
       <HeroSection />
 
+      {/* Wave Divider (Hero -> Welcome) */}
+      {/* This SVG overlaps the bottom of the Hero video and "wipes" into the Welcome section */}
+      <div className="relative h-16 md:h-24 lg:h-28 -mt-12 md:-mt-24 lg:-mt-28 sm:mt-10 overflow-hidden pointer-events-none">
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 1200 120"
+          preserveAspectRatio="none"
+          className="absolute inset-0 h-full w-full text-background"
+        >
+          {/* Filled wave uses currentColor (mapped to Tailwind `text-background`) */}
+          <path
+            d="M0,64 C200,0 400,128 600,64 C800,0 1000,128 1200,64 L1200,120 L0,120 Z"
+            fill="currentColor"
+          />
+        </svg>
+      </div>
+
+      {/* Quick Tools Section */}
+      <section className="py-16 pt-10 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto text-center">
+            <h2 className="text-4xl font-heading font-bold text-church-charcoal mb-6">
+              St. Anthony Catholic Church, Gbaja.
+            </h2>
+            {/* A very warm and short welcome message */}
+            <p className="text-xl text-muted-foreground mb-8">
+              A community of Catholic believers passionate about Jesus and committed to sharing His love.
+              Whether you're exploring faith for the first time or looking for a church home,
+              you'll find a warm welcome here.
+            </p>
+
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-6 mb-12">
+              {/* Register */}
+              <Card className="p-6 text-center hover:shadow-lg transition-shadow border border-primary rounded-lg cursor-pointer" onClick={() => quickToolClicked("register")}>
+                <UserPlus className="h-12 w-12 text-primary mx-auto mb-4" />
+                <h3 className="font-heading font-semibold text-lg mb-2">Register</h3>
+              </Card>
+              {/* Attend Mass */}
+              <Card className="p-6 text-center hover:shadow-lg transition-shadow border border-primary rounded-lg cursor-pointer" onClick={() => quickToolClicked("visit")}>
+                <Church className="h-12 w-12 text-primary mx-auto mb-4" />
+                <h3 className="font-heading font-semibold text-lg mb-2">Attend Mass</h3>
+              </Card>
+              {/* Request Mass */}
+              <Card className="p-6 text-center hover:shadow-lg transition-shadow border border-primary rounded-lg cursor-pointer" onClick={() => quickToolClicked("book-mass")}>
+                <HandHeart className="h-12 w-12 text-primary mx-auto mb-4" />
+                <h3 className="font-heading font-semibold text-lg mb-2">Book Mass</h3>
+              </Card>
+              {/* Confessions */}
+              <Card className="p-6 text-center hover:shadow-lg transition-shadow border border-primary rounded-lg cursor-pointer" onClick={() => quickToolClicked("request-sacrament")}>
+                <Heart className="h-12 w-12 text-primary mx-auto mb-4" />
+                <h3 className="font-heading font-semibold text-lg mb-2">Request Sacrament</h3>
+              </Card>
+              <Card className="p-6 text-center hover:shadow-lg transition-shadow border border-primary rounded-lg cursor-pointer" onClick={() => quickToolClicked("join-group")}>
+                <Users className="h-12 w-12 text-primary mx-auto mb-4" />
+                <h3 className="font-heading font-semibold text-lg mb-2">Join Group</h3>
+              </Card>
+              <Card className="p-6 text-center hover:shadow-lg transition-shadow border border-primary rounded-lg cursor-pointer" onClick={() => quickToolClicked("support")}>
+                <DollarSign className="h-12 w-12 text-primary mx-auto mb-4" />
+                <h3 className="font-heading font-semibold text-lg mb-2">Support</h3>
+              </Card>
+            </div>
+            <Link to="/about">
+              <Button variant="church" size="lg" className="group">
+                Learn More About Us
+                <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
       {/* Welcome Section */}
-      <section className="py-16 bg-background">
+      {/* <section className="py-16 pt-10 bg-background">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center">
             <h2 className="text-4xl font-heading font-bold text-church-charcoal mb-6">
@@ -233,7 +334,7 @@ const Landing = () => {
             </Link>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Latest News and Events */}
       <LatestNews />

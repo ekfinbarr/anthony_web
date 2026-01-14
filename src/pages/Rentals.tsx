@@ -51,6 +51,7 @@ import {
   BreadcrumbSeparator 
 } from "@/components/ui/breadcrumb";
 import { Link } from "react-router-dom";
+import facilityBookingService from "@/services/facilityBooking.service";
 
 // Types
 type RentalType = "hall" | "conference-room";
@@ -86,10 +87,16 @@ interface FAQ {
 }
 
 // Sample Data
+//
+// NOTE:
+// These IDs are intentionally aligned with backend `Facility::getRouteKeyName() = slug`.
+// That means when we submit a booking request, we can call:
+// - POST /api/facilities/{slug}/booking-requests
+// - POST /api/facilities/{slug}/bookings
 const rentalSpaces: RentalSpace[] = [
   {
-    id: "st-francis-hall",
-    name: "St. Francis Hall",
+    id: "event-hall",
+    name: "Event Hall",
     type: "hall",
     capacity: 500,
     price: 150000,
@@ -105,24 +112,8 @@ const rentalSpaces: RentalSpace[] = [
     available: true,
   },
   {
-    id: "conference-room-a",
-    name: "Conference Room A",
-    type: "conference-room",
-    capacity: 30,
-    price: 25000,
-    description: "Ideal for meetings, workshops, and small conferences. Equipped with modern presentation equipment.",
-    images: [
-      "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200",
-      "https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=1200",
-    ],
-    facilities: ["wifi", "projector", "sound", "parking", "restrooms", "air-conditioning"],
-    amenities: ["Whiteboard", "Conference Table", "Video Conferencing"],
-    dimensions: "10m x 8m",
-    available: true,
-  },
-  {
-    id: "conference-room-b",
-    name: "Conference Room B",
+    id: "meeting-conference-rooms",
+    name: "Meeting & Conference Rooms",
     type: "conference-room",
     capacity: 50,
     price: 35000,
@@ -133,21 +124,6 @@ const rentalSpaces: RentalSpace[] = [
     facilities: ["wifi", "projector", "sound", "parking", "restrooms", "air-conditioning"],
     amenities: ["Interactive Whiteboard", "Conference Table", "Video Conferencing", "Coffee Station"],
     dimensions: "12m x 10m",
-    available: true,
-  },
-  {
-    id: "conference-room-c",
-    name: "Conference Room C",
-    type: "conference-room",
-    capacity: 20,
-    price: 20000,
-    description: "Intimate meeting space for small groups and brainstorming sessions.",
-    images: [
-      "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1200",
-    ],
-    facilities: ["wifi", "projector", "parking", "restrooms", "air-conditioning"],
-    amenities: ["Whiteboard", "Round Table", "Video Conferencing"],
-    dimensions: "8m x 6m",
     available: true,
   },
 ];
@@ -295,8 +271,55 @@ const Rentals = () => {
 
   const onSubmit = async (data: BookingFormData) => {
     try {
-      // Here you would typically send the data to your backend
-      console.log("Booking data:", data);
+      // Decision: if the user is logged in (token exists), submit an authenticated booking
+      // so the booking can be linked to their account. Otherwise submit a guest request.
+      const hasToken = !!localStorage.getItem("church_user");
+
+      // Before submitting, we check availability for fast feedback.
+      // The backend considers only APPROVED bookings as blocking.
+      const availability = await facilityBookingService.checkAvailability(data.spaceId, {
+        date: data.eventDate,
+        start_time: data.startTime,
+        end_time: data.endTime,
+      });
+
+      if (!availability.available) {
+        toast({
+          title: "Not Available",
+          description: availability.message || "This time slot is not available. Please pick another time.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (hasToken) {
+        await facilityBookingService.create(data.spaceId, {
+          booking_date: data.eventDate,
+          start_time: data.startTime,
+          end_time: data.endTime,
+          purpose: data.eventType,
+          notes: data.additionalRequests,
+          metadata: {
+            expected_guests: data.expectedGuests,
+            organization: data.organization || null,
+          },
+        });
+      } else {
+        await facilityBookingService.createGuest(data.spaceId, {
+          guest_name: data.fullName,
+          guest_email: data.email,
+          guest_phone: data.phone,
+          booking_date: data.eventDate,
+          start_time: data.startTime,
+          end_time: data.endTime,
+          purpose: data.eventType,
+          notes: data.additionalRequests,
+          metadata: {
+            expected_guests: data.expectedGuests,
+            organization: data.organization || null,
+          },
+        });
+      }
       
       toast({
         title: "Booking Request Submitted",

@@ -39,7 +39,7 @@ export interface CreateSacramentPayload {
 /**
  * Update Sacrament Payload
  */
-export interface UpdateSacramentPayload extends Partial<CreateSacramentPayload> {}
+export type UpdateSacramentPayload = Partial<CreateSacramentPayload>;
 
 /**
  * Query Parameters
@@ -150,8 +150,8 @@ export const canUserRegister = async (
  * @param id Sacrament ID
  * @returns Sacrament statistics
  */
-export const getStatistics = async (id: string): Promise<any> => {
-  const response = await apiClient.get(`sacraments/${id}/statistics`);
+export const getStatistics = async (id: string): Promise<unknown> => {
+  const response = await apiClient.get<unknown>(`sacraments/${id}/statistics`);
   return response.data;
 };
 

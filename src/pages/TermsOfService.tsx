@@ -11,27 +11,33 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import legalDocumentService from "@/services/legalDocument.service";
+
+const TERMS_SECTIONS = [
+  { id: "acceptance", title: "Acceptance of Terms" },
+  { id: "use-of-service", title: "Use of Service" },
+  { id: "user-accounts", title: "User Accounts" },
+  { id: "intellectual-property", title: "Intellectual Property" },
+  { id: "user-content", title: "User Content" },
+  { id: "prohibited-activities", title: "Prohibited Activities" },
+  { id: "termination", title: "Termination" },
+  { id: "disclaimers", title: "Disclaimers" },
+  { id: "limitation-liability", title: "Limitation of Liability" },
+  { id: "indemnification", title: "Indemnification" },
+  { id: "governing-law", title: "Governing Law" },
+  { id: "changes", title: "Changes to Terms" },
+  { id: "contact", title: "Contact Us" },
+] as const;
 
 const TermsOfService = () => {
   const contentRef = useRef<HTMLDivElement>(null);
   const [activeSection, setActiveSection] = useState("");
   const [accepted, setAccepted] = useState(false);
+  const [remoteTitle, setRemoteTitle] = useState("Terms of Service");
+  const [remoteContent, setRemoteContent] = useState<string | null>(null);
+  const [remoteLastUpdated, setRemoteLastUpdated] = useState<string>("January 15, 2024");
 
-  const sections = [
-    { id: "acceptance", title: "Acceptance of Terms" },
-    { id: "use-of-service", title: "Use of Service" },
-    { id: "user-accounts", title: "User Accounts" },
-    { id: "intellectual-property", title: "Intellectual Property" },
-    { id: "user-content", title: "User Content" },
-    { id: "prohibited-activities", title: "Prohibited Activities" },
-    { id: "termination", title: "Termination" },
-    { id: "disclaimers", title: "Disclaimers" },
-    { id: "limitation-liability", title: "Limitation of Liability" },
-    { id: "indemnification", title: "Indemnification" },
-    { id: "governing-law", title: "Governing Law" },
-    { id: "changes", title: "Changes to Terms" },
-    { id: "contact", title: "Contact Us" },
-  ];
+  const sections = TERMS_SECTIONS;
 
   useEffect(() => {
     document.title = "Terms of Service | St. Anthony Catholic Church, Gbaja";
@@ -61,7 +67,7 @@ const TermsOfService = () => {
     window.addEventListener("scroll", handleScroll);
     handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [sections]);
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
@@ -85,7 +91,26 @@ const TermsOfService = () => {
     // You can add additional logic here, such as updating user preferences
   };
 
-  const lastUpdated = "January 15, 2024";
+  const lastUpdated = remoteLastUpdated;
+
+  // Load latest published terms from backend (falls back to static content if unavailable)
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const doc = await legalDocumentService.getLatest("terms_of_service");
+        setRemoteTitle(doc.title || "Terms of Service");
+        setRemoteContent(doc.content || null);
+
+        const updated = doc.effective_at || doc.published_at;
+        if (updated) {
+          setRemoteLastUpdated(updated);
+        }
+      } catch {
+        // keep static content
+      }
+    };
+    load();
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -118,7 +143,7 @@ const TermsOfService = () => {
               <Scale className="h-12 w-12 text-primary" />
             </div>
             <h1 className="text-4xl md:text-5xl font-heading font-bold mb-4 text-church-charcoal">
-              Terms of Service
+              {remoteTitle}
             </h1>
             <p className="text-lg text-muted-foreground mb-6">
               Please read these terms carefully before using our website and services.
@@ -164,6 +189,16 @@ const TermsOfService = () => {
               {/* Content */}
               <div className="lg:col-span-3" ref={contentRef}>
                 <div className="prose prose-lg max-w-none">
+                  {remoteContent && (
+                    <section className="mb-12">
+                      <h2 className="text-2xl font-heading font-bold text-church-charcoal mb-3">
+                        Official Terms (Latest Published)
+                      </h2>
+                      <div className="whitespace-pre-wrap text-muted-foreground">
+                        {remoteContent}
+                      </div>
+                    </section>
+                  )}
                   {/* Acceptance of Terms */}
                   <section id="acceptance" className="mb-12 scroll-mt-24">
                     <h2 className="text-3xl font-heading font-bold mb-4 text-church-charcoal">

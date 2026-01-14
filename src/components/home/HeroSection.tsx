@@ -5,34 +5,34 @@ import { Link } from "react-router-dom";
 import churchHero from "@/assets/church-hero.jpg";
 import droneVideo from "@/assets/videos/drone_spec.mp4";
 
+const HERO_SLIDES = [
+  {
+    title: "Welcome Home",
+    subtitle: "To Live & Serve Like Christ",
+    image: churchHero,
+    cta: "Plan Your Visit",
+    link: "/visit",
+  },
+  {
+    title: "Join Us for Holy Mass",
+    subtitle: "Holy Mass at Mornings and Evenings",
+    image: churchHero,
+    cta: "Mass Times",
+    link: "/visit",
+  },
+  {
+    title: "Making a Difference",
+    subtitle: "Serving Our Community Together",
+    image: churchHero,
+    cta: "Get Involved",
+    link: "/ministries",
+  },
+] as const;
+
 const HeroSection = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  const slides = [
-    {
-      title: "Welcome Home",
-      subtitle: "To Live & Serve Like Christ",
-      image: churchHero,
-      cta: "Plan Your Visit",
-      link: "/visit",
-    },
-    {
-      title: "Join Us for Holy Mass",
-      subtitle: "Holy Mass at Mornings and Evenings",
-      image: churchHero,
-      cta: "Mass Times",
-      link: "/visit",
-    },
-    {
-      title: "Making a Difference",
-      subtitle: "Serving Our Community Together",
-      image: churchHero,
-      cta: "Get Involved",
-      link: "/ministries",
-    },
-  ];
-
-  const teleport = (location) => {
+  const teleport = (location: string) => {
     if (location === "mass") {
       window.location.href = "/visit";
     } else if (location === "sacraments") {
@@ -43,7 +43,7 @@ const HeroSection = () => {
   }
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slides.length);
+      setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
     }, 5000);
     return () => clearInterval(timer);
   }, []);
@@ -82,15 +82,15 @@ const HeroSection = () => {
         <div className="max-w-3xl">
           <div className="animate-fade-in">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-heading font-bold text-church-pearl mb-4 text-shadow-hero">
-              {slides[currentSlide].title}
+              {HERO_SLIDES[currentSlide].title}
             </h1>
             <p className="text-xl md:text-2xl text-church-pearl/90 mb-8 text-shadow-hero">
-              {slides[currentSlide].subtitle}
+              {HERO_SLIDES[currentSlide].subtitle}
             </p>
             <div className="flex flex-wrap gap-4">
-              <Link to={slides[currentSlide].link}>
+              <Link to={HERO_SLIDES[currentSlide].link}>
                 <Button variant="church" size="xl" className="group">
-                  {slides[currentSlide].cta}
+                  {HERO_SLIDES[currentSlide].cta}
                   <ChevronRight className="ml-2 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
@@ -122,7 +122,7 @@ const HeroSection = () => {
 
       {/* Slide Indicators */}
       <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex space-x-2">
-        {slides.map((_, index) => (
+        {HERO_SLIDES.map((_, index) => (
           <button
             key={index}
             onClick={() => setCurrentSlide(index)}

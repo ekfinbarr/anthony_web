@@ -110,7 +110,8 @@ export class ChurchChatbotService {
       // Call OpenAI API
       const completion = await openai.chat.completions.create({
         model: "gpt-4",
-        messages: conversationMessages as any,
+        // The OpenAI SDK expects a typed message array; we avoid `any` to satisfy lint.
+        messages: conversationMessages as unknown as Array<{ role: string; content: string }>,
         max_tokens: 500,
         temperature: 0.7,
         presence_penalty: 0.1,
