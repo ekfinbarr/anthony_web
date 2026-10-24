@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { IsoDatePicker } from "@/components/ui/date-picker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -194,8 +195,8 @@ const AdminDonations = () => {
                 <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
-            <Input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }} />
-            <Input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }} />
+            <IsoDatePicker id="donation-start" value={startDate} onChange={(value) => { setStartDate(value); setCurrentPage(1); }} placeholder="Start date" />
+            <IsoDatePicker id="donation-end" value={endDate} onChange={(value) => { setEndDate(value); setCurrentPage(1); }} placeholder="End date" />
             <Select value={pageSize.toString()} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(1); }}>
               <SelectTrigger className="w-[140px]"><SelectValue placeholder="Page size" /></SelectTrigger>
               <SelectContent>

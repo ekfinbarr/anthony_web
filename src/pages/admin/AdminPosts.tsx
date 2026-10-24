@@ -68,6 +68,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import postService, { Post, PostQueryParams, CreatePostPayload, UpdatePostPayload } from "@/services/post.service";
 import PostDetails from "@/components/admin/posts/PostDetails";
+import { IconTooltipButton } from "@/components/admin/shared/IconTooltipButton";
 import DeletePostModal from "@/components/admin/posts/DeletePostModal";
 import ApprovalModal from "@/components/admin/posts/ApprovalModal";
 import { PostStatusBadge } from "@/components/admin/posts/PostStatusBadge";
@@ -142,7 +143,7 @@ const AdminPosts = () => {
 
     return postsData.data.map((post): PostWithStatus => {
       // Determine status based on published and archived flags
-      let status: PostStatus = "draft";
+      let status: PostStatus;
       if (post.archived) {
         status = "rejected";
       } else if (post.published) {
@@ -399,7 +400,14 @@ const AdminPosts = () => {
                           <div className="flex items-center gap-2">
 
                             <div>
-                              <div className="font-medium">{post.title}</div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="font-medium">{post.title}</span>
+                                {post.is_featured && (
+                                  <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
+                                    Featured
+                                  </Badge>
+                                )}
+                              </div>
                               {post.summary && (
                                 <div className="text-sm text-muted-foreground line-clamp-1">
                                   {post.summary}
@@ -445,9 +453,9 @@ const AdminPosts = () => {
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
+                              <IconTooltipButton label="Post actions">
                                 <MoreVertical className="h-4 w-4" />
-                              </Button>
+                              </IconTooltipButton>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
                               <DropdownMenuItem onClick={() => handleView(post)}>

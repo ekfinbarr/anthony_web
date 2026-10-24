@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, MapPin, Users, User, ArrowLeft } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import MarriageClassCard from '@/components/marriage/MarriageClassCard';
 import MarriageClassRegisterModal from '@/components/marriage/MarriageClassRegisterModal';
 import RegistrationHistory from '@/components/marriage/RegistrationHistory';
+import PageHeader from '@/components/layout/PageHeader';
 
 interface MarriageClass {
   id: string;
@@ -62,8 +63,14 @@ const MarriageClassRegistrationPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-white to-accent/5 py-12">
-        <div className="container mx-auto px-4">
+      <div className="min-h-screen bg-background">
+        <PageHeader
+          tone="light"
+          align="start"
+          title="Marriage Class Registration"
+          description="Prepare for the Sacrament of Holy Matrimony"
+        />
+        <div className="container mx-auto px-4 py-12">
           <div className="text-center">
             <div className="animate-pulse">
               <div className="h-8 bg-gray-300 rounded w-1/3 mx-auto mb-4"></div>
@@ -81,34 +88,20 @@ const MarriageClassRegistrationPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-white to-accent/5">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link to="/dashboard">
-                <Button variant="ghost" size="sm">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Dashboard
-                </Button>
-              </Link>
-              <div>
-                <h1 className="text-3xl font-heading font-bold text-church-charcoal">
-                  Marriage Class Registration
-                </h1>
-                <p className="text-muted-foreground mt-1">
-                  Prepare for the Sacrament of Holy Matrimony
-                </p>
-              </div>
-            </div>
-            <div className="hidden md:flex items-center space-x-2">
-              <User className="h-5 w-5 text-primary" />
-              <span className="text-sm font-medium">Member Portal</span>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-background">
+      <PageHeader
+        tone="light"
+        align="start"
+        title="Marriage Class Registration"
+        description="Prepare for the Sacrament of Holy Matrimony"
+      >
+        <Button variant="outline" size="sm" asChild>
+          <Link to="/dashboard">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Dashboard
+          </Link>
+        </Button>
+      </PageHeader>
 
       <div className="container mx-auto px-4 py-8">
         {/* Welcome Section */}

@@ -22,7 +22,7 @@ const FaqAccordion = ({ questions }: FaqAccordionProps) => {
           <AccordionTrigger className="text-left hover:no-underline hover:text-primary px-6 py-4">
             <span className="font-medium text-foreground">{q.question}</span>
           </AccordionTrigger>
-          <AccordionContent className="px-6 pb-4 text-muted-foreground">
+          <AccordionContent forceMount className="px-6 pb-4 text-muted-foreground">
             {q.answer}
           </AccordionContent>
         </AccordionItem>

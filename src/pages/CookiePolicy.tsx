@@ -1,18 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { Cookie, ChevronRight, Save, Settings } from "lucide-react";
+import { Cookie, Save, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
+import PageHeader from "@/components/layout/PageHeader";
 import {
   Dialog,
   DialogContent,
@@ -42,16 +34,6 @@ const CookiePolicy = () => {
   const [hasLoadedPreferences, setHasLoadedPreferences] = useState(false);
 
   useEffect(() => {
-    document.title = "Cookie Policy | St. Anthony Catholic Church, Gbaja";
-    
-    const metaDescription = document.querySelector('meta[name="description"]');
-    if (metaDescription) {
-      metaDescription.setAttribute(
-        "content",
-        "Learn about how St. Anthony Catholic Church, Gbaja uses cookies and manage your cookie preferences."
-      );
-    }
-
     // Load saved preferences from localStorage (defer setState to satisfy lint rule)
     const t = setTimeout(() => {
       const savedPreferences = localStorage.getItem("cookiePreferences");
@@ -86,14 +68,14 @@ const CookiePolicy = () => {
     localStorage.setItem("cookiePreferences", JSON.stringify(preferences));
     localStorage.setItem("cookieConsent", "true");
     localStorage.setItem("cookieConsentDate", new Date().toISOString());
-    
+
     toast({
       title: "Preferences Saved",
       description: "Your cookie preferences have been saved successfully.",
     });
 
     setShowModal(false);
-    
+
     // Apply cookie preferences (in a real app, you would initialize analytics/tracking here)
     applyCookiePreferences(preferences);
   };
@@ -164,52 +146,17 @@ const CookiePolicy = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Breadcrumb */}
-      <section className="bg-church-pearl border-b">
-        <div className="container mx-auto px-4 py-4">
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink asChild>
-                  <Link to="/">Home</Link>
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator>
-                <ChevronRight className="h-4 w-4" />
-              </BreadcrumbSeparator>
-              <BreadcrumbItem>
-                <BreadcrumbPage>Cookie Policy</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        </div>
-      </section>
-
-      {/* Hero Section */}
-      <section className="relative py-16 bg-gradient-to-r from-primary/10 via-primary/5 to-accent/10">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center">
-            <div className="flex items-center justify-center mb-4">
-              <Cookie className="h-12 w-12 text-primary" />
-            </div>
-            <h1 className="text-4xl md:text-5xl font-heading font-bold mb-4 text-church-charcoal">
-              Cookie Policy
-            </h1>
-            <p className="text-lg text-muted-foreground mb-6">
-              Learn about how we use cookies and manage your preferences.
-            </p>
-            <Button
-              onClick={() => setShowModal(true)}
-              variant="outline"
-              size="sm"
-              className="mt-4"
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Manage Cookie Preferences
-            </Button>
-          </div>
-        </div>
-      </section>
+      <PageHeader
+        tone="light"
+        title="Cookie Policy"
+        description="Learn about how we use cookies and manage your preferences."
+        icon={<Cookie className="h-8 w-8 text-church-gold" aria-hidden="true" />}
+      >
+        <Button onClick={() => setShowModal(true)} variant="church" size="sm">
+          <Settings className="mr-2 h-4 w-4" />
+          Manage Cookie Preferences
+        </Button>
+      </PageHeader>
 
       {/* Main Content */}
       <section className="py-12">

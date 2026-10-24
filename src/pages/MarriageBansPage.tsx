@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, MapPin, User, Heart } from 'lucide-react';
 import marriageBansData from '@/data/marriage-bans.json';
+import PageHeader from '@/components/layout/PageHeader';
 
 interface MarriageBan {
   id: number;
@@ -41,20 +42,11 @@ export default function MarriageBansPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-primary/10 to-secondary/10 py-12">
-        <div className="container mx-auto px-4">
-          <div className="text-center">
-            <h1 className="text-4xl md:text-5xl font-bold text-primary mb-4">
-              Marriage Banns
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              According to the tradition of the Catholic Church, marriage banns are announced
-              to ensure there are no impediments to the marriage.
-            </p>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        tone="light"
+        title="Marriage Banns"
+        description="According to the tradition of the Catholic Church, marriage banns are announced to ensure there are no impediments to the marriage."
+      />
 
       {/* Canonical Text */}
       <div className="bg-muted/30 py-8">

@@ -1,18 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { FileText, Download, ChevronRight } from "lucide-react";
+import { FileText, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 import jsPDF from "jspdf";
 import legalDocumentService from "@/services/legalDocument.service";
+import PageHeader from "@/components/layout/PageHeader";
 
 const PRIVACY_SECTIONS = [
   { id: "introduction", title: "Introduction" },
@@ -147,67 +140,25 @@ const PrivacyPolicy = () => {
     load();
   }, []);
 
-  useEffect(() => {
-    document.title = "Privacy Policy | St. Anthony Catholic Church, Gbaja";
-    
-    // Update meta description
-    const metaDescription = document.querySelector('meta[name="description"]');
-    if (metaDescription) {
-      metaDescription.setAttribute(
-        "content",
-        "Read our privacy policy to understand how St. Anthony Catholic Church, Gbaja collects, uses, and protects your personal information."
-      );
-    }
-  }, []);
 
   return (
     <div className="min-h-screen bg-background">
-        {/* Breadcrumb */}
-        <section className="bg-church-pearl border-b">
-          <div className="container mx-auto px-4 py-4">
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbLink asChild>
-                    <Link to="/">Home</Link>
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator>
-                  <ChevronRight className="h-4 w-4" />
-                </BreadcrumbSeparator>
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Privacy Policy</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
+        <PageHeader
+          tone="light"
+          title={remoteTitle}
+          description="Your privacy is important to us. This policy explains how we collect, use, and protect your information."
+          icon={<FileText className="h-8 w-8 text-church-gold" aria-hidden="true" />}
+        >
+          <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <p className="text-sm text-church-pearl/90">
+              Last updated: <span className="font-semibold">{lastUpdated}</span>
+            </p>
+            <Button onClick={handlePrint} variant="outline" size="sm">
+              <Download className="mr-2 h-4 w-4" />
+              Export as PDF
+            </Button>
           </div>
-        </section>
-
-        {/* Hero Section */}
-        <section className="relative py-16 bg-gradient-to-r from-primary/10 via-primary/5 to-accent/10">
-          <div className="container mx-auto px-4">
-            <div className="max-w-4xl mx-auto text-center">
-              <div className="flex items-center justify-center mb-4">
-                <FileText className="h-12 w-12 text-primary" />
-              </div>
-              <h1 className="text-4xl md:text-5xl font-heading font-bold mb-4 text-church-charcoal">
-                {remoteTitle}
-              </h1>
-              <p className="text-lg text-muted-foreground mb-6">
-                Your privacy is important to us. This policy explains how we collect, use, and protect your information.
-              </p>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <p className="text-sm text-muted-foreground">
-                  Last updated: <span className="font-semibold">{lastUpdated}</span>
-                </p>
-                <Button onClick={handlePrint} variant="outline" size="sm">
-                  <Download className="h-4 w-4 mr-2" />
-                  Export as PDF
-                </Button>
-              </div>
-            </div>
-          </div>
-        </section>
+        </PageHeader>
 
         {/* Main Content */}
         <section className="py-12">

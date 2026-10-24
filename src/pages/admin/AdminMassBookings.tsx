@@ -31,15 +31,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, MoreVertical, Eye, Trash2, Calendar, User, AlertCircle, CheckCircle2, XCircle, Plus } from "lucide-react";
+import { Search, MoreVertical, Eye, Trash2, Calendar, User, AlertCircle, CheckCircle2, XCircle, Plus, Pencil, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import DeleteConfirmModal from "@/components/admin/shared/DeleteConfirmModal";
 import { StatusBadge } from "@/components/admin/shared/StatusBadge";
+import { downloadAuthenticatedFile } from "@/lib/downloadCsv";
 import { GenericEmptyState } from "@/components/admin/shared/GenericEmptyState";
 import { AdminPagination } from "@/components/admin/shared/AdminPagination";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { KanbanBoard } from "@/components/admin/shared/KanbanBoard";
 import massBookingService, { LaravelResourceCollection, MassBooking, MassBookingStatus } from "@/services/massBooking.service";
+import MassBookingOrdersPanel from "@/pages/admin/MassBookingOrdersPanel";
 import massScheduleService, { MassSchedule } from "@/services/massSchedule.service";
 
 const AdminMassBookings = () => {
@@ -47,7 +48,7 @@ const AdminMassBookings = () => {
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  const [activeTab, setActiveTab] = useState<"list" | "kanban">("list");
+  const [activeTab, setActiveTab] = useState<"orders" | "list" | "kanban">("orders");
 
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearch = useDebouncedValue(searchInput, 350);
@@ -57,7 +58,6 @@ const AdminMassBookings = () => {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isActionOpen, setIsActionOpen] = useState(false);
   const [actionType, setActionType] = useState<"approve" | "reject" | "cancel">("approve");
   const [actionReason, setActionReason] = useState("");
@@ -143,20 +143,47 @@ const AdminMassBookings = () => {
           <h1 className="text-3xl font-heading font-bold text-foreground">Mass Bookings</h1>
           <p className="text-muted-foreground mt-1">Manage Mass intention requests and bookings.</p>
         </div>
-        <Button onClick={() => navigate("/admin/mass-bookings/new")} className="gap-2">
-          <Plus className="h-4 w-4" /> Add Booking
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={async () => {
+              try {
+                await downloadAuthenticatedFile("mass-booking-orders/export", "mass-booking-orders.csv", {
+                  status: statusFilter !== "all" ? statusFilter : undefined,
+                  search: debouncedSearch || undefined,
+                });
+              } catch (e) {
+                toast({
+                  title: "Export failed",
+                  description: e instanceof Error ? e.message : "Could not export orders",
+                  variant: "destructive",
+                });
+              }
+            }}
+          >
+            <Download className="h-4 w-4" /> Export
+          </Button>
+          <Button onClick={() => navigate("/admin/mass-bookings/new")} className="gap-2">
+            <Plus className="h-4 w-4" /> Add Booking
+          </Button>
+        </div>
       </div>
 
       <Tabs
         value={activeTab}
-        onValueChange={(v) => setActiveTab(v === "list" || v === "kanban" ? v : "list")}
+        onValueChange={(v) => setActiveTab(v === "list" || v === "kanban" || v === "orders" ? v : "orders")}
         className="space-y-6"
       >
         <TabsList>
-          <TabsTrigger value="list">List</TabsTrigger>
+          <TabsTrigger value="orders">Orders</TabsTrigger>
+          <TabsTrigger value="list">Intentions</TabsTrigger>
           <TabsTrigger value="kanban">Kanban</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="orders">
+          <MassBookingOrdersPanel />
+        </TabsContent>
 
         <TabsContent value="list" className="space-y-6">
           <Card>
@@ -272,6 +299,9 @@ const AdminMassBookings = () => {
                                   <DropdownMenuItem onClick={() => { setSelectedId(b.id); setIsDetailsOpen(true); }}>
                                     <Eye className="mr-2 h-4 w-4" /> View Details
                                   </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => navigate(`/admin/mass-bookings/${b.id}/edit`)}>
+                                    <Pencil className="mr-2 h-4 w-4" /> Edit
+                                  </DropdownMenuItem>
                                   {b.status === "pending" ? (
                                     <>
                                       <DropdownMenuSeparator />
@@ -291,10 +321,6 @@ const AdminMassBookings = () => {
                                       </DropdownMenuItem>
                                     </>
                                   ) : null}
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem className="text-destructive" onClick={() => { setSelectedId(b.id); setIsDeleteOpen(true); }}>
-                                    <Trash2 className="mr-2 h-4 w-4" /> Delete (UI)
-                                  </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </TableCell>
@@ -417,29 +443,16 @@ const AdminMassBookings = () => {
             <Button
               variant={actionType === "approve" ? "default" : "destructive"}
               onClick={() => actionMutation.mutate()}
-              disabled={actionMutation.isPending}
+              disabled={
+                actionMutation.isPending ||
+                ((actionType === "reject" || actionType === "cancel") && !actionReason.trim())
+              }
             >
               {actionMutation.isPending ? "Saving..." : "Confirm"}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
-
-
-
-      {/* Delete modal is kept for consistency but backend delete is not exposed for bookings */}
-      <DeleteConfirmModal
-        open={isDeleteOpen}
-        onOpenChange={setIsDeleteOpen}
-        title="Delete Booking"
-        description="Backend delete is not available for bookings. Use Cancel to invalidate a booking instead."
-        itemName={selectedBooking?.reference || "Booking"}
-        onConfirm={() => {
-          toast({ title: "Not supported", description: "Use Cancel to invalidate a booking.", variant: "destructive" });
-          setIsDeleteOpen(false);
-        }}
-        isLoading={false}
-      />
     </div>
   );
 };

@@ -44,8 +44,16 @@ import {
   PaginationPrevious,
   PaginationEllipsis,
 } from "@/components/ui/pagination";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { 
   Search, 
   MoreVertical, 
@@ -54,14 +62,19 @@ import {
   Phone,
   Calendar,
   AlertCircle,
-  UserCircle
+  UserCircle,
+  MapPin,
+  Download,
 } from "lucide-react";
 import userService, { User, UserQueryParams } from "@/services/user.service";
 import { StatusBadge } from "@/components/admin/shared/StatusBadge";
 import { GenericEmptyState } from "@/components/admin/shared/GenericEmptyState";
+import { downloadAuthenticatedFile } from "@/lib/downloadCsv";
+import { useToast } from "@/hooks/use-toast";
 
 const AdminMembership = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   // State management
   const [searchQuery, setSearchQuery] = useState("");
@@ -69,6 +82,7 @@ const AdminMembership = () => {
   const [verifiedFilter, setVerifiedFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
+  const [profileMember, setProfileMember] = useState<User | null>(null);
 
   // Build query parameters
   const queryParams: UserQueryParams = useMemo(() => {
@@ -142,6 +156,26 @@ const AdminMembership = () => {
             Manage parishioner records and membership information.
           </p>
         </div>
+        <Button
+          variant="outline"
+          className="gap-2"
+          onClick={async () => {
+            try {
+              await downloadAuthenticatedFile("users/export", "members.csv", {
+                role: roleFilter !== "all" ? roleFilter : undefined,
+                search: searchQuery || undefined,
+              });
+            } catch (e) {
+              toast({
+                title: "Export failed",
+                description: e instanceof Error ? e.message : "Could not export members",
+                variant: "destructive",
+              });
+            }
+          }}
+        >
+          <Download className="h-4 w-4" /> Export
+        </Button>
       </div>
 
       {/* Filters */}
@@ -320,7 +354,7 @@ const AdminMembership = () => {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
-                              <DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setProfileMember(member)}>
                                 <Eye className="mr-2 h-4 w-4" />
                                 View Profile
                               </DropdownMenuItem>
@@ -389,6 +423,63 @@ const AdminMembership = () => {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!profileMember} onOpenChange={(open) => !open && setProfileMember(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Member Profile</DialogTitle>
+            <DialogDescription>Parishioner details and account status.</DialogDescription>
+          </DialogHeader>
+          {profileMember ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <Avatar className="h-16 w-16">
+                  <AvatarImage src={profileMember.avatar} alt={profileMember.name} />
+                  <AvatarFallback>{getInitials(profileMember.name)}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <div className="text-lg font-semibold">{profileMember.name}</div>
+                  <StatusBadge
+                    status={profileMember.email_verified_at ? "active" : "inactive"}
+                    customLabel={profileMember.email_verified_at ? "Verified" : "Unverified"}
+                  />
+                </div>
+              </div>
+              <div className="grid gap-3 text-sm">
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  <span>{profileMember.email}</span>
+                </div>
+                {profileMember.phone ? (
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <span>{profileMember.phone}</span>
+                  </div>
+                ) : null}
+                {profileMember.address ? (
+                  <div className="flex items-start gap-2">
+                    <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                    <span>{profileMember.address}</span>
+                  </div>
+                ) : null}
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span>Member since {formatDate(profileMember.created_at)}</span>
+                </div>
+              </div>
+              {profileMember.roles?.length ? (
+                <div className="flex flex-wrap gap-2">
+                  {profileMember.roles.map((role) => (
+                    <Badge key={role.id || role.name} variant="secondary">
+                      {role.name}
+                    </Badge>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

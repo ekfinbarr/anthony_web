@@ -1,53 +1,31 @@
-import { useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Calendar,
-  Clock,
-  MapPin,
-  Users,
-  Heart,
-  Cross,
-  FileText,
-  Play,
-  Download,
-  ArrowRight,
-  Facebook,
-  Instagram,
-  Youtube,
-  Mail,
-  Phone,
-  BookOpen,
-  Video,
-  Image as ImageIcon,
-  DollarSign,
-  UserPlus,
-  HandHeart,
-  Music,
-  Eye,
-  Church,
-} from "lucide-react";
+import { Calendar, Clock, Mail, Play, Download, ArrowRight, Image as ImageIcon } from "lucide-react";
+import { CandleIcon, ChaliceIcon, ChurchFrontIcon, CoinsIcon, CommunityIcon, HandsIcon, MusicIcon, PriestIcon, PulpitIcon, ReadingsIcon } from "@/components/icons/ParishIcons";
+import { Facebook, Instagram, Youtube } from "@/components/icons/BrandIcons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import HeroSection from "@/components/home/HeroSection";
 import LatestNews from "@/components/home/LatestNews";
 import UpcomingEvents from "@/components/home/UpcomingEvents";
-import SermonHighlight from "@/components/home/SermonHighlight";
 import MinistriesSection from "@/components/home/MinistriesSection";
 import CatholicDailyReadings from "@/components/home/CatholicDailyReadings";
-import bannerPhoto from "@/assets/images/church_banner.jpg";
-import stAnthony from "@/assets/images/st_anthony.png";
+import MassLivestreamBanner from "@/components/home/MassLivestreamBanner";
+import MassConfessionsSection from "@/components/home/MassConfessionsSection";
+import QuickAccessSection from "@/components/home/QuickAccessSection";
+import SocialPlatforms from "@/components/home/SocialPlatforms";
+import WhatsAppCommunitySection from "@/components/home/WhatsAppCommunitySection";
+import GivingCategorySlider from "@/components/home/GivingCategorySlider";
+import bannerPhoto from "@/assets/images/st_anthony.webp";
+import stAnthony from "@/assets/images/st_anthony.webp";
+import FloatingSocial from "@/components/parish-home/FloatingSocial";
+import Voices from "@/components/parish-home/Voices";
+import VisitStrip from "@/components/parish-home/VisitStrip";
+import sermonService from "@/services/sermon.service";
+import { formatSermonDate, sermonThumbnail } from "@/components/sermons/sermonMedia";
 
 // Mock data interfaces
-interface Sermon {
-  id: string;
-  title: string;
-  speaker: string;
-  date: string;
-  thumbnail: string;
-  duration: string;
-}
 
 interface Group {
   id: string;
@@ -73,49 +51,11 @@ interface GalleryItem {
 }
 
 const Landing = () => {
-  useEffect(() => {
-    document.title = "Welcome to St. Anthony Catholic Church, Gbaja | Home";
-    const metaDescription = document.querySelector('meta[name="description"]');
-    if (metaDescription) {
-      metaDescription.setAttribute(
-        "content",
-        "Welcome to St. Anthony Catholic Church, Gbaja. Join us for Mass, explore our ministries, watch sermons, and connect with our vibrant Catholic community."
-      );
-    }
-  }, []);
 
-  // Fetch latest sermons
-  const { data: latestSermons = [] } = useQuery<Sermon[]>({
-    queryKey: ["latest-sermons"],
-    queryFn: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      return [
-        {
-          id: "1",
-          title: "Walking in Faith",
-          speaker: "Rev. Fr. Bernard Okodua",
-          date: "November 10, 2024",
-          thumbnail: bannerPhoto,
-          duration: "38:45",
-        },
-        {
-          id: "2",
-          title: "The Power of Prayer",
-          speaker: "Rev. Fr. Alexander Fatimehin",
-          date: "November 3, 2024",
-          thumbnail: bannerPhoto,
-          duration: "42:15",
-        },
-        {
-          id: "3",
-          title: "Living with Purpose",
-          speaker: "Rev. Fr. Augustine A",
-          date: "October 27, 2024",
-          thumbnail: bannerPhoto,
-          duration: "35:20",
-        },
-      ];
-    },
+  // Fetch latest sermons (used when Latest Sermons section is enabled)
+  const { data: latestSermons = [] } = useQuery({
+    queryKey: ["sermons", "latest", 3],
+    queryFn: () => sermonService.getLatest({ limit: 3 }),
   });
 
   // Fetch featured groups
@@ -176,7 +116,7 @@ const Landing = () => {
     queryFn: async () => {
       await new Promise((resolve) => setTimeout(resolve, 300));
       return [
-        { id: "1", type: "image", url: bannerPhoto, thumbnail: bannerPhoto, title: "Church Service" },
+        { id: "1", type: "image", url: bannerPhoto, thumbnail: bannerPhoto, title: "Sunday Mass" },
         { id: "2", type: "image", url: stAnthony, thumbnail: stAnthony, title: "Parish Event" },
         { id: "3", type: "image", url: bannerPhoto, thumbnail: bannerPhoto, title: "Community Gathering" },
         { id: "4", type: "image", url: stAnthony, thumbnail: stAnthony, title: "Youth Activity" },
@@ -186,51 +126,19 @@ const Landing = () => {
     },
   });
 
-  const navigate = useNavigate();
-
-  const quickToolClicked = (tool: string) => {
-    console.log(`${tool} clicked`);
-    if (tool) {
-      switch (tool) {
-        case "register":
-          navigate("/register");
-          break;
-        case "visit":
-          navigate("/visit");
-          break;
-        case "book-mass":
-          navigate("/book-mass");
-          break;
-        case "request-sacrament":
-          navigate("/request-sacrament");
-          break;
-        case "join-group":
-          break;
-        case "support":
-          navigate("/support");
-          break;
-        default:
-          console.log(`${tool} not found`);
-          break;
-      }
-    }
-  };
-
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
       <HeroSection />
 
-      {/* Wave Divider (Hero -> Welcome) */}
-      {/* This SVG overlaps the bottom of the Hero video and "wipes" into the Welcome section */}
-      <div className="relative h-16 md:h-24 lg:h-28 -mt-12 md:-mt-24 lg:-mt-28 sm:mt-10 overflow-hidden pointer-events-none">
+      {/* Wave Divider (Hero -> Quick Access) — cream wipe into the redesigned section */}
+      <div className="relative -mt-12 h-16 overflow-hidden pointer-events-none sm:mt-10 md:-mt-24 md:h-24 lg:-mt-28 lg:h-28">
         <svg
           aria-hidden="true"
           viewBox="0 0 1200 120"
           preserveAspectRatio="none"
-          className="absolute inset-0 h-full w-full text-background"
+          className="absolute inset-0 h-full w-full text-church-ivory"
         >
-          {/* Filled wave uses currentColor (mapped to Tailwind `text-background`) */}
           <path
             d="M0,64 C200,0 400,128 600,64 C800,0 1000,128 1200,64 L1200,120 L0,120 Z"
             fill="currentColor"
@@ -238,59 +146,15 @@ const Landing = () => {
         </svg>
       </div>
 
-      {/* Quick Tools Section */}
-      <section className="py-16 pt-10 bg-background">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-4xl font-heading font-bold text-church-charcoal mb-6">
-              St. Anthony Catholic Church, Gbaja.
-            </h2>
-            {/* A very warm and short welcome message */}
-            <p className="text-xl text-muted-foreground mb-8">
-              A community of Catholic believers passionate about Jesus and committed to sharing His love.
-              Whether you're exploring faith for the first time or looking for a church home,
-              you'll find a warm welcome here.
-            </p>
+      <QuickAccessSection />
+      <FloatingSocial />
 
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-6 mb-12">
-              {/* Register */}
-              <Card className="p-6 text-center hover:shadow-lg transition-shadow border border-primary rounded-lg cursor-pointer" onClick={() => quickToolClicked("register")}>
-                <UserPlus className="h-12 w-12 text-primary mx-auto mb-4" />
-                <h3 className="font-heading font-semibold text-lg mb-2">Register</h3>
-              </Card>
-              {/* Attend Mass */}
-              <Card className="p-6 text-center hover:shadow-lg transition-shadow border border-primary rounded-lg cursor-pointer" onClick={() => quickToolClicked("visit")}>
-                <Church className="h-12 w-12 text-primary mx-auto mb-4" />
-                <h3 className="font-heading font-semibold text-lg mb-2">Attend Mass</h3>
-              </Card>
-              {/* Request Mass */}
-              <Card className="p-6 text-center hover:shadow-lg transition-shadow border border-primary rounded-lg cursor-pointer" onClick={() => quickToolClicked("book-mass")}>
-                <HandHeart className="h-12 w-12 text-primary mx-auto mb-4" />
-                <h3 className="font-heading font-semibold text-lg mb-2">Book Mass</h3>
-              </Card>
-              {/* Confessions */}
-              <Card className="p-6 text-center hover:shadow-lg transition-shadow border border-primary rounded-lg cursor-pointer" onClick={() => quickToolClicked("request-sacrament")}>
-                <Heart className="h-12 w-12 text-primary mx-auto mb-4" />
-                <h3 className="font-heading font-semibold text-lg mb-2">Request Sacrament</h3>
-              </Card>
-              <Card className="p-6 text-center hover:shadow-lg transition-shadow border border-primary rounded-lg cursor-pointer" onClick={() => quickToolClicked("join-group")}>
-                <Users className="h-12 w-12 text-primary mx-auto mb-4" />
-                <h3 className="font-heading font-semibold text-lg mb-2">Join Group</h3>
-              </Card>
-              <Card className="p-6 text-center hover:shadow-lg transition-shadow border border-primary rounded-lg cursor-pointer" onClick={() => quickToolClicked("support")}>
-                <DollarSign className="h-12 w-12 text-primary mx-auto mb-4" />
-                <h3 className="font-heading font-semibold text-lg mb-2">Support</h3>
-              </Card>
-            </div>
-            <Link to="/about">
-              <Button variant="church" size="lg" className="group">
-                Learn More About Us
-                <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
+      <MassLivestreamBanner />
+
+      <Voices />
+
+      <MassConfessionsSection />
+
       {/* Welcome Section */}
       {/* <section className="py-16 pt-10 bg-background">
         <div className="container mx-auto px-4">
@@ -326,37 +190,75 @@ const Landing = () => {
                 </p>
               </Card>
             </div>
-            <Link to="/about">
-              <Button variant="church" size="lg" className="group">
+            <Button variant="church" size="lg" className="group" asChild>
+              <Link to="/about">
                 Learn More About Us
                 <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
       </section> */}
 
       {/* Latest News and Events */}
-      <LatestNews />
+      {/* <LatestNews /> */}
       <UpcomingEvents />
 
-      {/* Latest Sermons */}
-      <section className="py-16 bg-church-pearl">
+      <WhatsAppCommunitySection />
+
+      <SocialPlatforms>
+        <div className="mt-10 text-center">
+          <Button variant="church" size="lg" asChild>
+            <Link to="/contact">Contact Us</Link>
+          </Button>
+        </div>
+      </SocialPlatforms>
+
+
+      {/* Donations */}
+      <section className="py-16 bg-gradient-church">
+        <div className="container mx-auto px-4 text-center">
+          <div className="max-w-3xl mx-auto">
+            <CoinsIcon className="mx-auto mb-6 h-16 w-16" />
+            <h2 className="text-4xl font-heading font-bold text-church-charcoal mb-4">
+              Support Our Parish
+            </h2>
+            <p className="text-lg text-church-charcoal/80">
+              Your generous donations help us continue our mission of serving the community, supporting
+              charitable causes, and maintaining our church facilities. Every contribution makes a difference.
+            </p>
+          </div>
+          <div className="mx-auto mt-8 max-w-6xl">
+            <GivingCategorySlider />
+          </div>
+          {/* Black Background Gold Text Action Button */}
+          <div className="text-center mt-8">
+            <Button variant="church" size="lg" className="bg-church-charcoal text-church-gold-warm">
+              <Link to="/donations">
+                Donate Now
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Latest Sermons — enable when desired; data is live via sermonService.getLatest */}
+      {/* <section className="py-16 bg-church-pearl">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-heading font-bold text-church-charcoal mb-4 accent-line inline-block">
               Latest Sermons
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Watch and listen to inspiring messages from our priests and guest speakers.
+              Watch and listen to homilies and reflections from our parish clergy.
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             {latestSermons.map((sermon) => (
               <Card key={sermon.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                 <div className="relative h-48 overflow-hidden">
-                  <img
-                    src={sermon.thumbnail}
+                  <img loading="lazy" decoding="async"
+                    src={sermonThumbnail(sermon) || bannerPhoto}
                     alt={sermon.title}
                     className="w-full h-full object-cover"
                   />
@@ -371,33 +273,33 @@ const Landing = () => {
                   <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
                     <span>{sermon.speaker}</span>
                     <span>•</span>
-                    <span>{sermon.date}</span>
+                    <span>{formatSermonDate(sermon.preached_date || sermon.date)}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
                     <Clock className="h-4 w-4" />
                     <span>{sermon.duration}</span>
                   </div>
-                  <Link to={`/sermons/${sermon.id}`}>
-                    <Button variant="outline" size="sm" className="w-full">
+                  <Button variant="outline" size="sm" className="w-full" asChild>
+                    <Link to={`/sermons?sermon=${encodeURIComponent(sermon.slug)}`}>
                       Watch Now
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 </CardContent>
               </Card>
             ))}
           </div>
           <div className="text-center">
-            <Link to="/sermons">
-              <Button variant="church" size="lg">
+            <Button variant="church" size="lg" asChild>
+              <Link to="/sermons">
                 View All Sermons
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Featured Groups and Societies */}
-      <section className="py-16 bg-background">
+      {/* <section className="py-16 bg-background">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-heading font-bold text-church-charcoal mb-4 accent-line inline-block">
@@ -412,7 +314,7 @@ const Landing = () => {
               <Card key={group.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader className="pb-4">
                   <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted mb-4">
-                    <img
+                    <img loading="lazy" decoding="async"
                       src={group.logo}
                       alt={group.name}
                       className="w-full h-full object-cover"
@@ -425,27 +327,27 @@ const Landing = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground mb-4 line-clamp-3">{group.summary}</p>
-                  <Link to={`/groups#${group.id}`}>
-                    <Button variant="outline" size="sm" className="w-full">
+                  <Button variant="outline" size="sm" className="w-full" asChild>
+                    <Link to={`/groups#${group.id}`}>
                       Learn More
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 </CardContent>
               </Card>
             ))}
           </div>
           <div className="text-center">
-            <Link to="/groups">
-              <Button variant="church" size="lg">
+            <Button variant="church" size="lg" asChild>
+              <Link to="/groups">
                 View All Groups
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Daily Readings, Bible Verses, and Reflections */}
-      <section className="py-16 bg-church-pearl">
+      {/* <section className="py-16 bg-church-pearl">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-heading font-bold text-church-charcoal mb-4 accent-line inline-block">
@@ -457,7 +359,7 @@ const Landing = () => {
           </div>
           <div className="grid md:grid-cols-3 gap-6 mb-8">
             <Card className="p-6 text-center hover:shadow-lg transition-shadow">
-              <BookOpen className="h-12 w-12 text-primary mx-auto mb-4" />
+              <ReadingsIcon size="md" className="mx-auto mb-4" />
               <h3 className="text-xl font-heading font-semibold mb-3">Daily Readings</h3>
               <p className="text-muted-foreground mb-4">
                 Read the daily Mass readings and reflect on God's word.
@@ -465,32 +367,32 @@ const Landing = () => {
               <CatholicDailyReadings />
             </Card>
             <Card className="p-6 text-center hover:shadow-lg transition-shadow">
-              <Heart className="h-12 w-12 text-primary mx-auto mb-4" />
+              <CandleIcon size="md" className="mx-auto mb-4" />
               <h3 className="text-xl font-heading font-semibold mb-3">Daily Prayer</h3>
               <p className="text-muted-foreground mb-4">
                 "Pray without ceasing" - Join us in daily prayer for our community and the world.
               </p>
-              <Link to="/prayer-requests">
-                <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/prayer-requests">
                   Submit Prayer Request
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </Card>
             <Card className="p-6 text-center hover:shadow-lg transition-shadow">
-              <FileText className="h-12 w-12 text-primary mx-auto mb-4" />
+              <PulpitIcon size="md" className="mx-auto mb-4" />
               <h3 className="text-xl font-heading font-semibold mb-3">Reflections & Homilies</h3>
               <p className="text-muted-foreground mb-4">
                 Deepen your faith with thoughtful reflections and homilies from our priests.
               </p>
-              <Link to="/sermons">
-                <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/sermons">
                   Read Reflections
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </Card>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Parish Anthem */}
       <section className="py-16 bg-background">
@@ -500,30 +402,30 @@ const Landing = () => {
               <h2 className="text-4xl font-heading font-bold text-church-charcoal mb-4 accent-line inline-block">
                 Parish Anthem
               </h2>
-              <p className="text-lg text-muted-foreground">
+              {/* <p className="text-lg text-muted-foreground">
                 Listen to and learn our parish anthem that unites us in worship.
-              </p>
+              </p> */}
             </div>
             <Card className="p-8">
               <div className="flex flex-col md:flex-row items-center gap-6">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-4">
-                    <Music className="h-8 w-8 text-primary" />
+                    <MusicIcon className="h-10 w-10" />
                     <h3 className="text-2xl font-heading font-semibold">St. Anthony Parish Anthem</h3>
                   </div>
                   <p className="text-muted-foreground mb-6">
                     Our parish anthem reflects our identity as a community of faith, love, and service.
                     Join us in singing this beautiful hymn that celebrates our unity in Christ.
                   </p>
-                  <Link to="/parish-anthem">
-                    <Button variant="church" size="lg">
+                  <Button variant="church" size="lg" asChild>
+                    <Link to="/parish-anthem">
                       <Play className="h-4 w-4 mr-2" />
                       Listen & Learn
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 </div>
                 <div className="w-full md:w-48 h-48 rounded-lg overflow-hidden bg-muted">
-                  <img src={stAnthony} alt="Parish Anthem" className="w-full h-full object-cover" />
+                  <img loading="lazy" decoding="async" src={stAnthony} alt="Painting of St. Anthony of Padua holding the Child Jesus" className="w-full h-full object-cover" />
                 </div>
               </div>
             </Card>
@@ -531,77 +433,10 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Mass and Confessions Schedule */}
-      <section className="py-16 bg-gradient-to-r from-primary/10 via-primary/5 to-accent/10">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-heading font-bold text-church-charcoal mb-4 accent-line inline-block">
-              Mass & Confessions Schedule
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Join us for Holy Mass and the Sacrament of Reconciliation.
-            </p>
-          </div>
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            <Card className="p-8">
-              <div className="flex items-center gap-3 mb-6">
-                <Cross className="h-8 w-8 text-primary" />
-                <h3 className="text-2xl font-heading font-bold">Mass Schedule</h3>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <p className="font-semibold mb-2">Sunday Mass</p>
-                  <div className="space-y-1 text-muted-foreground">
-                    <p>7:00 AM</p>
-                    <p>8:30 AM</p>
-                    <p>10:00 AM</p>
-                    <p>11:30 AM</p>
-                    <p>6:00 PM</p>
-                  </div>
-                </div>
-                <div className="pt-4 border-t">
-                  <p className="font-semibold mb-2">Weekday Mass</p>
-                  <p className="text-muted-foreground">Monday - Friday: 6:30 AM</p>
-                </div>
-                <div className="pt-4 border-t">
-                  <p className="font-semibold mb-2">Thursday Faith & Doctrinal Class</p>
-                  <p className="text-muted-foreground">7:00 PM</p>
-                </div>
-              </div>
-            </Card>
-            <Card className="p-8">
-              <div className="flex items-center gap-3 mb-6">
-                <Heart className="h-8 w-8 text-primary" />
-                <h3 className="text-2xl font-heading font-bold">Confessions</h3>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <p className="font-semibold mb-2">Regular Confession Times</p>
-                  <div className="space-y-1 text-muted-foreground">
-                    <p>Saturday: 5:00 PM - 6:00 PM</p>
-                    <p>Before Mass: By appointment</p>
-                  </div>
-                </div>
-                <div className="pt-4 border-t">
-                  <p className="font-semibold mb-2">Special Confession Times</p>
-                  <p className="text-muted-foreground">
-                    During Advent and Lent seasons, additional times are available. Please check the bulletin
-                    for updates.
-                  </p>
-                </div>
-                <Link to="/visit">
-                  <Button variant="outline" className="w-full mt-4">
-                    Plan Your Visit
-                  </Button>
-                </Link>
-              </div>
-            </Card>
-          </div>
-        </div>
-      </section>
+
 
       {/* Latest Weekly Bulletin */}
-      {latestBulletin && (
+      {/* {latestBulletin && (
         <section className="py-16 bg-background">
           <div className="container mx-auto px-4">
             <div className="text-center mb-8">
@@ -615,7 +450,7 @@ const Landing = () => {
             <Card className="max-w-4xl mx-auto hover:shadow-xl transition-shadow">
               <div className="grid md:grid-cols-2 gap-0">
                 <div className="relative">
-                  <img
+                  <img loading="lazy" decoding="async"
                     src={latestBulletin.thumbnail}
                     alt={latestBulletin.title}
                     className="w-full h-64 md:h-full object-cover"
@@ -636,27 +471,27 @@ const Landing = () => {
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-3">
-                    <Link to="/weekly-bulletin">
-                      <Button variant="church" size="lg">
+                    <Button variant="church" size="lg" asChild>
+                      <Link to="/weekly-bulletin">
                         <Download className="h-4 w-4 mr-2" />
                         Download Bulletin
-                      </Button>
-                    </Link>
-                    <Link to="/weekly-bulletin">
-                      <Button variant="outline" size="lg">
+                      </Link>
+                    </Button>
+                    <Button variant="outline" size="lg" asChild>
+                      <Link to="/weekly-bulletin">
                         View All Bulletins
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   </div>
                 </CardContent>
               </div>
             </Card>
           </div>
         </section>
-      )}
+      )} */}
 
       {/* Parish Priest Welcome Note */}
-      <section className="py-16 bg-church-pearl font-serif">
+      {/* <section className="py-16 bg-church-pearl font-serif">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center">
             <h2 className="text-4xl font-heading font-bold text-church-charcoal mb-6">
@@ -664,19 +499,19 @@ const Landing = () => {
             </h2>
             <Card className="p-8 bg-white/50">
               <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
-                "Welcome to St. Anthony, Gbaja! It is my joy and privilege to serve as your parish priest.
-                Our church is a place where faith is nurtured, lives are transformed, and God's love is shared.
-                I invite you to join us in worship, fellowship, and service as we grow together in Christ.
+                "Welcome to St. Anthony Catholic Church, Gbaja! It is my joy and privilege to serve as your parish priest.
+                Our parish is a place where faith is nurtured, lives are transformed, and God's love is shared.
+                I invite you to join us for Mass, fellowship, and works of charity as we grow together in Christ.
                 Whether you are a longtime member or visiting for the first time, know that you are welcome
                 here. Let us journey together in faith, hope, and love."
               </p>
               <div className="flex items-center justify-center gap-4">
                 <div className="w-16 h-16 rounded-full bg-gradient-church flex items-center justify-center">
-                  <Users className="h-8 w-8 text-primary-foreground" />
+                  <PriestIcon framed={false} className="h-10 w-10" />
                 </div>
                 <div className="text-left">
                   <p className="text-lg font-semibold text-church-charcoal">
-                    Very. Rev. Msgr. Bernard Okodua
+                    Very Rev. Fr. Sylvester Tolulope Oladunjoye
                   </p>
                   <p className="text-muted-foreground">Parish Priest</p>
                 </div>
@@ -684,10 +519,10 @@ const Landing = () => {
             </Card>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Social Media Links and CTAs */}
-      <section className="py-16 bg-background">
+      {/* <section className="py-16 bg-background">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-heading font-bold text-church-charcoal mb-4 accent-line inline-block">
@@ -734,65 +569,18 @@ const Landing = () => {
             </a>
           </div>
           <div className="text-center">
-            <Link to="/contact">
-              <Button variant="church" size="lg">
+            <Button variant="church" size="lg" asChild>
+              <Link to="/contact">
                 Contact Us
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
-      </section>
+      </section> */}
 
-      {/* Watch Live Streaming */}
-      <section className="py-16 bg-gradient-to-r from-primary/10 via-primary/5 to-accent/10">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-8">
-              <h2 className="text-4xl font-heading font-bold text-church-charcoal mb-4 accent-line inline-block">
-                Watch Live
-              </h2>
-              <p className="text-lg text-muted-foreground">
-                Join us for live Mass and special events from anywhere in the world.
-              </p>
-            </div>
-            <Card className="overflow-hidden">
-              <div className="relative aspect-video bg-black">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center text-white">
-                    <Video className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg mb-4">Live streaming will appear here</p>
-                    <Link to="/live">
-                      <Button variant="church" size="lg">
-                        <Eye className="h-4 w-4 mr-2" />
-                        Go to Live Stream
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              </div>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                  <div>
-                    <h3 className="text-xl font-heading font-semibold mb-2">Sunday Mass Live</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Every Sunday at 10:00 AM and 6:00 PM
-                    </p>
-                  </div>
-                  <Link to="/live">
-                    <Button variant="outline">
-                      <Play className="h-4 w-4 mr-2" />
-                      Watch Now
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
 
       {/* Gallery */}
-      <section className="py-16 bg-background">
+      {/* <section className="py-16 bg-background">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-heading font-bold text-church-charcoal mb-4 accent-line inline-block">
@@ -809,7 +597,7 @@ const Landing = () => {
                 className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group"
               >
                 <div className="relative aspect-square">
-                  <img
+                  <img loading="lazy" decoding="async"
                     src={item.thumbnail}
                     alt={item.title}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform"
@@ -826,57 +614,18 @@ const Landing = () => {
             ))}
           </div>
           <div className="text-center">
-            <Link to="/gallery">
-              <Button variant="church" size="lg">
+            <Button variant="church" size="lg" asChild>
+              <Link to="/gallery">
                 View Full Gallery
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
-      </section>
+      </section> */}
 
-      {/* Donations */}
-      <section className="py-16 bg-gradient-church">
-        <div className="container mx-auto px-4 text-center">
-          <div className="max-w-3xl mx-auto">
-            <DollarSign className="h-16 w-16 text-church-charcoal mx-auto mb-6" />
-            <h2 className="text-4xl font-heading font-bold text-church-charcoal mb-4">
-              Support Our Parish
-            </h2>
-            <p className="text-lg text-church-charcoal/80 mb-8">
-              Your generous donations help us continue our mission of serving the community, supporting
-              charitable causes, and maintaining our church facilities. Every contribution makes a difference.
-            </p>
-            <div className="grid md:grid-cols-2 gap-6 mb-8">
-              <Card className="p-6 bg-white/90">
-                <h3 className="text-xl font-heading font-semibold mb-3">Charity & Outreach</h3>
-                <p className="text-muted-foreground mb-4">
-                  Support our charitable programs that help those in need in our community.
-                </p>
-                <Link to="/charity">
-                  <Button variant="secondary" className="w-full">
-                    Learn More
-                  </Button>
-                </Link>
-              </Card>
-              <Card className="p-6 bg-white/90">
-                <h3 className="text-xl font-heading font-semibold mb-3">Parish Support</h3>
-                <p className="text-muted-foreground mb-4">
-                  Help maintain our church facilities and support our ministries and programs.
-                </p>
-                <Link to="/donations">
-                  <Button variant="secondary" className="w-full">
-                    Donate Now
-                  </Button>
-                </Link>
-              </Card>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Call to Action Section */}
-      <section className="py-16 bg-background">
+      {/* <section className="py-16 bg-background">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-heading font-bold text-church-charcoal mb-4 accent-line inline-block">
@@ -888,78 +637,81 @@ const Landing = () => {
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
             <Card className="p-6 text-center hover:shadow-lg transition-shadow">
-              <Calendar className="h-12 w-12 text-primary mx-auto mb-4" />
+              <ChurchFrontIcon size="md" className="mx-auto mb-4" />
               <h3 className="text-lg font-heading font-semibold mb-2">Book Mass</h3>
               <p className="text-sm text-muted-foreground mb-4">
                 Request a Mass intention for your loved ones or special occasions.
               </p>
-              <Link to="/book-mass">
-                <Button variant="outline" size="sm" className="w-full">
+              <Button variant="outline" size="sm" className="w-full" asChild>
+                <Link to="/book-mass">
                   Book Now
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </Card>
             <Card className="p-6 text-center hover:shadow-lg transition-shadow">
-              <HandHeart className="h-12 w-12 text-primary mx-auto mb-4" />
+              <HandsIcon size="md" className="mx-auto mb-4" />
               <h3 className="text-lg font-heading font-semibold mb-2">Request Prayer</h3>
               <p className="text-sm text-muted-foreground mb-4">
                 Submit a prayer request and our community will pray for your intentions.
               </p>
-              <Link to="/prayer-requests">
-                <Button variant="outline" size="sm" className="w-full">
+              <Button variant="outline" size="sm" className="w-full" asChild>
+                <Link to="/prayer-requests">
                   Submit Request
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </Card>
             <Card className="p-6 text-center hover:shadow-lg transition-shadow">
-              <Users className="h-12 w-12 text-primary mx-auto mb-4" />
+              <CommunityIcon size="md" className="mx-auto mb-4" />
               <h3 className="text-lg font-heading font-semibold mb-2">Join a Group</h3>
               <p className="text-sm text-muted-foreground mb-4">
                 Connect with ministries and societies that match your interests and calling.
               </p>
-              <Link to="/groups">
-                <Button variant="outline" size="sm" className="w-full">
+              <Button variant="outline" size="sm" className="w-full" asChild>
+                <Link to="/groups">
                   Explore Groups
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </Card>
             <Card className="p-6 text-center hover:shadow-lg transition-shadow">
-              <UserPlus className="h-12 w-12 text-primary mx-auto mb-4" />
+              <ChaliceIcon size="md" className="mx-auto mb-4" />
               <h3 className="text-lg font-heading font-semibold mb-2">Become a Member</h3>
               <p className="text-sm text-muted-foreground mb-4">
                 Register as a parish member and access exclusive resources and services.
               </p>
-              <Link to="/registration">
-                <Button variant="outline" size="sm" className="w-full">
+              <Button variant="outline" size="sm" className="w-full" asChild>
+                <Link to="/registration">
                   Register Now
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </Card>
           </div>
         </div>
-      </section>
+      </section> */}
+
+
+      <VisitStrip />
 
       {/* Final CTA */}
-      <section className="py-16 bg-gradient-to-r from-primary/10 via-primary/5 to-accent/10">
+      {/* <section className="py-16 bg-gradient-to-r from-primary/10 via-primary/5 to-accent/10">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-heading font-bold mb-4">Ready to Visit?</h2>
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
             We'd love to meet you! Join us this Sunday and experience the warmth of our church family.
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
-            <Link to="/visit">
-              <Button variant="church" size="xl">
+            <Button variant="church" size="xl" asChild>
+              <Link to="/visit">
                 Plan Your Visit
-              </Button>
-            </Link>
-            <Link to="/contact">
-              <Button variant="outline" size="xl">
+              </Link>
+            </Button>
+            <Button variant="outline" size="xl" asChild>
+              <Link to="/contact">
                 Get in Touch
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
-      </section>
+      </section> */}
     </div>
   );
 };

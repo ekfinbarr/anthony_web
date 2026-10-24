@@ -8,7 +8,7 @@ import { ArrowRight, Users, Clock, MapPin, Eye, Target, TrendingUp, User } from 
 import { Link } from "react-router-dom";
 import LatestNews from "@/components/home/LatestNews";
 // import dap from "@/assets/images/DAP.png";
-import stAnthony from "@/assets/images/st_anthony.png";
+import stAnthony from "@/assets/images/st_anthony.webp";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
@@ -56,12 +56,12 @@ const Home = () => {
                 </p>
               </Card>
             </div>
-            <Link to="/about">
-              <Button variant="church" size="lg" className="group">
+            <Button variant="church" size="lg" className="group" asChild>
+              <Link to="/about">
                 Learn More About Us
                 <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
       </section>
@@ -74,11 +74,11 @@ const Home = () => {
               A Message from Our Parish Priest
             </h2>
             <p className="text-lg text-muted-foreground mb-8">
-              "Welcome to St. Anthony, Gbaja! It is my joy and privilege to serve as your parish priest.
-              Our church is a place where faith is nurtured, lives are transformed, and God's love is shared.
-              I invite you to join us in worship, fellowship, and service as we grow together in Christ."
+              "Welcome to St. Anthony Catholic Church, Gbaja! It is my joy and privilege to serve as your parish priest.
+              Our parish is a place where faith is nurtured, lives are transformed, and God's love is shared.
+              I invite you to join us for Mass, fellowship, and works of charity as we grow together in Christ."
             </p>
-            <p className="text-lg font-semibold text-church-charcoal">- Very. Rev. Msgr. Bernard Okodua</p>
+            <p className="text-lg font-semibold text-church-charcoal">- Very Rev. Fr. Sylvester Tolulope Oladunjoye</p>
           </div>
         </div>
       </section>
@@ -157,13 +157,13 @@ const Home = () => {
               </Card>
             </div>
             <div className="space-y-4">
-              <Link to="/dashboard">
-                <Button size="lg" className="text-lg px-8 py-6">
+              <Button size="lg" className="text-lg px-8 py-6" asChild>
+                <Link to="/dashboard">
                   <User className="h-5 w-5 mr-2" />
                   Access Your Dashboard
                   <ArrowRight className="h-5 w-5 ml-2" />
-                </Button>
-              </Link>
+                </Link>
+              </Button>
               <p className="text-sm text-muted-foreground">
                 New member? Your dashboard is ready with personalized demo content to explore.
               </p>
@@ -244,7 +244,7 @@ const Home = () => {
               <div className="p-4">
                 <h3 className="text-2xl font-heading font-bold mb-2">Main Church Hall</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  A beautiful and spacious hall for worship services and ceremonies.
+                  A beautiful and spacious hall for Mass, celebrations, and parish gatherings.
                 </p>
                 <Button variant="outline" size="sm">
                   View Gallery
@@ -304,16 +304,16 @@ const Home = () => {
             We'd love to meet you! Join us this Sunday and experience the warmth of our church family.
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
-            <Link to="/visit">
-              <Button variant="secondary" size="xl">
+            <Button variant="secondary" size="xl" asChild>
+              <Link to="/visit">
                 Plan Your Visit
-              </Button>
-            </Link>
-            <Link to="/contact">
-              <Button variant="outline" size="xl" className="bg-transparent border-church-charcoal text-church-charcoal hover:bg-church-charcoal hover:text-church-pearl">
+              </Link>
+            </Button>
+            <Button variant="outline" size="xl" className="bg-transparent border-church-charcoal text-church-charcoal hover:bg-church-charcoal hover:text-church-pearl" asChild>
+              <Link to="/contact">
                 Get in Touch
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
       </section>

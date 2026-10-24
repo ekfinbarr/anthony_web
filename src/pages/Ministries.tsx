@@ -65,12 +65,12 @@ const Ministries = () => {
           <p className="text-lg text-white mb-6 max-w-2xl mx-auto">
             We're here to help you find the right ministry for you. Reach out to our ministry coordinator for more information.
           </p>
-          <Link to="/contact">
-            <Button variant="outline" size="lg" className="group">
+          <Button variant="outline" size="lg" className="group" asChild>
+            <Link to="/contact">
               Contact Us
               <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       </section>
     </div>

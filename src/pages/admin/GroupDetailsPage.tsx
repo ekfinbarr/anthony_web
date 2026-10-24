@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -61,20 +61,36 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 
 import ministryService, { Ministry } from "@/services/ministry.service";
-import ministryUserService from "@/services/ministryUser.service";
+import ministryUserService, { MinistryUser } from "@/services/ministryUser.service";
 import userService from "@/services/user.service";
 import DeleteConfirmModal from "@/components/admin/shared/DeleteConfirmModal";
 import { StatusBadge } from "@/components/admin/shared/StatusBadge";
 import { GenericEmptyState } from "@/components/admin/shared/GenericEmptyState";
 import { AdminPagination } from "@/components/admin/shared/AdminPagination";
 
+type MinistryDetails = Ministry & {
+  category?: { id?: string; name?: string } | null;
+  leader?: { id?: string; name?: string } | null;
+};
+
+type MinistryMemberRow = MinistryUser & {
+  name?: string;
+  email?: string;
+  user?: {
+    name?: string;
+    email?: string;
+    avatar?: string;
+    avatar_url?: string;
+    first_name?: string;
+    last_name?: string;
+  };
+};
+
 const GroupDetailsPage = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { toast } = useToast();
     const queryClient = useQueryClient();
-
-    const [group, setGroup] = useState<Ministry | null>(null);
 
     const [activeTab, setActiveTab] = useState("overview");
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -93,10 +109,13 @@ const GroupDetailsPage = () => {
         enabled: !!id,
     });
 
-    useEffect(() => {
-        if (groupData) {
-            setGroup(groupData?.data);
+    const group = useMemo((): MinistryDetails | null => {
+        if (!groupData) return null;
+        const wrapped = groupData as MinistryDetails | { data?: MinistryDetails };
+        if (wrapped && typeof wrapped === "object" && "data" in wrapped && wrapped.data) {
+            return wrapped.data;
         }
+        return wrapped as MinistryDetails;
     }, [groupData]);
 
     // Fetch Members
@@ -124,7 +143,12 @@ const GroupDetailsPage = () => {
             toast({ title: "Deleted", description: "Group deleted successfully" });
             navigate("/admin/groups");
         },
-        onError: () => toast({ title: "Error", description: "Failed to delete group", variant: "destructive" }),
+        onError: (error: unknown) =>
+            toast({
+                title: "Error",
+                description: error instanceof Error ? error.message : "Failed to delete group",
+                variant: "destructive",
+            }),
     });
 
     // Member Actions Mutations
@@ -134,7 +158,12 @@ const GroupDetailsPage = () => {
             toast({ title: "Approved", description: "Member approved successfully" });
             queryClient.invalidateQueries({ queryKey: ["ministry-members"] });
         },
-        onError: () => toast({ title: "Error", description: "Failed to approve member", variant: "destructive" }),
+        onError: (error: unknown) =>
+            toast({
+                title: "Error",
+                description: error instanceof Error ? error.message : "Failed to approve member",
+                variant: "destructive",
+            }),
     });
 
     const rejectMemberMutation = useMutation({
@@ -143,7 +172,12 @@ const GroupDetailsPage = () => {
             toast({ title: "Rejected", description: "Member request rejected" });
             queryClient.invalidateQueries({ queryKey: ["ministry-members"] });
         },
-        onError: () => toast({ title: "Error", description: "Failed to reject member", variant: "destructive" }),
+        onError: (error: unknown) =>
+            toast({
+                title: "Error",
+                description: error instanceof Error ? error.message : "Failed to reject member",
+                variant: "destructive",
+            }),
     });
 
     const removeMemberMutation = useMutation({
@@ -217,10 +251,14 @@ const GroupDetailsPage = () => {
             setSelectedUserId("");
             queryClient.invalidateQueries({ queryKey: ["ministry-members"] });
         },
-        onError: (error: any) => {
+        onError: (error: unknown) => {
+            const message =
+                error && typeof error === "object" && "message" in error
+                    ? String((error as { message?: string }).message)
+                    : "Failed to add member";
             toast({
                 title: "Error",
-                description: error.response?.data?.message || "Failed to add member",
+                description: message,
                 variant: "destructive"
             });
         }
@@ -261,8 +299,22 @@ const GroupDetailsPage = () => {
         );
     }
 
-    const members = (membersData as any)?.data || [];
-    const membersMeta = (membersData as any)?.meta;
+    const membersRaw: MinistryMemberRow[] = Array.isArray(membersData?.data)
+        ? (membersData.data as MinistryMemberRow[])
+        : [];
+    const membersMeta = membersData
+        ? {
+            total: membersData.total,
+            last_page: membersData.last_page,
+          }
+        : undefined;
+    const members = membersRaw.filter((member) => {
+      const q = memberSearch.trim().toLowerCase();
+      if (!q) return true;
+      const name = (member.user?.name || member.user?.first_name || member.name || "").toLowerCase();
+      const email = (member.user?.email || member.email || "").toLowerCase();
+      return name.includes(q) || email.includes(q);
+    });
 
     return (
         <div className="space-y-6 animate-fade-in p-6 pb-20">
@@ -354,69 +406,69 @@ const GroupDetailsPage = () => {
                                         <span className="text-muted-foreground">Category</span>
                                         <div className="flex items-center gap-1.5 font-medium">
                                             <Folder className="h-3.5 w-3.5 text-muted-foreground" />
-                                            <span>{(group as any).category?.name || "Uncategorized"}</span>
+                                            <span>{group.category?.name || "Uncategorized"}</span>
                                         </div>
                                     </div>
-                                    {(group as any).leader && (
+                                    {group.leader && (
                                         <div className="flex justify-between items-center text-sm">
                                             <span className="text-muted-foreground">Leader</span>
                                             <div className="flex items-center gap-1.5 font-medium">
                                                 <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                                                <span>{(group as any).leader?.name}</span>
+                                                <span>{group.leader?.name}</span>
                                             </div>
                                         </div>
                                     )}
-                                    {(group as any).contact_email && (
+                                    {group.contact_email && (
                                         <div className="flex justify-between items-center text-sm">
                                             <span className="text-muted-foreground">Email</span>
                                             <div className="flex items-center gap-1.5 font-medium">
                                                 <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                                                <a href={`mailto:${(group as any).contact_email}`} className="hover:underline">{(group as any).contact_email}</a>
+                                                <a href={`mailto:${group.contact_email}`} className="hover:underline">{group.contact_email}</a>
                                             </div>
                                         </div>
                                     )}
-                                    {(group as any).contact_phone && (
+                                    {group.contact_phone && (
                                         <div className="flex justify-between items-center text-sm">
                                             <span className="text-muted-foreground">Phone</span>
                                             <div className="flex items-center gap-1.5 font-medium">
                                                 <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                                                <span>{(group as any).contact_phone}</span>
+                                                <span>{group.contact_phone}</span>
                                             </div>
                                         </div>
                                     )}
-                                    {(group as any).meeting_location && (
+                                    {group.meeting_location && (
                                         <div className="flex justify-between items-center text-sm">
                                             <span className="text-muted-foreground">Location</span>
-                                            <span className="font-medium text-right">{(group as any).meeting_location}</span>
+                                            <span className="font-medium text-right">{group.meeting_location}</span>
                                         </div>
                                     )}
                                 </CardContent>
                             </Card>
 
-                            {((group as any).meeting_schedule || (group as any).requirements || (group as any).activities) && (
+                            {(group.meeting_schedule || group.requirements || group.activities) && (
                                 <Card>
                                     <CardHeader>
                                         <CardTitle className="text-sm font-medium text-muted-foreground">Additional Info</CardTitle>
                                     </CardHeader>
                                     <CardContent className="space-y-4 text-sm">
-                                        {(group as any).meeting_schedule && (
+                                        {group.meeting_schedule ? (
                                             <div>
                                                 <span className="text-muted-foreground block mb-1">Meeting Schedule</span>
-                                                <p>{(group as any).meeting_schedule}</p>
+                                                <p>{typeof group.meeting_schedule === "string" ? group.meeting_schedule : JSON.stringify(group.meeting_schedule)}</p>
                                             </div>
-                                        )}
-                                        {(group as any).requirements && (
+                                        ) : null}
+                                        {group.requirements ? (
                                             <div>
                                                 <span className="text-muted-foreground block mb-1">Requirements</span>
-                                                <p>{(group as any).requirements}</p>
+                                                <p>{group.requirements}</p>
                                             </div>
-                                        )}
-                                        {(group as any).activities && (
+                                        ) : null}
+                                        {group.activities ? (
                                             <div>
                                                 <span className="text-muted-foreground block mb-1">Activities</span>
-                                                <p>{(group as any).activities}</p>
+                                                <p>{typeof group.activities === "string" ? group.activities : JSON.stringify(group.activities)}</p>
                                             </div>
-                                        )}
+                                        ) : null}
                                     </CardContent>
                                 </Card>
                             )}
@@ -487,7 +539,6 @@ const GroupDetailsPage = () => {
                             <div className="mb-4 flex gap-2">
                                 <div className="relative flex-1 max-w-sm">
                                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                                    {/* Search implementation would require backend support or client filtering. For now just placeholder UI */}
                                     <Input
                                         placeholder="Search members..."
                                         className="pl-9"
@@ -530,17 +581,25 @@ const GroupDetailsPage = () => {
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {members.map((member: any) => (
+                                            {members.map((member) => (
                                                 <TableRow key={member.id}>
                                                     <TableCell>
                                                         <div className="flex items-center gap-3">
                                                             <Avatar className="h-9 w-9">
-                                                                <AvatarImage src={member.user?.avatar_url} />
-                                                                <AvatarFallback>{member.user?.first_name?.[0]}{member.user?.last_name?.[0]}</AvatarFallback>
+                                                                <AvatarImage src={member.user?.avatar_url || member.user?.avatar} />
+                                                                <AvatarFallback>
+                                                                    {(member.user?.first_name?.[0] || member.user?.name?.[0] || "?").toUpperCase()}
+                                                                    {member.user?.last_name?.[0] || ""}
+                                                                </AvatarFallback>
                                                             </Avatar>
                                                             <div>
-                                                                <div className="font-medium">{member.user?.first_name} {member.user?.last_name}</div>
-                                                                <div className="text-xs text-muted-foreground">{member.user?.email}</div>
+                                                                <div className="font-medium">
+                                                                    {member.user?.name
+                                                                        || [member.user?.first_name, member.user?.last_name].filter(Boolean).join(" ")
+                                                                        || member.name
+                                                                        || "Member"}
+                                                                </div>
+                                                                <div className="text-xs text-muted-foreground">{member.user?.email || member.email || "—"}</div>
                                                             </div>
                                                         </div>
                                                     </TableCell>

@@ -37,6 +37,9 @@ type AlbumDraft = {
   id?: string;
   title: string;
   description: string;
+  event_date: string;
+  event_end_date: string;
+  venue: string;
   is_featured: boolean;
   is_published: boolean;
   sort_order: number;
@@ -44,34 +47,17 @@ type AlbumDraft = {
   tag_ids: string[];
 };
 
-type ItemDraft = {
-  title: string;
-  description: string;
-  is_published: boolean;
-  sort_order: number;
-  category_ids: string[];
-  tag_ids: string[];
-  file: File | null;
-};
-
 const emptyAlbumDraft = (): AlbumDraft => ({
   title: "",
   description: "",
+  event_date: "",
+  event_end_date: "",
+  venue: "",
   is_featured: false,
   is_published: true,
   sort_order: 0,
   category_ids: [],
   tag_ids: [],
-});
-
-const emptyItemDraft = (): ItemDraft => ({
-  title: "",
-  description: "",
-  is_published: true,
-  sort_order: 0,
-  category_ids: [],
-  tag_ids: [],
-  file: null,
 });
 
 function toOptions(items: { id: string; label: string; slug?: string; color?: string | null }[]): MultiSelectOption[] {
@@ -123,6 +109,9 @@ export default function AdminGalleryAlbums() {
       id: album.id,
       title: album.title,
       description: album.description ?? "",
+      event_date: album.event_date ?? "",
+      event_end_date: album.event_end_date ?? "",
+      venue: album.venue ?? "",
       is_featured: !!album.is_featured,
       is_published: !!album.is_published,
       sort_order: album.sort_order ?? 0,
@@ -138,6 +127,9 @@ export default function AdminGalleryAlbums() {
       const payload = {
         title: draft.title,
         description: draft.description || null,
+        event_date: draft.event_date || null,
+        event_end_date: draft.event_end_date || null,
+        venue: draft.venue.trim() || null,
         is_featured: draft.is_featured,
         is_published: draft.is_published,
         sort_order: draft.sort_order,
@@ -239,7 +231,10 @@ export default function AdminGalleryAlbums() {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="line-clamp-1 font-medium">{a.title}</p>
-                    <p className="text-xs text-muted-foreground">{a.items_count ?? 0} items</p>
+                    <p className="text-xs text-muted-foreground">
+                      {(a.photo_count ?? 0)} photos · {(a.video_count ?? 0)} videos
+                      {a.event_date ? ` · ${a.event_date}` : ""}
+                    </p>
                   </div>
                   <div className="flex items-center gap-1">
                     <Button variant="ghost" size="icon" onClick={() => openEdit(a)} title="Edit">
@@ -298,6 +293,33 @@ export default function AdminGalleryAlbums() {
             <div className="space-y-2 md:col-span-2">
               <Label>Description</Label>
               <Textarea value={draft.description} onChange={(e) => setDraft((p) => ({ ...p, description: e.target.value }))} placeholder="Optional description…" />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Event date</Label>
+              <Input
+                type="date"
+                value={draft.event_date}
+                onChange={(e) => setDraft((p) => ({ ...p, event_date: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>End date (optional)</Label>
+              <Input
+                type="date"
+                value={draft.event_end_date}
+                onChange={(e) => setDraft((p) => ({ ...p, event_end_date: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <Label>Venue (optional)</Label>
+              <Input
+                value={draft.venue}
+                onChange={(e) => setDraft((p) => ({ ...p, venue: e.target.value }))}
+                placeholder="e.g. Church grounds, Parish hall"
+              />
             </div>
 
             <div className="space-y-2">

@@ -5,7 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import FaqAccordion from "@/components/faq/FaqAccordion";
-import stAnthony from "@/assets/images/st_anthony.png";
+import { cn } from "@/lib/utils";
+import FAQSchema from "@/components/seo/schemas/FAQSchema";
+import PageHeader from "@/components/layout/PageHeader";
+import { formatAddress, site } from "@/config/site";
+import { formatService, massTimesAnswer, otherServices } from "@/config/parish";
+
+const confessions = otherServices.find((service) => service.name === "Confessions");
+const phoneSentence = site.telephone ? ` or by phone on ${site.telephone}` : "";
+const contactCardCount = 2 + (site.telephone ? 1 : 0) + (site.social.whatsapp ? 1 : 0);
 
 const FaqPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -15,16 +23,22 @@ const FaqPage = () => {
       category: "General Information",
       questions: [
         {
-          question: "What time are the Sunday Masses?",
-          answer: "Sunday Masses are held at 9:00 AM and 11:00 AM. Wednesday Mass is at 7:00 PM. Please arrive 15 minutes early for seating."
+          question: "What are the Mass times?",
+          answer: `${massTimesAnswer()} Please arrive 15 minutes early for seating.`
         },
+        ...(confessions
+          ? [{
+              question: "When are Confessions heard?",
+              answer: `Confessions are heard on ${formatService(confessions)}.`
+            }]
+          : []),
         {
           question: "Where is the Parish Office located?",
-          answer: "The Parish Office is located at the main church building, St. Anthony Catholic Church, Gbaja. Office hours are Monday to Friday, 9:00 AM to 5:00 PM."
+          answer: `The Parish Office is located at the main church building, ${site.name}, ${formatAddress(site.address)}. Office hours are Monday to Friday, 9:00 AM to 5:00 PM.`
         },
         {
           question: "How can I contact the Parish Office?",
-          answer: "You can contact us by phone at (555) 123-4567, email at office@stantonygbaja.org, or visit us during office hours."
+          answer: `You can email the Parish Office at ${site.email}${phoneSentence}, send a message from our Contact page, or visit us during office hours.`
         }
       ]
     },
@@ -50,7 +64,7 @@ const FaqPage = () => {
       questions: [
         {
           question: "How do I book for a Mass intention?",
-          answer: "Mass intentions can be booked through the Parish Office or online via our website. Suggested donation is $10 per intention."
+          answer: "Mass intentions can be booked online on our Book a Mass page, or through the Parish Office."
         },
         {
           question: "How do I join a society or ministry?",
@@ -76,7 +90,7 @@ const FaqPage = () => {
       questions: [
         {
           question: "How can I give online or support parish projects?",
-          answer: "You can make online donations through our website by clicking on 'Support' in the navigation. We also accept checks and cash at the Parish Office."
+          answer: "You can make online donations through our website by clicking on 'Give' in the navigation. We also accept checks and cash at the Parish Office."
         }
       ]
     }
@@ -92,31 +106,21 @@ const FaqPage = () => {
 
   return (
     <div className="min-h-screen">
-      {/* Hero Section */}
-      <section className="relative py-20 bg-gradient-to-r from-primary/10 via-primary/5 to-accent/10">
-        <div className="absolute inset-0 bg-black/40"></div>
-        <img
-          src={stAnthony}
-          alt="Church interior"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="relative container mx-auto px-4 text-center">
-          <h1 className="text-5xl font-heading font-bold text-white mb-6">
-            Frequently Asked Questions (FAQ)
-          </h1>
-          <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
-            Find quick answers to common parish enquiries.
-          </p>
-        </div>
-      </section>
+      <FAQSchema items={faqData.flatMap((category) => category.questions)} />
+      <PageHeader
+        title="Frequently Asked Questions (FAQ)"
+        description="Find quick answers to common parish enquiries."
+      />
 
       {/* Search Bar */}
       <section className="py-12 bg-background">
         <div className="container mx-auto px-4">
           <div className="max-w-md mx-auto relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <label htmlFor="faq-search" className="sr-only">Search frequently asked questions</label>
             <Input
-              type="text"
+              id="faq-search"
+              type="search"
               placeholder="Search questions..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -124,6 +128,8 @@ const FaqPage = () => {
             />
             {searchTerm && (
               <button
+                type="button"
+                aria-label="Clear search"
                 onClick={() => setSearchTerm("")}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
@@ -168,17 +174,19 @@ const FaqPage = () => {
               Can't find the answer you're looking for? Our parish team is here to help.
             </p>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <Card className="p-6 text-center">
-                <Phone className="h-8 w-8 text-primary mx-auto mb-4" />
-                <h3 className="font-semibold mb-2">Call Us</h3>
-                <p className="text-sm text-muted-foreground">(555) 123-4567</p>
-              </Card>
+            <div className={cn("grid md:grid-cols-2 gap-6 mb-8", contactCardCount === 4 && "lg:grid-cols-4", contactCardCount === 3 && "lg:grid-cols-3")}>
+              {site.telephone && (
+                <Card className="p-6 text-center">
+                  <Phone className="h-8 w-8 text-primary mx-auto mb-4" aria-hidden="true" />
+                  <h3 className="font-semibold mb-2">Call Us</h3>
+                  <a href={`tel:${site.telephone.replace(/[^+\d]/g, "")}`} className="text-sm text-muted-foreground hover:text-primary">{site.telephone}</a>
+                </Card>
+              )}
 
               <Card className="p-6 text-center">
-                <Mail className="h-8 w-8 text-primary mx-auto mb-4" />
+                <Mail className="h-8 w-8 text-primary mx-auto mb-4" aria-hidden="true" />
                 <h3 className="font-semibold mb-2">Email Us</h3>
-                <p className="text-sm text-muted-foreground">office@stantonygbaja.org</p>
+                <a href={`mailto:${site.email}`} className="text-sm text-muted-foreground hover:text-primary break-all">{site.email}</a>
               </Card>
 
               <Card className="p-6 text-center">
@@ -187,18 +195,20 @@ const FaqPage = () => {
                 <p className="text-sm text-muted-foreground">Mon-Fri: 9AM-5PM</p>
               </Card>
 
-              <Card className="p-6 text-center">
-                <MessageCircle className="h-8 w-8 text-primary mx-auto mb-4" />
-                <h3 className="font-semibold mb-2">WhatsApp</h3>
-                <p className="text-sm text-muted-foreground">(555) 123-4568</p>
-              </Card>
+              {site.social.whatsapp && (
+                <Card className="p-6 text-center">
+                  <MessageCircle className="h-8 w-8 text-primary mx-auto mb-4" aria-hidden="true" />
+                  <h3 className="font-semibold mb-2">WhatsApp</h3>
+                  <a href={site.social.whatsapp} target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-primary">Chat with us on WhatsApp</a>
+                </Card>
+              )}
             </div>
 
-            <Link to="/contact">
-              <Button variant="church" size="lg">
+            <Button variant="church" size="lg" asChild>
+              <Link to="/contact">
                 Contact Us
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
       </section>

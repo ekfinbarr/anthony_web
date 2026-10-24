@@ -40,6 +40,7 @@ import { AdminPagination } from "@/components/admin/shared/AdminPagination";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import clinicService, { ClinicService, UpsertClinicServicePayload, ClinicAppointment } from "@/services/clinic.service";
 import { ClinicOperatingHours } from "@/components/admin/clinic/ClinicOperatingHours";
+import AmountInput from "@/components/forms/AmountInput";
 
 const PREDEFINED_CATEGORIES = [
   "General Consultation",
@@ -713,14 +714,12 @@ setServiceForm(p => ({ ...p, category: "" }));
                       <SelectItem value="GBP">GBP</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={serviceForm.price}
-                    onChange={(e) => setServiceForm((p) => ({ ...p, price: e.target.value }))}
-                    placeholder="0.00"
+                  <AmountInput
                     className="flex-1"
+                    currency={serviceForm.currency}
+                    value={serviceForm.price === "" ? null : Number(serviceForm.price)}
+                    onValueChange={(next) => setServiceForm((p) => ({ ...p, price: next === null ? "" : String(next) }))}
+                    placeholder="0.00"
                   />
                 </div>
               </div>
@@ -788,7 +787,13 @@ setServiceForm(p => ({ ...p, category: "" }));
           {apptAction !== "confirm" ? (
             <div className="space-y-3 py-2">
               <div className="space-y-1">
-                <div className="text-sm font-medium">{apptAction === "reject" ? "Rejection reason" : "Cancellation reason (optional)"}</div>
+                <div className="text-sm font-medium">
+                  {apptAction === "reject" ? (
+                    <>Rejection reason <span className="text-destructive">*</span></>
+                  ) : (
+                    "Cancellation reason (optional)"
+                  )}
+                </div>
                 <Input value={apptReason} onChange={(e) => setApptReason(e.target.value)} placeholder={apptAction === "reject" ? "Reason..." : "(optional)"} />
               </div>
               {apptAction === "reject" ? (
@@ -806,7 +811,7 @@ setServiceForm(p => ({ ...p, category: "" }));
             <Button
               variant={apptAction === "reject" || apptAction === "cancel" ? "destructive" : "default"}
               onClick={() => apptActionMutation.mutate()}
-              disabled={apptActionMutation.isPending}
+              disabled={apptActionMutation.isPending || (apptAction === "reject" && !apptReason.trim())}
             >
               {apptActionMutation.isPending ? "Saving..." : "Confirm"}
             </Button>

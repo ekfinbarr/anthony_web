@@ -68,6 +68,8 @@ import DeleteConfirmModal from "@/components/admin/shared/DeleteConfirmModal";
 import { StatusBadge } from "@/components/admin/shared/StatusBadge";
 import { GenericEmptyState } from "@/components/admin/shared/GenericEmptyState";
 
+const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
+
 const AdminSchedules = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -82,6 +84,7 @@ const AdminSchedules = () => {
   const [pageSize, setPageSize] = useState(15);
   const [selectedSchedule, setSelectedSchedule] = useState<MassSchedule | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
 
   // Build query parameters
   const queryParams: MassScheduleQueryParams = useMemo(() => {
@@ -185,7 +188,19 @@ const AdminSchedules = () => {
   const from = (schedulesData && 'from' in schedulesData) ? schedulesData.from : 0;
   const to = (schedulesData && 'to' in schedulesData) ? schedulesData.to : 0;
 
-  const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  const schedulesByDay = useMemo(() => {
+    const map: Record<string, MassSchedule[]> = {};
+    for (const day of DAYS_OF_WEEK) map[day] = [];
+    for (const schedule of schedules) {
+      const day = schedule.day_of_week || "Monday";
+      if (!map[day]) map[day] = [];
+      map[day].push(schedule);
+    }
+    for (const day of DAYS_OF_WEEK) {
+      map[day].sort((a, b) => (a.start_time || "").localeCompare(b.start_time || ""));
+    }
+    return map;
+  }, [schedules]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -197,9 +212,31 @@ const AdminSchedules = () => {
             Manage weekly and special mass schedules for the parish.
           </p>
         </div>
-        <Button onClick={handleCreate} className="gap-2">
-          <Plus className="h-4 w-4" /> New Schedule
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-lg border p-1">
+            <Button
+              type="button"
+              variant={viewMode === "list" ? "default" : "ghost"}
+              size="sm"
+              className="gap-1"
+              onClick={() => setViewMode("list")}
+            >
+              <Calendar className="h-4 w-4" /> List
+            </Button>
+            <Button
+              type="button"
+              variant={viewMode === "calendar" ? "default" : "ghost"}
+              size="sm"
+              className="gap-1"
+              onClick={() => setViewMode("calendar")}
+            >
+              <CalendarDays className="h-4 w-4" /> Calendar
+            </Button>
+          </div>
+          <Button onClick={handleCreate} className="gap-2">
+            <Plus className="h-4 w-4" /> New Schedule
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -227,7 +264,7 @@ const AdminSchedules = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Days</SelectItem>
-                {daysOfWeek.map(day => (
+                {DAYS_OF_WEEK.map(day => (
                   <SelectItem key={day} value={day}>{day}</SelectItem>
                 ))}
               </SelectContent>
@@ -264,12 +301,12 @@ const AdminSchedules = () => {
         </CardContent>
       </Card>
 
-      {/* Schedules Table */}
+      {/* Schedules Table / Calendar */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>All Schedules</CardTitle>
-            {totalItems > 0 && (
+            <CardTitle>{viewMode === "calendar" ? "Weekly Calendar" : "All Schedules"}</CardTitle>
+            {totalItems > 0 && viewMode === "list" && (
               <span className="text-sm text-muted-foreground">
                 Showing {from}-{to} of {totalItems} schedules
               </span>
@@ -310,6 +347,41 @@ const AdminSchedules = () => {
               onAction={handleCreate}
               icon="clock"
             />
+          ) : viewMode === "calendar" ? (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              {DAYS_OF_WEEK.map((day) => (
+                <div key={day} className="rounded-lg border p-3 space-y-2 min-h-[140px]">
+                  <div className="font-semibold text-sm flex items-center gap-2">
+                    <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                    {day}
+                    <span className="text-xs text-muted-foreground font-normal">
+                      ({schedulesByDay[day]?.length || 0})
+                    </span>
+                  </div>
+                  {(schedulesByDay[day] || []).length === 0 ? (
+                    <p className="text-xs text-muted-foreground py-4 text-center">No masses</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {schedulesByDay[day].map((schedule) => (
+                        <button
+                          key={schedule.id}
+                          type="button"
+                          onClick={() => handleEdit(schedule)}
+                          className="w-full text-left rounded-md border bg-muted/30 hover:bg-muted/60 p-2 transition-colors"
+                        >
+                          <div className="text-sm font-medium truncate">{schedule.title}</div>
+                          <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <Clock className="h-3 w-3" />
+                            {formatTime(schedule.start_time)}
+                            {schedule.language ? ` · ${schedule.language}` : ""}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           ) : (
             <>
               <div className="rounded-md border">

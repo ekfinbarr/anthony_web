@@ -385,7 +385,7 @@ export function useSpiritualGrowth(
         : new Date(streak.lastActivity);
       
       // Check if date is valid
-      let daysSinceLastActivity = 0;
+      let daysSinceLastActivity: number;
       if (!isNaN(lastActivity.getTime())) {
         daysSinceLastActivity = Math.floor(
           (Date.now() - lastActivity.getTime()) / (1000 * 60 * 60 * 24)

@@ -1,114 +1,51 @@
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Target, Eye, Heart, Users, Clock, MapPin, Bus, Car, Baby } from "lucide-react";
+import { BusIcon, CarIcon, ChaliceIcon, ChildIcon, ClockIcon, CommunityIcon, CompassIcon, GarmentIcon, HeartIcon, PewIcon, PinIcon } from "@/components/icons/ParishIcons";
 import { Link } from "react-router-dom";
 import { motion } from 'framer-motion';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import Contact from '../../../Gbaja/src/pages/Contact';
+import { formatAddress, mapsEmbedUrl, mapsSearchUrl, site } from "@/config/site";
+import { massTimesAnswer } from "@/config/parish";
+import PageHeader from "@/components/layout/PageHeader";
+import MassScheduleList from "@/components/visit/MassScheduleList";
 
 const Visit = () => {
     const values = [
         {
-            icon: Heart,
+            icon: HeartIcon,
             title: "Love",
             description: "We believe in showing God's love through our actions and relationships.",
         },
         {
-            icon: Users,
+            icon: CommunityIcon,
             title: "Community",
             description: "We value authentic relationships and doing life together.",
         },
         {
-            icon: Target,
+            icon: CompassIcon,
             title: "Purpose",
             description: "We help people discover and fulfill their God-given purpose.",
         },
     ];
 
-    const leadership = [
-        {
-            name: "Very. Rev. Msgr. Bernard Okodua",
-            role: "Parish Priest",
-            bio: "Msgr. Okodua has been serving St. Anthony, Gbaja for over 18 years with a heart for community and spiritual growth.",
-            image: "/api/placeholder/300/300",
-        },
-        {
-            name: "Rev. Fr. Alexander Fatimehin",
-            role: "Associate Priest",
-            bio: "Fr. Alexander Fatimehin leads our parish teams with passion and creates an atmosphere for encountering God's presence.",
-            image: "/api/placeholder/300/300",
-        },
-        {
-            name: "Rev. Fr. Augustine A",
-            role: "Priest in Residence",
-            bio: "Dedicated to mentoring the next generation and helping them grow in their faith journey.",
-            image: "/api/placeholder/300/300",
-        },
-    ];
 
     return (
         <div>
-            {/* Hero Section */}
-            <section className="relative py-24 bg-gradient-dark text-church-pearl">
-                <div className="absolute inset-0 pattern-geometric" />
-                <div className="container mx-auto px-4 relative">
-                    <h1 className="text-5xl font-heading font-bold mb-4 text-center">Plan Your Visit</h1>
-                    <p className="text-xl text-center max-w-3xl mx-auto text-church-pearl/90">
-                        We can't wait to welcome you! Here's everything you need to know for your first visit.
-                    </p>
-                </div>
-            </section>
+            <PageHeader
+                title="Plan Your Visit"
+                description="We can't wait to welcome you! Here's everything you need to know for your first visit."
+            />
 
             {/* Mass Schedule */}
-            <section className="py-16 bg-background">
+            <section id="mass-times" aria-labelledby="mass-times-heading" className="scroll-mt-24 bg-church-pearl/35 py-16 md:py-20">
                 <div className="container mx-auto px-4">
-                    <h2 className="text-4xl font-heading font-bold text-center mb-12 text-church-charcoal">
+                    <h2 id="mass-times-heading" className="mb-4 text-center font-heading text-3xl font-bold text-church-charcoal md:text-4xl">
                         Mass Schedule
                     </h2>
+                    {/* <p className="mx-auto mb-10 max-w-2xl text-center text-base text-muted-foreground md:mb-12 md:text-lg">
+                        {massTimesAnswer()}
+                    </p> */}
 
-                    {/* Three vertical table columns for weekly mass schedule */}
-                    {/* Add beautiful grid lines to the columns to make it look like a table */}
-                    
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div className="p-6 bg-white/90 rounded-lg shadow-lift">
-                            <h3 className="text-2xl font-heading font-semibold mb-4">Sunday Mass</h3>
-                            <ul className="space-y-2 text-muted-foreground">
-                                <li>7:00 AM - Morning Mass</li>
-                                <li>8:30 AM - Family Mass</li>
-                                <li>5:00 PM - Evening Mass</li>
-                            </ul>
-                        </div>
-                        <div className="p-6 bg-white/90 rounded-lg shadow-lift">
-                            <h3 className="text-2xl font-heading font-semibold mb-4">Tuesday Mass</h3>
-                            <ul className="space-y-2 text-muted-foreground">
-                                <li>6:30 AM - Morning Mass</li>
-                            </ul>
-                        </div>
-                        <div className="p-6 bg-white/90 rounded-lg shadow-lift">
-                            <h3 className="text-2xl font-heading font-semibold mb-4">Wednesday Mass</h3>
-                            <ul className="space-y-2 text-muted-foreground">
-                                <li>6:30 AM - Morning Mass</li>
-                            </ul>
-                        </div>
-                        <div className="p-6 bg-white/90 rounded-lg shadow-lift">
-                            <h3 className="text-2xl font-heading font-semibold mb-4">Thursday Mass</h3>
-                            <ul className="space-y-2 text-muted-foreground">
-                                <li>6:30 AM - Morning Mass</li>
-                            </ul>
-                        </div>
-                        <div className="p-6 bg-white/90 rounded-lg shadow-lift">
-                            <h3 className="text-2xl font-heading font-semibold mb-4">Friday Mass</h3>
-                            <ul className="space-y-2 text-muted-foreground">
-                                <li>6:30 AM - Morning Mass</li>
-                            </ul>
-                        </div>
-                        <div className="p-6 bg-white/90 rounded-lg shadow-lift">
-                            <h3 className="text-2xl font-heading font-semibold mb-4">Saturday Mass</h3>
-                            <ul className="space-y-2 text-muted-foreground">
-                                <li>6:30 AM - Morning Mass</li>
-                            </ul>
-                        </div>
-                    </div>
+                    <MassScheduleList />
                 </div>
             </section>
 
@@ -139,17 +76,17 @@ const Visit = () => {
                             {/* <h2 className="text-3xl font-serif font-bold mb-6">Find Us</h2> */}
                             <div className="space-y-4">
                                 <div className="flex items-start gap-4">
-                                    <MapPin className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
+                                    <PinIcon className="h-8 w-8 shrink-0" />
                                     <div>
                                         <h3 className="font-semibold mb-1">Address</h3>
-                                        <p className="text-muted-foreground">
-                                            123 Church Street, Gbaja<br />
-                                            Lagos, Nigeria
-                                        </p>
+                                        <address className="not-italic text-muted-foreground">
+                                            {site.name}<br />
+                                            {formatAddress(site.address)}
+                                        </address>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-4">
-                                    <Car className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
+                                    <CarIcon className="h-8 w-8 shrink-0" />
                                     <div>
                                         <h3 className="font-semibold mb-1">Parking</h3>
                                         <p className="text-muted-foreground">
@@ -158,7 +95,7 @@ const Visit = () => {
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-4">
-                                    <Bus className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
+                                    <BusIcon className="h-8 w-8 shrink-0" />
                                     <div>
                                         <h3 className="font-semibold mb-1">Public Transport</h3>
                                         <p className="text-muted-foreground">
@@ -169,7 +106,7 @@ const Visit = () => {
                             </div>
                             <Button variant="default" className="mt-6" asChild>
                                 <a
-                                    href="https://maps.google.com/?q=St+Anthony+Catholic+Church+Gbaja"
+                                    href={mapsSearchUrl(site)}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                 >
@@ -186,14 +123,14 @@ const Visit = () => {
                             className="h-[400px] lg:h-full rounded-lg overflow-hidden shadow-lift"
                         >
                             <iframe
-                                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3964.025!2d3.384!3d6.524!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNsKwMzEnMjYuNCJOIDPCsDIzJzAyLjQiRQ!5e0!3m2!1sen!2sng!4v1234567890"
+                                src={mapsEmbedUrl(site)}
                                 width="100%"
                                 height="100%"
                                 style={{ border: 0 }}
                                 allowFullScreen
                                 loading="lazy"
                                 referrerPolicy="no-referrer-when-downgrade"
-                                title="Church Location Map"
+                                title={`Map showing the location of ${site.name}`}
                             />
                         </motion.div>
                     </div>
@@ -211,11 +148,11 @@ const Visit = () => {
                             <AccordionItem value="item-1">
                                 <AccordionTrigger className="text-left">
                                     <div className="flex items-center gap-3">
-                                        <Users className="w-5 h-5 text-primary" />
+                                        <GarmentIcon className="h-7 w-7 shrink-0" />
                                         <span className="font-semibold">What should I wear?</span>
                                     </div>
                                 </AccordionTrigger>
-                                <AccordionContent className="text-muted-foreground px-6">
+                                <AccordionContent forceMount className="text-muted-foreground px-6">
                                     We encourage modest and respectful attire. Most people dress in business casual or
                                     semi-formal wear. You're welcome to wear traditional Nigerian attire. The most
                                     important thing is that you come as you are!
@@ -225,11 +162,11 @@ const Visit = () => {
                             <AccordionItem value="item-2">
                                 <AccordionTrigger className="text-left">
                                     <div className="flex items-center gap-3">
-                                        <Clock className="w-5 h-5 text-primary" />
+                                        <ClockIcon className="h-7 w-7 shrink-0" />
                                         <span className="font-semibold">How long is the service?</span>
                                     </div>
                                 </AccordionTrigger>
-                                <AccordionContent className="text-muted-foreground px-6">
+                                <AccordionContent forceMount className="text-muted-foreground px-6">
                                     Sunday Mass typically lasts 60-90 minutes, including hymns, readings, homily, and
                                     Eucharist. Weekday Mass is shorter, around 30-45 minutes.
                                 </AccordionContent>
@@ -238,11 +175,11 @@ const Visit = () => {
                             <AccordionItem value="item-3">
                                 <AccordionTrigger className="text-left">
                                     <div className="flex items-center gap-3">
-                                        <Baby className="w-5 h-5 text-primary" />
+                                        <ChildIcon className="h-7 w-7 shrink-0" />
                                         <span className="font-semibold">Is there childcare available?</span>
                                     </div>
                                 </AccordionTrigger>
-                                <AccordionContent className="text-muted-foreground px-6">
+                                <AccordionContent forceMount className="text-muted-foreground px-6">
                                     Yes! We have a staffed nursery for infants and toddlers (ages 0-3) during the 9:00 AM
                                     Sunday Mass. Children's Liturgy of the Word is available for ages 4-8. All volunteers
                                     are background-checked and trained.
@@ -252,11 +189,11 @@ const Visit = () => {
                             <AccordionItem value="item-4">
                                 <AccordionTrigger className="text-left">
                                     <div className="flex items-center gap-3">
-                                        <MapPin className="w-5 h-5 text-primary" />
+                                        <PewIcon className="h-7 w-7 shrink-0" />
                                         <span className="font-semibold">Where should I sit?</span>
                                     </div>
                                 </AccordionTrigger>
-                                <AccordionContent className="text-muted-foreground px-6">
+                                <AccordionContent forceMount className="text-muted-foreground px-6">
                                     Sit anywhere you feel comfortable! We don't have assigned seating. If you're new, our
                                     ushers will be happy to help you find a good spot. The center sections fill up first,
                                     so arriving 10-15 minutes early is recommended.
@@ -266,11 +203,11 @@ const Visit = () => {
                             <AccordionItem value="item-5">
                                 <AccordionTrigger className="text-left">
                                     <div className="flex items-center gap-3">
-                                        <Users className="w-5 h-5 text-primary" />
+                                        <ChaliceIcon className="h-7 w-7 shrink-0" />
                                         <span className="font-semibold">Can I receive Communion?</span>
                                     </div>
                                 </AccordionTrigger>
-                                <AccordionContent className="text-muted-foreground px-6">
+                                <AccordionContent forceMount className="text-muted-foreground px-6">
                                     Catholics who are properly disposed may receive Communion. If you're not Catholic or
                                     not receiving, you're welcome to remain in your pew during Communion, or come forward
                                     with arms crossed for a blessing.
@@ -283,18 +220,18 @@ const Visit = () => {
 
 
 
-            {/* Service Times */}
+            {/* Visit questions CTA */}
             <section id="services" className="py-16 bg-gradient-church">
                 <div className="container mx-auto px-4">
                     <h2 className="text-4xl font-heading font-serif font-bold text-center mb-12 text-church-charcoal">
                         Have questions before your visit?
                     </h2>
                     <div className="text-center mt-8">
-                        <Link to="/contact" className="inline-block">
-                            <Button variant="secondary" size="xl">
+                        <Button variant="secondary" size="xl" asChild>
+                            <Link to="/contact" className="inline-block">
                                 Contact Us
-                            </Button>
-                        </Link>
+                            </Link>
+                        </Button>
                     </div>
                 </div>
             </section>

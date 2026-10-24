@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { chatbotService, ChatMessage } from '@/services/openai';
+import { chatbotService, ChatMessage, isOpenAIEnabled } from '@/services/openai';
 import { fallbackChatbotService } from '@/services/fallbackChatbot';
 
 export interface UseChatbotReturn {
@@ -20,9 +20,7 @@ export const useChatbot = (): UseChatbotReturn => {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Check if OpenAI is available
-  const hasOpenAIKey = Boolean(import.meta.env.VITE_OPENAI_API_KEY && 
-    import.meta.env.VITE_OPENAI_API_KEY !== 'your_openai_api_key_here' &&
-    import.meta.env.VITE_OPENAI_API_KEY !== 'sk-your-development-key-here');
+  const hasOpenAIKey = isOpenAIEnabled;
 
   // Choose the appropriate service
   const currentService = hasOpenAIKey ? chatbotService : fallbackChatbotService;
@@ -37,14 +35,14 @@ export const useChatbot = (): UseChatbotReturn => {
       id: 'welcome',
       role: 'assistant',
       content: hasOpenAIKey 
-        ? `Welcome to St. Anthony, Gbaja! 🏛️ 
+        ? `Welcome to St. Anthony Catholic Church, Gbaja!
 
-I'm your AI assistant, powered by advanced technology to help you with information about our church, service times, events, and answer any questions you might have about our faith community.
+I'm your parish assistant. I can help with Mass times, sacraments, events, and other information about our Catholic parish community.
 
 How can I assist you today?`
-        : `Welcome to St. Anthony, Gbaja! 🏛️ 
+        : `Welcome to St. Anthony Catholic Church, Gbaja!
 
-I'm here to help you with basic information about our church, service times, events, and our community.
+I'm here to help with Mass times, sacraments, events, and basic information about our parish.
 
 How can I assist you today?`,
       timestamp: new Date()

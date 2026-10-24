@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RequiredLabel } from "@/components/admin/shared/RequiredLabel";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
@@ -119,8 +120,8 @@ export default function AdminCalendar() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1 md:col-span-2">
-                <Label htmlFor="cal-title">Title</Label>
-                <Input id="cal-title" value={title} onChange={(e) => setTitle(e.target.value)} />
+                <RequiredLabel htmlFor="cal-title">Title</RequiredLabel>
+                <Input id="cal-title" value={title} onChange={(e) => setTitle(e.target.value)} required aria-required />
               </div>
               <div className="space-y-1 md:col-span-2">
                 <Label htmlFor="cal-type">Type (legacy)</Label>
@@ -141,7 +142,7 @@ export default function AdminCalendar() {
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="cal-start">Start (datetime)</Label>
+                <RequiredLabel htmlFor="cal-start">Start (datetime)</RequiredLabel>
                 {/* <Input id="cal-start" value={start} onChange={(e) => setStart(e.target.value)} placeholder="2026-01-01 09:00:00" /> */}
 
                 <DatePicker
@@ -252,7 +253,10 @@ export default function AdminCalendar() {
               <Button variant="outline" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
+              <Button
+                onClick={() => createMutation.mutate()}
+                disabled={createMutation.isPending || !title.trim() || !start}
+              >
                 {createMutation.isPending ? "Creating..." : "Create"}
               </Button>
             </div>

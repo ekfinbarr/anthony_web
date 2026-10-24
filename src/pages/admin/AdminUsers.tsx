@@ -15,14 +15,19 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, MoreVertical, Eye, Edit, Trash2, Plus, Phone, AlertCircle } from "lucide-react";
+import { Search, MoreVertical, Eye, Edit, Trash2, Plus, Phone, AlertCircle, Download, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { AdminPagination } from "@/components/admin/shared/AdminPagination";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import DeleteConfirmModal from "@/components/admin/shared/DeleteConfirmModal";
 import { GenericEmptyState } from "@/components/admin/shared/GenericEmptyState";
+import { CsvImportDialog } from "@/components/admin/shared/CsvImportDialog";
+import { IconTooltipButton } from "@/components/admin/shared/IconTooltipButton";
+import { downloadAuthenticatedFile } from "@/lib/downloadCsv";
 import userService, { User } from "@/services/user.service";
+import rbacService, { Role } from "@/services/rbac.service";
 
 const AdminUsers = () => {
   const { toast } = useToast();
@@ -39,6 +44,8 @@ const AdminUsers = () => {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [form, setForm] = useState({
     name: "",
@@ -46,7 +53,21 @@ const AdminUsers = () => {
     phone: "",
     password: "",
     is_active: true,
+    roles: ["parishioner"] as string[],
   });
+
+  const rolesQuery = useQuery({
+    queryKey: ["admin-rbac-roles"],
+    queryFn: () => rbacService.listRoles(),
+  });
+
+  const availableRoles: Role[] = useMemo(() => {
+    const d = rolesQuery.data;
+    return Array.isArray(d) ? d : d?.data ?? [];
+  }, [rolesQuery.data]);
+
+  const toggleRole = (name: string, checked: boolean) =>
+    setForm((p) => ({ ...p, roles: checked ? [...p.roles, name] : p.roles.filter((r) => r !== name) }));
 
   const queryParams = useMemo(() => {
     return {
@@ -82,7 +103,7 @@ const AdminUsers = () => {
 
   const openCreate = () => {
     setEditingUser(null);
-    setForm({ name: "", email: "", phone: "", password: "", is_active: true });
+    setForm({ name: "", email: "", phone: "", password: "", is_active: true, roles: ["parishioner"] });
     setIsFormOpen(true);
   };
 
@@ -94,6 +115,7 @@ const AdminUsers = () => {
       phone: u.phone || "",
       password: "",
       is_active: typeof u.is_active === "boolean" ? u.is_active : true,
+      roles: (u.roles ?? []).map((r) => r.name),
     });
     setIsFormOpen(true);
   };
@@ -106,6 +128,7 @@ const AdminUsers = () => {
         password: form.password,
         phone: form.phone.trim() || null,
         is_active: form.is_active,
+        roles: form.roles,
       }),
     onSuccess: () => {
       toast({ title: "Created", description: "User created successfully." });
@@ -126,6 +149,7 @@ const AdminUsers = () => {
         email: form.email.trim(),
         phone: form.phone.trim() || null,
         is_active: form.is_active,
+        roles: form.roles,
       });
     },
     onSuccess: () => {
@@ -169,9 +193,34 @@ const AdminUsers = () => {
           <h1 className="text-3xl font-heading font-bold text-foreground">User Management</h1>
           <p className="text-muted-foreground mt-1">Manage parishioner accounts and access.</p>
         </div>
-        <Button onClick={openCreate} className="gap-2">
-          <Plus className="h-4 w-4" /> Add User
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={async () => {
+              try {
+                await downloadAuthenticatedFile("users/export", "users.csv", {
+                  role: roleFilter !== "all" ? roleFilter : undefined,
+                  search: debouncedSearch || undefined,
+                });
+              } catch (e) {
+                toast({
+                  title: "Export failed",
+                  description: e instanceof Error ? e.message : "Could not export users",
+                  variant: "destructive",
+                });
+              }
+            }}
+          >
+            <Download className="h-4 w-4" /> Export
+          </Button>
+          <Button variant="outline" className="gap-2" onClick={() => setIsImportOpen(true)}>
+            <Upload className="h-4 w-4" /> Import
+          </Button>
+          <Button onClick={openCreate} className="gap-2">
+            <Plus className="h-4 w-4" /> Add User
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -312,9 +361,9 @@ const AdminUsers = () => {
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" aria-label="User actions">
+                              <IconTooltipButton label="User actions">
                                 <MoreVertical className="h-4 w-4" />
-                              </Button>
+                              </IconTooltipButton>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-56">
                               <DropdownMenuItem
@@ -437,6 +486,24 @@ const AdminUsers = () => {
                 <Input type="password" value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} />
               </div>
             ) : null}
+            <div className="space-y-2 md:col-span-2">
+              <div className="text-sm font-medium">Roles</div>
+              {rolesQuery.isLoading ? (
+                <Skeleton className="h-10 w-full" />
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {availableRoles.map((r) => (
+                    <label key={r.id} className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={form.roles.includes(r.name)}
+                        onCheckedChange={(v) => toggleRole(r.name, v === true)}
+                      />
+                      {r.name.replace(/_/g, " ")}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
             <div className="flex items-center gap-3 md:col-span-2">
               <Switch checked={form.is_active} onCheckedChange={(v) => setForm((p) => ({ ...p, is_active: v }))} />
               <div>
@@ -479,6 +546,29 @@ const AdminUsers = () => {
         itemDetails={selectedUser?.email}
         onConfirm={() => selectedUser && deleteMutation.mutate(selectedUser.id)}
         isLoading={deleteMutation.isPending}
+      />
+
+      <CsvImportDialog
+        open={isImportOpen}
+        onOpenChange={setIsImportOpen}
+        title="Import users"
+        description="Upload a CSV of parishioner accounts. Existing emails are skipped."
+        sampleHeaders="name,email,phone,role,password"
+        isLoading={importing}
+        onImport={async (file) => {
+          setImporting(true);
+          try {
+            const res = await userService.importUsers(file);
+            qc.invalidateQueries({ queryKey: ["admin-users"] });
+            toast({
+              title: "Import finished",
+              description: `${res.data.imported} imported, ${res.data.failed} failed`,
+            });
+            return res.data;
+          } finally {
+            setImporting(false);
+          }
+        }}
       />
     </div>
   );

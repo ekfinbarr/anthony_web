@@ -1,285 +1,277 @@
-import { useState } from "react";
-import { Play, Headphones, FileText, Search, Calendar, User, Filter } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
+import { Mic2 } from "lucide-react";
+import PageHeader from "@/components/layout/PageHeader";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import sermonService, { type Sermon, type SermonQueryParams } from "@/services/sermon.service";
+import SermonCard from "@/components/sermons/SermonCard";
+import SermonDetailModal from "@/components/sermons/SermonDetailModal";
+import SermonFeaturedHero from "@/components/sermons/SermonFeaturedHero";
+import SermonsPagination from "@/components/sermons/SermonsPagination";
+import SermonsToolbar, {
+  type MediaFilterValue,
+  type SermonSortValue,
+} from "@/components/sermons/SermonsToolbar";
+import { sermonMediaKinds } from "@/components/sermons/sermonMedia";
+import { PulpitIcon } from "@/components/icons/ParishIcons";
+import { useIsMobile } from "@/hooks/use-mobile";
+
+const PER_PAGE = 12;
+
+function parseSort(value: string | null): SermonSortValue {
+  const allowed: SermonSortValue[] = [
+    "preached_date:desc",
+    "preached_date:asc",
+    "view_count:desc",
+    "title:asc",
+    "title:desc",
+  ];
+  if (value && allowed.includes(value as SermonSortValue)) return value as SermonSortValue;
+  return "preached_date:desc";
+}
 
 const Sermons = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedSeries, setSelectedSeries] = useState("all");
-  const [selectedSpeaker, setSelectedSpeaker] = useState("all");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const isMobile = useIsMobile();
 
-  const sermons = [
-    {
-      id: 1,
-      title: "Walking in Faith",
-      speaker: "Pastor John Smith",
-      date: "November 10, 2024",
-      series: "Faith Journey",
-      description: "Discover how to strengthen your faith and trust in God's promises.",
-      duration: "38:45",
-      thumbnail: "https://api.api-ninjas.com/v1/randomimage",
-      videoUrl: "https://www.youtube.com/watch?v=pKDC0bfjf0A",
-      audioUrl: "#",
-      notesUrl: "#",
-    },
-    {
-      id: 2,
-      title: "The Power of Prayer",
-      speaker: "Pastor John Smith",
-      date: "November 3, 2024",
-      series: "Faith Journey",
-      description: "Learn how prayer transforms our lives and connects us with God.",
-      duration: "42:15",
-      thumbnail: "https://api.api-ninjas.com/v1/randomimage",
-      videoUrl: "https://www.youtube.com/watch?v=pKDC0bfjf0A",
-      audioUrl: "#",
-      notesUrl: "#",
-    },
-    {
-      id: 3,
-      title: "Living with Purpose",
-      speaker: "Sarah Johnson",
-      date: "October 27, 2024",
-      series: "Purpose Driven",
-      description: "Understanding God's purpose for your life and how to fulfill it.",
-      duration: "35:20",
-      thumbnail: "https://api.api-ninjas.com/v1/randomimage",
-      videoUrl: "https://www.youtube.com/watch?v=pKDC0bfjf0A",
-      audioUrl: "#",
-      notesUrl: "#",
-    },
-    {
-      id: 4,
-      title: "God's Unfailing Love",
-      speaker: "Pastor John Smith",
-      date: "October 20, 2024",
-      series: "Love & Grace",
-      description: "Experience the depth of God's love and how it changes everything.",
-      duration: "40:10",
-      thumbnail: "https://api.api-ninjas.com/v1/randomimage",
-      videoUrl: "https://www.youtube.com/watch?v=pKDC0bfjf0A",
-      audioUrl: "#",
-      notesUrl: "#",
-    },
-  ];
+  const searchInput = searchParams.get("q") ?? "";
+  const series = searchParams.get("series") ?? "all";
+  const speaker = searchParams.get("speaker") ?? "all";
+  const sort = parseSort(searchParams.get("sort"));
+  const mediaFilter = (searchParams.get("media") as MediaFilterValue) || "all";
+  const page = Math.max(1, Number(searchParams.get("page") || 1) || 1);
+  const modalSlug = searchParams.get("sermon");
 
-  const series = ["Faith Journey", "Purpose Driven", "Love & Grace"];
-  const speakers = ["Pastor John Smith", "Sarah Johnson", "Michael Davis"];
+  const [searchDraft, setSearchDraft] = useState(searchInput);
+  const debouncedSearch = useDebouncedValue(searchDraft, 350);
 
-  const filteredSermons = sermons.filter((sermon) => {
-    const matchesSearch = sermon.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          sermon.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesSeries = selectedSeries === "all" || sermon.series === selectedSeries;
-    const matchesSpeaker = selectedSpeaker === "all" || sermon.speaker === selectedSpeaker;
-    return matchesSearch && matchesSeries && matchesSpeaker;
+  useEffect(() => {
+    setSearchDraft(searchInput);
+  }, [searchInput]);
+
+  const patchParams = useCallback(
+    (patch: Record<string, string | null>, options?: { resetPage?: boolean }) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          Object.entries(patch).forEach(([key, value]) => {
+            if (value === null || value === "" || value === "all") next.delete(key);
+            else next.set(key, value);
+          });
+          if (options?.resetPage !== false && !("page" in patch)) {
+            next.delete("page");
+          }
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
+  useEffect(() => {
+    if (debouncedSearch === searchInput) return;
+    patchParams({ q: debouncedSearch || null });
+  }, [debouncedSearch, searchInput, patchParams]);
+
+  const [sortField, sortOrder] = sort.split(":") as [SermonQueryParams["sort"], "asc" | "desc"];
+
+  const listParams: SermonQueryParams = useMemo(
+    () => ({
+      page,
+      per_page: PER_PAGE,
+      only_published: true,
+      search: debouncedSearch || undefined,
+      series: series !== "all" ? series : undefined,
+      speaker: speaker !== "all" ? speaker : undefined,
+      sort: sortField,
+      order: sortOrder,
+    }),
+    [page, debouncedSearch, series, speaker, sortField, sortOrder],
+  );
+
+  const {
+    data: sermonsData,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
+    queryKey: ["sermons", "public", listParams],
+    queryFn: () => sermonService.list(listParams),
+    placeholderData: (prev) => prev,
   });
 
+  const { data: featuredList = [], isLoading: featuredLoading } = useQuery({
+    queryKey: ["sermons", "featured"],
+    queryFn: () => sermonService.getFeatured(),
+  });
+
+  const { data: latestList = [] } = useQuery({
+    queryKey: ["sermons", "latest", 1],
+    queryFn: () => sermonService.getLatest({ limit: 1 }),
+  });
+
+  const { data: seriesOptions = [] } = useQuery({
+    queryKey: ["sermons", "series"],
+    queryFn: () => sermonService.getSeries(),
+  });
+
+  const { data: speakerOptions = [] } = useQuery({
+    queryKey: ["sermons", "speakers"],
+    queryFn: () => sermonService.getSpeakers(),
+  });
+
+  const featuredSermon = featuredList[0] ?? latestList[0] ?? null;
+
+  const sermons = useMemo(() => {
+    const rows = sermonsData?.data ?? [];
+    if (mediaFilter === "all") return rows;
+    return rows.filter((s) => sermonMediaKinds(s).includes(mediaFilter));
+  }, [sermonsData?.data, mediaFilter]);
+
+  const [preview, setPreview] = useState<Sermon | null>(null);
+
+  const openSermon = (sermon: Sermon) => {
+    setPreview(sermon);
+    patchParams({ sermon: sermon.slug }, { resetPage: false });
+  };
+
+  const closeModal = (open: boolean) => {
+    if (!open) {
+      setPreview(null);
+      patchParams({ sermon: null }, { resetPage: false });
+    }
+  };
+
+  const layout = isMobile ? "list" : "grid";
+
   return (
-    <div>
-      {/* Hero Section */}
-      <section className="relative py-24 bg-gradient-dark text-church-pearl">
-        <div className="absolute inset-0 pattern-geometric" />
-        <div className="container mx-auto px-4 relative">
-          <h1 className="text-5xl font-heading font-bold mb-4 text-center">Sermons</h1>
-          <p className="text-xl text-center max-w-3xl mx-auto text-church-pearl/90">
-            Watch, listen, and grow with our message library
-          </p>
-        </div>
-      </section>
+    <div className="min-h-screen bg-background">
+      <PageHeader
+        title="Sermons"
+        description="Watch, listen, and grow with our message library"
+        eyebrow="Homilies & teachings"
+      />
 
-      {/* Featured Sermon */}
-      <section className="py-8 bg-gradient-church">
+      <SermonFeaturedHero
+        sermon={featuredSermon}
+        isLoading={featuredLoading}
+        onOpen={openSermon}
+      />
+
+      <section className="py-10 sm:py-12">
         <div className="container mx-auto px-4">
-          <div className="bg-background rounded-lg p-6 shadow-xl">
-            <div className="grid lg:grid-cols-2 gap-8 items-center">
-              <div className="relative group">
-                <img 
-                  src={sermons[0].thumbnail} 
-                  alt={sermons[0].title}
-                  className="w-full rounded-lg"
-                />
-                <div className="absolute inset-0 bg-church-charcoal/60 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button variant="church" size="icon" className="h-16 w-16 rounded-full">
-                    <Play className="h-8 w-8 ml-1" />
-                  </Button>
-                </div>
-              </div>
-              <div>
-                <span className="text-sm font-semibold text-primary uppercase">Latest Message</span>
-                <h2 className="text-3xl font-heading font-bold mt-2 mb-4">{sermons[0].title}</h2>
-                <div className="flex items-center space-x-4 text-sm text-muted-foreground mb-4">
-                  <span className="flex items-center"><User className="h-4 w-4 mr-1" /> {sermons[0].speaker}</span>
-                  <span className="flex items-center"><Calendar className="h-4 w-4 mr-1" /> {sermons[0].date}</span>
-                </div>
-                <p className="text-muted-foreground mb-6">{sermons[0].description}</p>
-                <div className="flex flex-wrap gap-3">
-                  <Button variant="church" size="lg">
-                    <Play className="mr-2 h-5 w-5" /> Watch Now
-                  </Button>
-                  <Button variant="outlineGold" size="lg">
-                    <Headphones className="mr-2 h-5 w-5" /> Listen
-                  </Button>
-                  <Button variant="outline" size="lg">
-                    <FileText className="mr-2 h-5 w-5" /> Notes
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+          <div className="mx-auto max-w-6xl">
+            <SermonsToolbar
+              search={searchDraft}
+              onSearchChange={setSearchDraft}
+              series={series}
+              onSeriesChange={(v) => patchParams({ series: v })}
+              speaker={speaker}
+              onSpeakerChange={(v) => patchParams({ speaker: v })}
+              sort={sort}
+              onSortChange={(v) => patchParams({ sort: v })}
+              mediaFilter={mediaFilter === "all" || mediaFilter === "video" || mediaFilter === "audio" || mediaFilter === "notes" ? mediaFilter : "all"}
+              onMediaFilterChange={(v) => patchParams({ media: v })}
+              seriesOptions={seriesOptions}
+              speakerOptions={speakerOptions}
+              className="mb-8"
+            />
 
-      {/* Filters and Search */}
-      <section className="py-12 bg-background">
-        <div className="container mx-auto px-4">
-          <div className="max-w-6xl mx-auto">
-            {/* Search and Filters */}
-            <div className="grid md:grid-cols-4 gap-4 mb-8">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search sermons..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+            {isLoading ? (
+              <div
+                className={
+                  layout === "list"
+                    ? "space-y-3"
+                    : "grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+                }
+              >
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton
+                    key={i}
+                    className={layout === "list" ? "h-28 w-full rounded-xl" : "aspect-[4/5] w-full rounded-xl"}
+                  />
+                ))}
               </div>
-              <Select value={selectedSeries} onValueChange={setSelectedSeries}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Series" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Series</SelectItem>
-                  {series.map((s) => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={selectedSpeaker} onValueChange={setSelectedSpeaker}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Speakers" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Speakers</SelectItem>
-                  {speakers.map((s) => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button variant="outline" className="w-full">
-                <Filter className="mr-2 h-4 w-4" /> More Filters
-              </Button>
-            </div>
+            ) : isError ? (
+              <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-6 py-12 text-center">
+                <p className="text-destructive">Could not load sermons.</p>
+                <Button variant="outline" className="mt-4" onClick={() => refetch()}>
+                  Try again
+                </Button>
+              </div>
+            ) : sermons.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border px-6 py-16 text-center">
+                <PulpitIcon size="lg" className="mb-4 opacity-70" />
+                <h3 className="font-heading text-xl font-semibold text-church-charcoal">No sermons found</h3>
+                <p className="mt-2 max-w-md text-sm text-muted-foreground">
+                  Try a different search, series, or speaker filter.
+                </p>
+                <Button
+                  variant="outline"
+                  className="mt-5"
+                  onClick={() => {
+                    setSearchDraft("");
+                    patchParams({ q: null, series: null, speaker: null, media: null, sort: null });
+                  }}
+                >
+                  Clear filters
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <p className="text-sm text-muted-foreground">
+                    {sermonsData?.total ?? sermons.length} message
+                    {(sermonsData?.total ?? sermons.length) === 1 ? "" : "s"}
+                  </p>
+                  <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground sm:hidden">
+                    <Mic2 className="h-3.5 w-3.5" />
+                    List view
+                  </span>
+                </div>
 
-            {/* Sermons Grid */}
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredSermons.map((sermon) => (
-                <Card key={sermon.id} className="overflow-hidden hover:shadow-xl transition-shadow">
-                  <div className="relative group">
-                    <img 
-                      src={sermon.thumbnail} 
-                      alt={sermon.title}
-                      className="w-full h-48 object-cover"
+                <div
+                  className={
+                    layout === "list"
+                      ? "space-y-3"
+                      : "grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+                  }
+                >
+                  {sermons.map((sermon, index) => (
+                    <SermonCard
+                      key={sermon.id}
+                      sermon={sermon}
+                      layout={layout}
+                      index={index}
+                      onSelect={openSermon}
                     />
-                    <div className="absolute inset-0 bg-church-charcoal/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="church" size="icon" className="h-12 w-12 rounded-full">
-                        <Play className="h-6 w-6 ml-0.5" />
-                      </Button>
-                    </div>
-                    <span className="absolute top-2 right-2 bg-church-charcoal/80 text-church-pearl text-xs px-2 py-1 rounded">
-                      {sermon.duration}
-                    </span>
-                  </div>
-                  <CardHeader className="pb-3">
-                    <h3 className="font-heading font-semibold text-lg">{sermon.title}</h3>
-                    <div className="flex items-center justify-between text-sm text-muted-foreground">
-                      <span>{sermon.speaker}</span>
-                      <span>{sermon.date}</span>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-3">{sermon.description}</p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-1 rounded">
-                        {sermon.series}
-                      </span>
-                      <div className="flex space-x-2">
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Play className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Headphones className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <FileText className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            {/* Load More */}
-            <div className="text-center mt-8">
-              <Button variant="outline" size="lg">
-                Load More Sermons
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Sermon Series */}
-      <section className="py-12 bg-church-pearl">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-heading font-bold text-center mb-8">Current Series</h2>
-          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {series.map((s) => (
-              <Card key={s} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
-                <img 
-                  src="/api/placeholder/400/200" 
-                  alt={s}
-                  className="w-full h-40 object-cover"
-                />
-                <div className="p-4">
-                  <h3 className="font-heading font-semibold text-lg">{s}</h3>
-                  <p className="text-sm text-muted-foreground">4 Messages</p>
+                  ))}
                 </div>
-              </Card>
-            ))}
+
+                <SermonsPagination
+                  currentPage={sermonsData?.current_page ?? page}
+                  lastPage={sermonsData?.last_page ?? 1}
+                  total={sermonsData?.total}
+                  from={sermonsData?.from}
+                  to={sermonsData?.to}
+                  onPageChange={(p) => patchParams({ page: String(p) }, { resetPage: false })}
+                />
+              </>
+            )}
           </div>
         </div>
       </section>
 
-      {/* CTA: Subscribe for more */}
-      <section className="py-16 bg-gradient-church">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-8">
-            <h2 className="text-4xl font-heading font-bold text-church-charcoal mb-4">
-              Never Miss a Message
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Subscribe to our newsletter and get the latest sermons delivered straight to your inbox.
-            </p>
-          </div>
-          <div className="max-w-xl mx-auto">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Input
-                type="email"
-                placeholder="Enter your email"
-                className="flex-grow"
-              />
-              <Button variant="church" size="lg" className="w-full sm:w-auto">
-                Subscribe
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
+      <SermonDetailModal
+        slug={modalSlug}
+        open={Boolean(modalSlug)}
+        onOpenChange={closeModal}
+        preview={preview}
+      />
     </div>
   );
 };

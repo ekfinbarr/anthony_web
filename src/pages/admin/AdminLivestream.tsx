@@ -70,10 +70,15 @@ import {
   AlertCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import livestreamService, { Livestream, LivestreamQueryParams } from "@/services/livestream.service";
+import livestreamService, {
+  Livestream,
+  LivestreamQueryParams,
+  LivestreamStatus,
+} from "@/services/livestream.service";
 import DeleteConfirmModal from "@/components/admin/shared/DeleteConfirmModal";
 import { StatusBadge } from "@/components/admin/shared/StatusBadge";
 import { GenericEmptyState } from "@/components/admin/shared/GenericEmptyState";
+import { formatInLagos } from "@/lib/liveTimezone";
 
 const AdminLivestream = () => {
   const navigate = useNavigate();
@@ -101,8 +106,18 @@ const AdminLivestream = () => {
       params.search = searchQuery;
     }
 
-    if (statusFilter !== "all") {
-      params.is_live = statusFilter === "active";
+    if (statusFilter === "active") {
+      params.is_live = true;
+    } else if (statusFilter === "inactive") {
+      params.is_live = false;
+    } else if (
+      statusFilter === "scheduled" ||
+      statusFilter === "live" ||
+      statusFilter === "ended" ||
+      statusFilter === "cancelled" ||
+      statusFilter === "unavailable"
+    ) {
+      params.status = statusFilter as LivestreamStatus;
     }
 
     return params;
@@ -218,13 +233,7 @@ const AdminLivestream = () => {
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Not scheduled";
-    return new Date(dateString).toLocaleString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return formatInLagos(dateString) || "Not scheduled";
   };
 
   // Helper to render preview content (reused logic from form but readonly)
@@ -319,9 +328,14 @@ const AdminLivestream = () => {
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="live">Live</SelectItem>
+                <SelectItem value="scheduled">Scheduled</SelectItem>
+                <SelectItem value="ended">Ended</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="unavailable">Unavailable</SelectItem>
+                <SelectItem value="active">Is live (legacy)</SelectItem>
+                <SelectItem value="inactive">Not live (legacy)</SelectItem>
               </SelectContent>
             </Select>
             <Select value={pageSize.toString()} onValueChange={(value) => {
@@ -430,7 +444,23 @@ const AdminLivestream = () => {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <StatusBadge status={stream.is_live ? "active" : "inactive"} />
+                          <div className="flex flex-col gap-1">
+                            <StatusBadge
+                              status={
+                                stream.status === "live" || stream.is_live
+                                  ? "active"
+                                  : stream.status === "cancelled"
+                                    ? "cancelled"
+                                    : stream.status === "ended"
+                                      ? "inactive"
+                                      : "draft"
+                              }
+                            />
+                            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                              {stream.status || (stream.is_live ? "live" : "scheduled")}
+                              {stream.is_published === false ? " · unpublished" : ""}
+                            </span>
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>

@@ -58,14 +58,47 @@ const PostFormPage = () => {
     content: "",
     published: false,
     image: "",
+    image_alt: "",
     // Video URL (optional). For video posts, this is the primary media URL.
     video: "",
     allow_comment: true,
+    is_featured: false,
+    published_at: "",
+    meta_title: "",
+    meta_description: "",
     postType: "post",
     // Taxonomy selections (UUID arrays)
     category_ids: [] as string[],
     tag_ids: [] as string[],
   });
+
+  const emptyForm = () => ({
+    title: "",
+    slug: "",
+    summary: "",
+    content: "",
+    type: "text",
+    published: false,
+    image: "",
+    image_alt: "",
+    video: "",
+    allow_comment: true,
+    is_featured: false,
+    published_at: "",
+    meta_title: "",
+    meta_description: "",
+    postType: "post",
+    category_ids: [] as string[],
+    tag_ids: [] as string[],
+  });
+
+  const toDatetimeLocal = (iso?: string | null) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [autoGenerateSlug, setAutoGenerateSlug] = useState(true);
@@ -106,7 +139,8 @@ const PostFormPage = () => {
     // Use setTimeout to avoid synchronous state update in effect
     const timeoutId = setTimeout(() => {
       if (isEditMode && post) {
-        const postData = { ...(post as Post)?.data || {} };
+        // getById returns the Laravel envelope `{ data: Post }` in practice.
+        const postData = { ...((post as unknown as { data?: Post })?.data || (post as Post)) };
         setFormData({
           title: postData.title || "",
           slug: postData.slug || "",
@@ -115,8 +149,13 @@ const PostFormPage = () => {
           type: postData.type || "text",
           published: postData.published || false,
           image: postData.image || "",
+          image_alt: postData.image_alt || "",
           video: postData.video || "",
           allow_comment: postData.allow_comment ?? true,
+          is_featured: postData.is_featured ?? false,
+          published_at: toDatetimeLocal(postData.published_at),
+          meta_title: postData.meta_title || "",
+          meta_description: postData.meta_description || "",
           // Backend returns `post_type`. Keep a local `postType` for UI convenience.
           postType: postData.post_type || "post",
           category_ids: (postData.categories || []).map((c) => c.id),
@@ -126,21 +165,7 @@ const PostFormPage = () => {
         setAutoGenerateSlug(false);
 
       } else if (!isEditMode) {
-        // Reset form for new post
-        setFormData({
-          title: "",
-          slug: "",
-          summary: "",
-          content: "",
-          type: "text",
-          published: false,
-          image: "",
-          video: "",
-          allow_comment: true,
-          postType: "post",
-          category_ids: [],
-          tag_ids: [],
-        });
+        setFormData(emptyForm());
         setImagePreview(null);
         setAutoGenerateSlug(true);
       }
@@ -245,6 +270,7 @@ const PostFormPage = () => {
 
     setIsSubmitting(true);
 
+    const published = saveAsDraft ? false : formData.published;
     const payload: CreatePostPayload | UpdatePostPayload = {
       title: formData.title.trim(),
       slug: formData.slug.trim() || undefined,
@@ -253,10 +279,21 @@ const PostFormPage = () => {
       type: formData.type,
       // Backend expects snake_case `post_type`
       post_type: formData.postType || "post",
-      published: saveAsDraft ? false : formData.published,
+      published,
       image: formData.image || undefined,
+      image_alt: formData.image_alt.trim() || undefined,
       video: formData.video || undefined,
       allow_comment: formData.allow_comment,
+      is_featured: formData.is_featured,
+      published_at: published
+        ? formData.published_at
+          ? new Date(formData.published_at).toISOString()
+          : new Date().toISOString()
+        : formData.published_at
+          ? new Date(formData.published_at).toISOString()
+          : null,
+      meta_title: formData.meta_title.trim() || undefined,
+      meta_description: formData.meta_description.trim() || undefined,
       author_id: user?.id || "",
       // Taxonomy
       category_ids: formData.category_ids,
@@ -567,6 +604,48 @@ const PostFormPage = () => {
                   </Button>
                 </div>
               )}
+              <div className="mt-4 space-y-2">
+                <Label htmlFor="image_alt">Cover image alt text</Label>
+                <Input
+                  id="image_alt"
+                  value={formData.image_alt}
+                  onChange={(e) => handleInputChange("image_alt", e.target.value)}
+                  placeholder="Describe the image for accessibility and SEO"
+                  disabled={isSubmitting}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">SEO</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="meta_title">SEO title</Label>
+                <Input
+                  id="meta_title"
+                  value={formData.meta_title}
+                  onChange={(e) => handleInputChange("meta_title", e.target.value)}
+                  placeholder="Defaults to the post title"
+                  maxLength={255}
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="meta_description">Meta description</Label>
+                <Textarea
+                  id="meta_description"
+                  value={formData.meta_description}
+                  onChange={(e) => handleInputChange("meta_description", e.target.value)}
+                  placeholder="Short description for search and social sharing"
+                  rows={3}
+                  maxLength={500}
+                  disabled={isSubmitting}
+                />
+                <p className="text-xs text-muted-foreground">{formData.meta_description.length}/500</p>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -654,7 +733,35 @@ const PostFormPage = () => {
                 </Select>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="published_at">Publish date &amp; time</Label>
+                <Input
+                  id="published_at"
+                  type="datetime-local"
+                  value={formData.published_at}
+                  onChange={(e) => handleInputChange("published_at", e.target.value)}
+                  disabled={isSubmitting}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Future dates stay hidden until that time. Leave blank to publish immediately when status is Published.
+                </p>
+              </div>
+
               <Separator />
+
+              <div className="flex items-center justify-between">
+                <Label htmlFor="is_featured" className="cursor-pointer">
+                  Featured story
+                </Label>
+                <input
+                  id="is_featured"
+                  type="checkbox"
+                  checked={formData.is_featured}
+                  onChange={(e) => handleInputChange("is_featured", e.target.checked)}
+                  disabled={isSubmitting}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+              </div>
 
               <div className="flex items-center justify-between">
                 <Label htmlFor="allow_comment" className="cursor-pointer">

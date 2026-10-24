@@ -1,353 +1,57 @@
-import { useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
-import { motion } from "framer-motion";
-import { CalendarIcon, Clock, Heart, User, FileText, Send, CheckCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import MassBookingWizard from "@/components/mass-booking/MassBookingWizard";
+import PageHeader from "@/components/layout/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format } from "date-fns";
-import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
-import { apiClient } from "@/lib/apiClient";
-import massBookingService from "@/services/massBooking.service";
+import { getOrderByToken, type BookingOrder } from "@/services/massBookingOrder.service";
+import { formatMoney } from "@/services/payment.service";
 
-/**
- * MassBookingPage Component
- *
- * Allows registered parishioners to book Mass intentions.
- * Features a comprehensive form with validation, date/time selection,
- * and smooth animations for a professional church experience.
- */
 const MassBookingPage = () => {
-  const [selectedDate, setSelectedDate] = useState<Date>();
-  type MassSchedule = { id: string; day_of_week: string; title?: string; start_time?: string };
-  const [schedules, setSchedules] = useState<MassSchedule[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const { toast } = useToast();
+  const [params] = useSearchParams();
+  const token = params.get("token");
+  const [order, setOrder] = useState<BookingOrder | null>(null);
+  const [error, setError] = useState("");
 
-  type MassBookingForm = {
-    massScheduleId: string;
-    intentionType: string;
-    persons: string;
-    additionalNotes: string;
-  };
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    setValue,
-    watch,
-    reset,
-  } = useForm<MassBookingForm>({
-    defaultValues: {
-      massScheduleId: "",
-      intentionType: "",
-      persons: "",
-      additionalNotes: "",
-    },
-  });
-
-  const intentionType = watch("intentionType");
-  const massScheduleId = watch("massScheduleId");
-
-  /**
-   * Load mass schedules once.
-   *
-   * We fetch from `/api/mass-schedules` and then filter client-side based on the selected date.
-   * This avoids relying on inconsistent shapes across the specialized endpoints.
-   */
   useEffect(() => {
-    const loadSchedules = async () => {
-      try {
-        const response = await apiClient.get<{ data: MassSchedule[] }>("mass-schedules");
-        const items = response.data?.data || [];
-        setSchedules(items);
-      } catch (e) {
-        setSchedules([]);
-      }
-    };
-    loadSchedules();
-  }, []);
-
-  const filteredSchedules = useMemo(() => {
-    if (!selectedDate || schedules.length === 0) return schedules;
-    const day = format(selectedDate, "EEEE").toLowerCase(); // e.g. "monday"
-    return schedules.filter((s) => String(s.day_of_week).toLowerCase() === day);
-  }, [selectedDate, schedules]);
-
-  const intentionOptions = [
-    { value: "thanksgiving", label: "Thanksgiving", icon: Heart },
-    { value: "sick", label: "For the Sick", icon: User },
-    { value: "dead", label: "For the Dead", icon: Heart },
-    { value: "birthday", label: "Birthday", icon: Heart },
-    { value: "anniversary", label: "Wedding Anniversary", icon: Heart },
-    { value: "vocations", label: "Vocations", icon: Heart },
-    { value: "special", label: "Special Intentions", icon: FileText },
-  ];
-
-  const onSubmit = async (data: MassBookingForm) => {
-    if (!selectedDate) {
-      toast({
-        title: "Date Required",
-        description: "Please select a preferred Mass date.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!data.massScheduleId) {
-      toast({
-        title: "Mass Schedule Required",
-        description: "Please select a Mass schedule/time for your chosen date.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const bookingDate = format(selectedDate, "yyyy-MM-dd");
-
-      // Backend expects a single `intention` string + optional `offered_by`.
-      // We keep your UI fields and map them cleanly into those fields.
-      await massBookingService.create(data.massScheduleId, {
-        booking_date: bookingDate,
-        intention: `${data.intentionType}: ${data.additionalNotes || "No additional notes"}`,
-        offered_by: data.persons,
-        metadata: {
-          intention_type: data.intentionType,
-        },
-      });
-
-      setIsSubmitted(true);
-      toast({
-        title: "Mass Intention Submitted",
-        description: "Your Mass intention request has been submitted. You will receive a confirmation shortly.",
-      });
-
-      reset();
-      setSelectedDate(undefined);
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Failed to submit your Mass intention. Please try again.";
-      toast({
-        title: "Error",
-        description: message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-
-  };
-
-  if (isSubmitted) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center"
-        >
-          <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-          <h1 className="text-3xl font-heading font-bold text-church-charcoal mb-2">
-            Mass Intention Booked
-          </h1>
-          <p className="text-muted-foreground mb-6">
-            Your request has been submitted successfully. You can view your booking history in your dashboard.
-          </p>
-          <Button onClick={() => setIsSubmitted(false)} variant="outline">
-            Book Another Intention
-          </Button>
-        </motion.div>
-      </div>
-    );
-  }
+    if (!token) return;
+    getOrderByToken(token).then(setOrder).catch(() => setError("That booking link is not valid."));
+  }, [token]);
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header Section */}
-      <section className="py-16 bg-gradient-to-r from-primary/10 via-primary/5 to-accent/10">
-        <div className="container mx-auto px-4 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            <h1 className="text-4xl md:text-5xl font-heading font-bold text-church-charcoal mb-4">
-              Book a Mass Intention
-            </h1>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-              Request Mass intentions for thanksgiving, anniversary, healing, repose of souls, and more.
-            </p>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Booking Form Section */}
-      <section className="py-16 bg-background">
-        <div className="container mx-auto px-4 max-w-2xl">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-          >
-            <Card className="shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-2xl font-heading text-center">
-                  Mass Intention Details
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                  {/* Intention Type */}
-                  <div className="space-y-2">
-                    <Label htmlFor="intentionType" className="flex items-center gap-2">
-                      <Heart className="h-4 w-4 text-primary" />
-                      Type of Intention
-                    </Label>
-                    <Select onValueChange={(value) => setValue("intentionType", value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select intention type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {intentionOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            <div className="flex items-center gap-2">
-                              <option.icon className="h-4 w-4" />
-                              {option.label}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {errors.intentionType && (
-                      <p className="text-sm text-destructive">{errors.intentionType.message}</p>
-                    )}
-                  </div>
-
-                  {/* Person(s) */}
-                  <div className="space-y-2">
-                    <Label htmlFor="persons" className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-primary" />
-                      Person(s) the Mass is for
-                    </Label>
-                    <Input
-                      id="persons"
-                      placeholder="e.g., John Doe, Family Members"
-                      {...register("persons", { required: "Please specify who the Mass is for" })}
-                    />
-                    {errors.persons && (
-                      <p className="text-sm text-destructive">{errors.persons.message}</p>
-                    )}
-                  </div>
-
-                  {/* Preferred Date */}
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      <CalendarIcon className="h-4 w-4 text-primary" />
-                      Preferred Mass Date
-                    </Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !selectedDate && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {selectedDate ? format(selectedDate, "PPP") : "Select date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={selectedDate}
-                          onSelect={setSelectedDate}
-                          disabled={(date) => date < new Date()}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-
-                  {/* Preferred Time */}
-                  <div className="space-y-2">
-                    <Label htmlFor="massScheduleId" className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-primary" />
-                      Mass Schedule / Time
-                    </Label>
-                    <Select onValueChange={(value) => setValue("massScheduleId", value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a Mass schedule" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(filteredSchedules.length ? filteredSchedules : schedules).map((s) => (
-                          <SelectItem key={s.id} value={s.id}>
-                            {s.title} — {s.day_of_week} {s.start_time} ({s.language})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {!massScheduleId && (
-                      <p className="text-xs text-muted-foreground">
-                        Tip: pick a date first to see schedules for that weekday.
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Additional Notes */}
-                  <div className="space-y-2">
-                    <Label htmlFor="additionalNotes" className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-primary" />
-                      Additional Notes (Optional)
-                    </Label>
-                    <Textarea
-                      id="additionalNotes"
-                      placeholder="Any special requests or additional information..."
-                      {...register("additionalNotes")}
-                      rows={4}
-                    />
-                  </div>
-
-                  {/* Submit Button */}
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Button
-                      type="submit"
-                      className="w-full"
-                      size="lg"
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                          Submitting...
-                        </>
-                      ) : (
-                        <>
-                          <Send className="mr-2 h-4 w-4" />
-                          Book Mass Intention
-                        </>
-                      )}
-                    </Button>
-                  </motion.div>
-                </form>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </div>
+      <PageHeader
+        title="Book a Mass"
+        description="Request one or more Mass intentions. Guests and parishioners can book the same Mass."
+        tone="light"
+      />
+      <section className="container mx-auto max-w-2xl px-4 py-10">
+        {token ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>{error ? "Booking unavailable" : order ? `Booking ${order.reference}` : "Loading booking"}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {error && <p role="alert">{error}</p>}
+              {order && (
+                <>
+                  <p>Status: {order.status.replaceAll("_", " ")}. Payment: {order.payment_status.replaceAll("_", " ")}.</p>
+                  <p>Offering: {formatMoney(order.amount, order.currency)}. This {order.status === "approved" ? "booking is confirmed." : "request is not confirmed until the parish office accepts it."}</p>
+                  <ul className="space-y-2">
+                    {order.intentions?.map((item) => (
+                      <li key={item.id} className="rounded-md border p-3">
+                        {item.mass_schedule?.title} · {item.booking_date} · {item.offered_by}
+                        {item.intention_labels?.length ? ` · ${item.intention_labels.join(", ")}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              <Link className="text-primary underline" to="/book-mass">Book another Mass</Link>
+            </CardContent>
+          </Card>
+        ) : (
+          <MassBookingWizard />
+        )}
       </section>
     </div>
   );

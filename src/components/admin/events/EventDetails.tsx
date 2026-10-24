@@ -54,7 +54,7 @@ export default function EventDetails({
   const startDate = new Date(event.start_date);
   const endDate = event.end_date ? new Date(event.end_date) : startDate;
   
-  let status: "upcoming" | "ongoing" | "past" = "upcoming";
+  let status: "upcoming" | "ongoing" | "past";
   if (startDate > now) {
     status = "upcoming";
   } else if (startDate <= now && endDate >= now) {

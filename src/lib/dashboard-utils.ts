@@ -659,7 +659,7 @@ export const mockDataUtils = {
       type: types[i % types.length],
       title: titles[i % titles.length],
       description: `This is a meaningful content piece about spiritual growth and community.`,
-      author: 'Pastor Smith',
+      author: 'Parish Office',
       publishDate: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
       tags: ['faith', 'community', 'prayer'],
       category: 'Spiritual Growth',

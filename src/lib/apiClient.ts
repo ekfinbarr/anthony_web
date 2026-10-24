@@ -7,6 +7,8 @@
  * @package Lovable/src/lib
  */
 
+import { ApiError, networkApiError, parseApiError, timeoutApiError } from "@/lib/api-error";
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
 /**
@@ -103,33 +105,52 @@ class ApiClient {
   }
 
   /**
-   * Handle 401 Unauthorized responses
-   * 
-   * When a 401 error is received, it means the authentication token is invalid
-   * or expired. This method clears the local authentication data and redirects
-   * the user to the login page.
-   * 
-   * This prevents users from making authenticated requests with invalid tokens
-   * and ensures they re-authenticate when their session expires.
+   * Paths where an expired session should send the user to login.
+   * Public pages (e.g. /rentals) must never hard-redirect on 401 — AuthProvider
+   * clears the stale token and visitors continue as guests.
    */
-  private handleUnauthorized(): void {
-    // Clear authentication data from localStorage
+  private isProtectedPath(pathname: string): boolean {
+    return (
+      pathname === '/dashboard' ||
+      pathname.startsWith('/dashboard/') ||
+      pathname === '/admin' ||
+      pathname.startsWith('/admin/') ||
+      pathname.startsWith('/profile-settings') ||
+      pathname.startsWith('/notification-settings') ||
+      pathname === '/settings' ||
+      pathname.startsWith('/settings/')
+    );
+  }
+
+  /**
+   * Handle 401 Unauthorized responses
+   *
+   * Always clear the local session. Redirect to login only when the user is
+   * already on a protected area. Session validation on public pages (AuthProvider
+   * calling /auth/user) must not eject guests from /rentals and similar routes.
+   */
+  private handleUnauthorized(requestUrl?: string): void {
     localStorage.removeItem('church_user');
 
-    // Only redirect if we're in a browser environment and not already on login page
-    // This prevents infinite redirect loops
-    if (typeof window !== 'undefined') {
-      const currentPath = window.location.pathname;
-      const isAuthPage = currentPath.includes('/auth/login') ||
-        currentPath.includes('/auth/register') ||
-        currentPath === '/';
-
-      if (!isAuthPage) {
-        // Store the current path to redirect back after login
-        const returnUrl = currentPath + window.location.search;
-        window.location.href = `/auth/login?redirect=${encodeURIComponent(returnUrl)}`;
-      }
+    if (typeof window === 'undefined') {
+      return;
     }
+
+    const currentPath = window.location.pathname;
+    const isAuthPage =
+      currentPath.includes('/auth/login') ||
+      currentPath.includes('/auth/register') ||
+      currentPath.includes('/login') ||
+      currentPath.includes('/register');
+
+    // Silent clear for session probe — never navigate away from public pages
+    const isSessionProbe = !!requestUrl && /\/auth\/user(?:\?|$)/.test(requestUrl);
+    if (isSessionProbe || isAuthPage || !this.isProtectedPath(currentPath)) {
+      return;
+    }
+
+    const returnUrl = currentPath + window.location.search;
+    window.location.href = `/auth/login?redirect=${encodeURIComponent(returnUrl)}`;
   }
 
   /**
@@ -143,7 +164,7 @@ class ApiClient {
    * @returns Promise resolving to ApiResponse with typed data
    * @throws Error with status code and error message if request failed
    */
-  private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
+  private async handleResponse<T>(response: Response, requestUrl?: string): Promise<ApiResponse<T>> {
     const contentType = response.headers.get('content-type');
     const isJson = contentType?.includes('application/json');
 
@@ -157,39 +178,10 @@ class ApiClient {
     if (!response.ok) {
       // Handle 401 Unauthorized - token expired or invalid
       if (response.status === 401) {
-        this.handleUnauthorized();
+        this.handleUnauthorized(requestUrl ?? response.url);
       }
 
-      // Extract error message from response data
-      // Backend may return error in different formats:
-      // - { message: "Error message" }
-      // - { error: "Error message" }
-      // - { errors: { field: ["Error message"] } }
-      let errorMessage = `HTTP error! status: ${response.status}`;
-
-      if (data && typeof data === 'object') {
-        const errorData = data as Record<string, unknown>;
-
-        // Try to extract error message from various possible formats
-        if (errorData.message) {
-          errorMessage = String(errorData.message);
-        } else if (errorData.error) {
-          errorMessage = String(errorData.error);
-        } else if (errorData.errors && typeof errorData.errors === 'object') {
-          // Laravel validation errors format
-          const errors = errorData.errors as Record<string, unknown>;
-          const firstError = Object.values(errors)[0];
-          if (Array.isArray(firstError) && firstError.length > 0) {
-            errorMessage = String(firstError[0]);
-          }
-        }
-      }
-
-      // Create error object with status code and response data
-      const error = new Error(errorMessage) as Error & { status: number; data: T };
-      error.status = response.status;
-      error.data = data;
-      throw error;
+      throw parseApiError(response.status, data);
     }
 
     return {
@@ -227,11 +219,17 @@ class ApiClient {
       });
 
       clearTimeout(timeoutId);
-      return this.handleResponse<T>(response);
+      return this.handleResponse<T>(response, url);
     } catch (error: unknown) {
       clearTimeout(timeoutId);
+      if (error instanceof ApiError) {
+        throw error;
+      }
       if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('Request timeout');
+        throw timeoutApiError(error);
+      }
+      if (error instanceof TypeError) {
+        throw networkApiError(error);
       }
       throw error;
     }

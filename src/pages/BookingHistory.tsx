@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import PageHeader from "@/components/layout/PageHeader";
 
 // Mock booking data
 const mockBookings = [
@@ -100,20 +101,10 @@ const BookingHistory = () => {
 
   return (
     <div className="min-h-screen">
-      {/* Hero Section */}
-      <section className="relative h-[30vh] flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0">
-          <div className="w-full h-full bg-gradient-to-br from-secondary via-secondary/90 to-primary/20" />
-        </div>
-        <div className="relative z-10 text-center text-secondary-foreground">
-          <h1 className="text-4xl md:text-5xl font-heading font-bold mb-4 animate-fade-in">
-            Booking <span className="text-primary">History</span>
-          </h1>
-          <p className="text-lg max-w-xl mx-auto px-4 opacity-90">
-            View and manage your Mass intention bookings
-          </p>
-        </div>
-      </section>
+      <PageHeader
+        title="Booking History"
+        description="View and manage your Mass intention bookings"
+      />
 
       {/* Content */}
       <section className="py-12">

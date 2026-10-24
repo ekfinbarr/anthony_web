@@ -77,6 +77,11 @@ export interface DatePickerProps {
    * @default "PPP" (e.g., "January 1, 2024")
    */
   dateFormat?: string;
+
+  id?: string;
+  "aria-invalid"?: boolean;
+  "aria-describedby"?: string;
+  "aria-required"?: boolean;
 }
 
 /**
@@ -85,7 +90,7 @@ export interface DatePickerProps {
  * A beautiful, accessible date picker with calendar popover.
  * Supports date validation, disabled dates, and custom formatting.
  */
-export function DatePicker({
+export const DatePicker = React.forwardRef<HTMLButtonElement, DatePickerProps>(function DatePicker({
   date,
   onDateChange,
   placeholder = "Pick a date",
@@ -95,7 +100,11 @@ export function DatePicker({
   minDate,
   maxDate,
   dateFormat = "PPP",
-}: DatePickerProps) {
+  id,
+  "aria-invalid": ariaInvalid,
+  "aria-describedby": ariaDescribedBy,
+  "aria-required": ariaRequired,
+}, ref) {
   // Validate that the date is a valid Date object
   const isValidDate = React.useMemo(() => {
     if (!date) return false;
@@ -116,11 +125,14 @@ export function DatePicker({
   // Combined disabled function that checks both custom disabledDates and min/max dates
   const isDateDisabled = React.useCallback(
     (dateToCheck: Date) => {
-      if (isValidMinDate && dateToCheck < minDate!) {
-        return true;
+      const day = new Date(dateToCheck.getFullYear(), dateToCheck.getMonth(), dateToCheck.getDate()).getTime();
+      if (isValidMinDate) {
+        const min = new Date(minDate!.getFullYear(), minDate!.getMonth(), minDate!.getDate()).getTime();
+        if (day < min) return true;
       }
-      if (isValidMaxDate && dateToCheck > maxDate!) {
-        return true;
+      if (isValidMaxDate) {
+        const max = new Date(maxDate!.getFullYear(), maxDate!.getMonth(), maxDate!.getDate()).getTime();
+        if (day > max) return true;
       }
       if (disabledDates) {
         return disabledDates(dateToCheck);
@@ -134,10 +146,17 @@ export function DatePicker({
     <Popover>
       <PopoverTrigger asChild>
         <Button
+          ref={ref}
+          id={id}
+          type="button"
           variant="outline"
+          aria-invalid={ariaInvalid || undefined}
+          aria-describedby={ariaDescribedBy}
+          aria-required={ariaRequired || undefined}
           className={cn(
-            "w-full justify-start text-left font-normal",
+            "min-h-11 w-full justify-start text-left font-normal",
             !isValidDate && "text-muted-foreground",
+            ariaInvalid && "border-destructive",
             className
           )}
           disabled={disabled}
@@ -157,5 +176,47 @@ export function DatePicker({
       </PopoverContent>
     </Popover>
   );
+});
+
+function parseIsoDate(value?: string): Date | undefined {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
+  const date = new Date(`${value}T12:00:00`);
+  return Number.isNaN(date.getTime()) ? undefined : date;
 }
+
+export interface IsoDatePickerProps {
+  value?: string;
+  onChange: (value: string) => void;
+  min?: string;
+  max?: string;
+  placeholder?: string;
+  disabled?: boolean;
+  className?: string;
+  id?: string;
+  "aria-invalid"?: boolean;
+  "aria-describedby"?: string;
+  "aria-required"?: boolean;
+}
+
+/** Calendar picker for forms that store a date as YYYY-MM-DD. */
+export const IsoDatePicker = React.forwardRef<HTMLButtonElement, IsoDatePickerProps>(function IsoDatePicker({
+  value,
+  onChange,
+  min,
+  max,
+  placeholder = "Pick a date",
+  ...rest
+}, ref) {
+  return (
+    <DatePicker
+      ref={ref}
+      date={parseIsoDate(value)}
+      minDate={parseIsoDate(min)}
+      maxDate={parseIsoDate(max)}
+      placeholder={placeholder}
+      onDateChange={(date) => onChange(date ? format(date, "yyyy-MM-dd") : "")}
+      {...rest}
+    />
+  );
+});
 

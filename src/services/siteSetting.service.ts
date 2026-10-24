@@ -16,6 +16,7 @@ export interface SiteSetting {
   id: string;
   key: string;
   value: string | null;
+  typed_value: string | number | boolean | Record<string, unknown> | unknown[] | null;
   type: SiteSettingType;
   group: string;
   label: string;
@@ -26,8 +27,8 @@ export interface SiteSetting {
   updated_at: string;
 }
 
-export const list = async (params?: { group?: string }): Promise<{ data: SiteSetting[] }> => {
-  const res = await apiClient.get<{ data: SiteSetting[] }>("settings", params);
+export const list = async (params?: { group?: string }): Promise<{ data: Record<string, SiteSetting[]> | SiteSetting[] }> => {
+  const res = await apiClient.get<{ data: Record<string, SiteSetting[]> | SiteSetting[] }>("settings", params);
   return res.data;
 };
 

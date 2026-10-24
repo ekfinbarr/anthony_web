@@ -1,6 +1,10 @@
 import React from 'react';
-import { FaFacebookF, FaInstagram, FaYoutube, FaTiktok, FaTwitter } from 'react-icons/fa';
+import { FaFacebookF, FaInstagram, FaYoutube } from 'react-icons/fa';
+// TikTok & X — re-enable when parish accounts are created and verified:
+// import { FaTiktok, FaTwitter } from 'react-icons/fa';
+import { FaWhatsapp } from 'react-icons/fa6';
 import { motion } from 'framer-motion';
+import { site } from '@/config/site';
 
 interface SocialMediaLinksProps {
   size?: 'small' | 'medium' | 'large';
@@ -15,13 +19,7 @@ const SocialMediaLinks: React.FC<SocialMediaLinksProps> = ({
   variant = 'outline',
   className = '',
 }) => {
-  const socialLinks = {
-    facebook: 'https://facebook.com/stanthonygbaja',
-    instagram: 'https://instagram.com/stanthonygbaja',
-    youtube: 'https://youtube.com/@stanthonygbaja',
-    tiktok: 'https://tiktok.com/@stanthonygbaja',
-    twitter: 'https://twitter.com/stanthonygbaja',
-  };
+  const socialLinks = site.social;
 
   const sizeClasses = {
     small: 'w-8 h-8',
@@ -45,9 +43,12 @@ const SocialMediaLinks: React.FC<SocialMediaLinksProps> = ({
     { name: 'Facebook', icon: FaFacebookF, link: socialLinks.facebook, ariaLabel: 'Follow us on Facebook' },
     { name: 'Instagram', icon: FaInstagram, link: socialLinks.instagram, ariaLabel: 'Follow us on Instagram' },
     { name: 'YouTube', icon: FaYoutube, link: socialLinks.youtube, ariaLabel: 'Subscribe to our YouTube channel' },
-    { name: 'TikTok', icon: FaTiktok, link: socialLinks.tiktok, ariaLabel: 'Follow us on TikTok' },
-    { name: 'Twitter', icon: FaTwitter, link: socialLinks.twitter, ariaLabel: 'Follow us on Twitter' },
-  ];
+    // { name: 'TikTok', icon: FaTiktok, link: socialLinks.tiktok, ariaLabel: 'Follow us on TikTok' },
+    // { name: 'Twitter', icon: FaTwitter, link: socialLinks.twitter, ariaLabel: 'Follow us on X' },
+    ...(socialLinks.whatsapp
+      ? [{ name: 'WhatsApp', icon: FaWhatsapp, link: socialLinks.whatsapp, ariaLabel: 'Join us on WhatsApp' }]
+      : []),
+  ].filter((social) => Boolean(social.link));
 
   return (
     <div className={`flex flex-wrap gap-4 justify-left ${className}`}>

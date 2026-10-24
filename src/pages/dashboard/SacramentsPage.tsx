@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { IsoDatePicker } from "@/components/ui/date-picker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -19,6 +20,7 @@ const sacraments = ["Baptism", "Confirmation", "First Communion", "Reconciliatio
 
 const SacramentsPage = () => {
   const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [preferredDate, setPreferredDate] = useState("");
   const [selectedBooking, setSelectedBooking] = useState<typeof mockBookings[0] | null>(null);
   const { toast } = useToast();
 
@@ -50,7 +52,7 @@ const SacramentsPage = () => {
                 </Select>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label>Preferred Date</Label><Input type="date" /></div>
+                <div className="space-y-2"><Label htmlFor="preferred-date">Preferred Date</Label><IsoDatePicker id="preferred-date" value={preferredDate} onChange={setPreferredDate} /></div>
                 <div className="space-y-2"><Label>Preferred Time</Label><Input type="time" /></div>
               </div>
               <div className="space-y-2"><Label>Phone</Label><Input placeholder="Your phone number" /></div>

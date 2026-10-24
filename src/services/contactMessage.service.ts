@@ -24,7 +24,8 @@ export interface ContactMessage {
   message: string;
   status: ContactMessageStatus;
   type: ContactMessageType;
-  is_read?: boolean;
+  is_read: boolean;
+  is_replied: boolean;
   read_at?: string | null;
   replied_at?: string | null;
   assigned_to?: string | null;
@@ -45,6 +46,7 @@ export interface ContactMessageQueryParams {
   type?: ContactMessageType;
   assigned_to?: string;
   search?: string;
+  [key: string]: string | number | boolean | undefined;
 }
 
 export interface ReplyContactMessagePayload {
@@ -95,18 +97,37 @@ export const reply = async (
   return res.data;
 };
 
+export interface SubmitContactMessagePayload {
+  name: string;
+  email: string;
+  phone?: string | null;
+  subject?: string | null;
+  message: string;
+  type?: ContactMessageType;
+}
+
+export const submit = async (
+  data: SubmitContactMessagePayload
+): Promise<{ message: string; data: ContactMessage }> => {
+  const res = await apiClient.post<{ message: string; data: ContactMessage }>("contact", data);
+  return res.data;
+};
+
 export const stats = async (): Promise<{ data: ContactMessageStats }> => {
   const res = await apiClient.get<{ data: ContactMessageStats }>("contact-messages/stats");
   return res.data;
 };
 
-export default {
+export const contactMessageService = {
   list,
+  submit,
   getById,
   remove,
   markRead,
   reply,
   stats,
 };
+
+export default contactMessageService;
 
 

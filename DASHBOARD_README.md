@@ -117,7 +117,7 @@ src/
 
 1. **Install Dependencies** (already included in package.json):
 ```bash
-npm install @tanstack/react-query framer-motion
+yarn add @tanstack/react-query framer-motion
 ```
 
 2. **Add Dashboard Route**:

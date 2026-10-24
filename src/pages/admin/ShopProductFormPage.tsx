@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RequiredLabel } from "@/components/admin/shared/RequiredLabel";
+import AmountInput from "@/components/forms/AmountInput";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -220,12 +222,12 @@ export default function ShopProductFormPage() {
         <CardContent className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <Label>Title</Label>
+              <RequiredLabel>Title</RequiredLabel>
               <Input value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
             </div>
 
             <div className="space-y-1">
-              <Label>Category</Label>
+              <RequiredLabel>Category</RequiredLabel>
               <Select value={form.category_id} onValueChange={(v) => setForm((p) => ({ ...p, category_id: v }))}>
                 <SelectTrigger>
                   <SelectValue placeholder={categoriesQuery.isLoading ? "Loading categories..." : "Select category"} />
@@ -242,7 +244,11 @@ export default function ShopProductFormPage() {
 
             <div className="space-y-1">
               <Label>Price (optional)</Label>
-              <Input value={form.price} onChange={(e) => setForm((p) => ({ ...p, price: e.target.value }))} />
+              <AmountInput
+                currency={form.currency || "NGN"}
+                value={form.price === "" ? null : Number(form.price)}
+                onValueChange={(next) => setForm((p) => ({ ...p, price: next === null ? "" : String(next) }))}
+              />
             </div>
 
             <div className="space-y-1">

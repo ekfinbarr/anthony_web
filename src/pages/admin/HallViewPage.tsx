@@ -306,8 +306,18 @@ export default function HallViewPage() {
                       <Select
                         value={statusFilter}
                         onValueChange={(v) => {
-                          if (v === "all" || v === "pending" || v === "approved" || v === "rejected" || v === "cancelled") {
-                            setStatusFilter(v);
+                          const allowed = [
+                            "all",
+                            "pending_review",
+                            "needs_info",
+                            "approved",
+                            "confirmed",
+                            "rejected",
+                            "cancelled",
+                            "completed",
+                          ] as const;
+                          if ((allowed as readonly string[]).includes(v)) {
+                            setStatusFilter(v as FacilityBookingStatus | "all");
                             setPage(1);
                           }
                         }}
@@ -317,10 +327,13 @@ export default function HallViewPage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All Status</SelectItem>
-                          <SelectItem value="pending">Requested</SelectItem>
+                          <SelectItem value="pending_review">Pending review</SelectItem>
+                          <SelectItem value="needs_info">Needs info</SelectItem>
                           <SelectItem value="approved">Approved</SelectItem>
+                          <SelectItem value="confirmed">Confirmed</SelectItem>
                           <SelectItem value="rejected">Rejected</SelectItem>
                           <SelectItem value="cancelled">Cancelled</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
                         </SelectContent>
                       </Select>
 
@@ -367,8 +380,14 @@ export default function HallViewPage() {
                               </p>
                             </div>
                             <StatusBadge
-                              status={b.status === "approved" ? "active" : b.status === "rejected" || b.status === "cancelled" ? "cancelled" : "pending"}
-                              customLabel={b.status}
+                              status={
+                                b.status === "approved" || b.status === "confirmed"
+                                  ? "active"
+                                  : b.status === "rejected" || b.status === "cancelled"
+                                    ? "cancelled"
+                                    : "pending"
+                              }
+                              customLabel={b.public_status || b.status}
                             />
                           </div>
                           {b.purpose ? <p className="mt-2 text-sm text-muted-foreground line-clamp-2">{b.purpose}</p> : null}

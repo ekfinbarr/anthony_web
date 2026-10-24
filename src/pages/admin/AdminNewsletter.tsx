@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RequiredLabel } from "@/components/admin/shared/RequiredLabel";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
@@ -406,12 +407,12 @@ export default function AdminNewsletter() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <Label htmlFor="nl-name">Name</Label>
-              <Input id="nl-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. January Update" />
+              <RequiredLabel htmlFor="nl-name">Name</RequiredLabel>
+              <Input id="nl-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. January Update" required aria-required />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="nl-subject">Subject</Label>
-              <Input id="nl-subject" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Email subject" />
+              <RequiredLabel htmlFor="nl-subject">Subject</RequiredLabel>
+              <Input id="nl-subject" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Email subject" required aria-required />
             </div>
           </div>
 
@@ -419,7 +420,7 @@ export default function AdminNewsletter() {
           <div className="space-y-3">
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div className="space-y-1">
-                <Label>Newsletter content</Label>
+                <RequiredLabel>Newsletter content</RequiredLabel>
                 <p className="text-xs text-muted-foreground">
                   Use Visual mode for quick writing, or HTML mode for full control. Preview is isolated in an iframe.
                 </p>

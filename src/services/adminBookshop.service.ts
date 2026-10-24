@@ -94,6 +94,81 @@ export const deleteProduct = async (slug: string) => {
   return res.data;
 };
 
+export type BookshopOrderStatus =
+  | "pending"
+  | "confirmed"
+  | "ready_for_pickup"
+  | "completed"
+  | "cancelled";
+
+export interface BookshopOrderAdmin {
+  id: string;
+  reference?: string;
+  status: BookshopOrderStatus;
+  customer_name: string;
+  customer_email?: string | null;
+  customer_phone?: string | null;
+  notes?: string | null;
+  admin_notes?: string | null;
+  total_amount?: string | number | null;
+  currency?: string;
+  cancelled_reason?: string | null;
+  items?: Array<{
+    id: string;
+    product_id?: string;
+    product_title?: string;
+    quantity: number;
+    variant?: string | null;
+    unit_price?: string | number | null;
+    currency?: string;
+  }>;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export const listOrders = async (params?: AdminQueryParams): Promise<LaravelResourceCollection<BookshopOrderAdmin>> => {
+  const res = await apiClient.get<LaravelResourceCollection<BookshopOrderAdmin>>("bookshop-orders", params);
+  return res.data;
+};
+
+export const getOrder = async (id: string): Promise<{ data: BookshopOrderAdmin }> => {
+  const res = await apiClient.get<{ data: BookshopOrderAdmin }>(`bookshop-orders/${id}`);
+  return res.data;
+};
+
+export const confirmOrder = async (id: string, body?: { admin_notes?: string }) => {
+  const res = await apiClient.post(`bookshop-orders/${id}/confirm`, body || {});
+  return res.data;
+};
+
+export const readyOrder = async (id: string, body?: { admin_notes?: string }) => {
+  const res = await apiClient.post(`bookshop-orders/${id}/ready`, body || {});
+  return res.data;
+};
+
+export const completeOrder = async (id: string, body?: { admin_notes?: string }) => {
+  const res = await apiClient.post(`bookshop-orders/${id}/complete`, body || {});
+  return res.data;
+};
+
+export const cancelOrder = async (
+  id: string,
+  body?: { admin_notes?: string; cancelled_reason?: string }
+) => {
+  const res = await apiClient.post(`bookshop-orders/${id}/cancel`, body || {});
+  return res.data;
+};
+
+export const importProducts = async (file: File) => {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await apiClient.postForm<{
+    message: string;
+    data: { imported: number; failed: number; errors?: Array<{ row: number; message: string }> };
+  }>("bookshop-products/import", form);
+  return res.data;
+};
+
 export default {
   listCategories,
   listProducts,
@@ -101,6 +176,13 @@ export default {
   createProduct,
   updateProduct,
   deleteProduct,
+  listOrders,
+  getOrder,
+  confirmOrder,
+  readyOrder,
+  completeOrder,
+  cancelOrder,
+  importProducts,
 };
 
 

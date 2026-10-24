@@ -1,87 +1,69 @@
 import { Link } from "react-router-dom";
-import { Baby, Users, Heart, Globe, BookOpen, Music } from "lucide-react";
+import { ChildIcon, GlobeIcon, HandsIcon, LampIcon, MusicIcon, YouthIcon } from "@/components/icons/ParishIcons";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 const MinistriesSection = () => {
   const ministries = [
     {
       name: "Children's Ministry",
-      icon: Baby,
+      icon: ChildIcon,
       description: "Nurturing faith in our youngest members through fun and engaging activities.",
-      link: "/ministries/children",
-      color: "bg-blue-500",
     },
     {
       name: "Youth Ministry",
-      icon: Users,
+      icon: YouthIcon,
       description: "Empowering teens to grow in faith and build lasting friendships.",
-      link: "/ministries/youth",
-      color: "bg-purple-500",
     },
     {
       name: "Adult Ministry",
-      icon: BookOpen,
+      icon: LampIcon,
       description: "Deepening faith through Bible study, fellowship, and spiritual growth.",
-      link: "/ministries/adults",
-      color: "bg-green-500",
     },
     {
       name: "Worship Ministry",
-      icon: Music,
+      icon: MusicIcon,
       description: "Leading our congregation in worship through music and arts.",
-      link: "/ministries/worship",
-      color: "bg-red-500",
     },
     {
       name: "Care Ministry",
-      icon: Heart,
+      icon: HandsIcon,
       description: "Providing support and care for those in need within our community.",
-      link: "/ministries/care",
-      color: "bg-pink-500",
     },
     {
       name: "Outreach Ministry",
-      icon: Globe,
+      icon: GlobeIcon,
       description: "Serving our local and global community through missions and service.",
-      link: "/ministries/outreach",
-      color: "bg-orange-500",
     },
   ];
 
   return (
-    <section className="py-16 bg-background relative overflow-hidden">
-      {/* Background Pattern */}
+    <section className="relative overflow-hidden bg-background py-16">
       <div className="absolute inset-0 pattern-geometric" />
-      
-      <div className="container mx-auto px-4 relative">
-        {/* Section Header */}
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-heading font-bold text-church-charcoal mb-4 accent-line inline-block">
+
+      <div className="container relative mx-auto px-4">
+        <div className="mb-12 text-center">
+          <h2 className="mb-4 inline-block font-heading text-4xl font-bold text-church-charcoal accent-line">
             Our Ministries
           </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
             Find your place to serve, grow, and make a difference in our community
           </p>
         </div>
 
-        {/* Ministries Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {ministries.map((ministry) => {
             const Icon = ministry.icon;
             return (
-              <Link key={ministry.name} to={ministry.link}>
-                <Card className="p-6 h-full hover:shadow-xl transition-all duration-300 group hover:-translate-y-1">
+              <Link key={ministry.name} to="/serve-others">
+                <Card className="group h-full p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl motion-reduce:transition-none motion-reduce:hover:translate-y-0">
                   <div className="flex items-start space-x-4">
-                    <div className={`${ministry.color} p-3 rounded-lg bg-opacity-10 group-hover:bg-opacity-20 transition-colors`}>
-                      <Icon className={`h-6 w-6 text-primary`} />
-                    </div>
+                    <Icon size="sm" className="mt-1" />
                     <div className="flex-1">
-                      <h3 className="font-heading font-semibold text-lg mb-2 group-hover:text-primary transition-colors">
+                      <h3 className="mb-2 font-heading text-lg font-semibold transition-colors group-hover:text-primary">
                         {ministry.name}
                       </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {ministry.description}
-                      </p>
+                      <p className="text-sm text-muted-foreground">{ministry.description}</p>
                     </div>
                   </div>
                 </Card>
@@ -90,9 +72,11 @@ const MinistriesSection = () => {
           })}
         </div>
 
-        {/* Decorative Elements */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-church opacity-5 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-church opacity-5 rounded-full blur-3xl" />
+        <div className="mt-10 text-center">
+          <Button asChild size="lg">
+            <Link to="/serve-others">Explore Serve Others</Link>
+          </Button>
+        </div>
       </div>
     </section>
   );

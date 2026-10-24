@@ -1,23 +1,25 @@
 import { useState } from "react";
-import { Search, Phone, Mail, MapPin, Clock, Stethoscope, Heart, Baby, TestTube, Brain, Pill, Activity, Shield } from "lucide-react";
+import { Search, Phone, Mail } from "lucide-react";
+import { BandageIcon, ClockIcon, CounselIcon, CradleIcon, DropIcon, EnvelopeIcon, FlaskIcon, GaugeIcon, LungsIcon, MotherIcon, PhoneIcon, PinIcon, ScopeIcon, ShieldIcon, TabletIcon, ThermoIcon } from "@/components/icons/ParishIcons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import PageHeader from "@/components/layout/PageHeader";
 
 const services = [
-  { id: 1, name: "Maternity Care", category: "maternity", icon: Baby, description: "Comprehensive care for expectant mothers including delivery services" },
-  { id: 2, name: "Antenatal Care", category: "maternity", icon: Heart, description: "Regular checkups and monitoring throughout pregnancy" },
-  { id: 3, name: "Laboratory Tests", category: "diagnostics", icon: TestTube, description: "Full range of diagnostic testing services" },
-  { id: 4, name: "Malaria Treatment", category: "treatment", icon: Pill, description: "Diagnosis and treatment of malaria cases" },
-  { id: 5, name: "Typhoid Treatment", category: "treatment", icon: Pill, description: "Comprehensive typhoid fever care and management" },
-  { id: 6, name: "Ulcer Management", category: "treatment", icon: Activity, description: "Treatment for gastric and peptic ulcers" },
-  { id: 7, name: "Infection Treatment", category: "treatment", icon: Shield, description: "Care for various bacterial and viral infections" },
-  { id: 8, name: "Counselling Services", category: "wellness", icon: Brain, description: "Mental health support and counselling" },
-  { id: 9, name: "Asthma Treatment", category: "treatment", icon: Activity, description: "Management and treatment of respiratory conditions" },
-  { id: 10, name: "Health Screenings", category: "diagnostics", icon: Stethoscope, description: "Preventive health checkups and screenings" },
-  { id: 11, name: "Blood Pressure Check", category: "diagnostics", icon: Heart, description: "Regular BP monitoring and management" },
-  { id: 12, name: "Diabetes Screening", category: "diagnostics", icon: TestTube, description: "Blood sugar testing and diabetes care" },
+  { id: 1, name: "Maternity Care", category: "maternity", icon: CradleIcon, description: "Comprehensive care for expectant mothers including delivery services" },
+  { id: 2, name: "Antenatal Care", category: "maternity", icon: MotherIcon, description: "Regular checkups and monitoring throughout pregnancy" },
+  { id: 3, name: "Laboratory Tests", category: "diagnostics", icon: FlaskIcon, description: "Full range of diagnostic testing services" },
+  { id: 4, name: "Malaria Treatment", category: "treatment", icon: TabletIcon, description: "Diagnosis and treatment of malaria cases" },
+  { id: 5, name: "Typhoid Treatment", category: "treatment", icon: ThermoIcon, description: "Comprehensive typhoid fever care and management" },
+  { id: 6, name: "Ulcer Management", category: "treatment", icon: BandageIcon, description: "Treatment for gastric and peptic ulcers" },
+  { id: 7, name: "Infection Treatment", category: "treatment", icon: ShieldIcon, description: "Care for various bacterial and viral infections" },
+  { id: 8, name: "Counselling Services", category: "wellness", icon: CounselIcon, description: "Mental health support and counselling" },
+  { id: 9, name: "Asthma Treatment", category: "treatment", icon: LungsIcon, description: "Management and treatment of respiratory conditions" },
+  { id: 10, name: "Health Screenings", category: "diagnostics", icon: ScopeIcon, description: "Preventive health checkups and screenings" },
+  { id: 11, name: "Blood Pressure Check", category: "diagnostics", icon: GaugeIcon, description: "Regular BP monitoring and management" },
+  { id: 12, name: "Diabetes Screening", category: "diagnostics", icon: DropIcon, description: "Blood sugar testing and diabetes care" },
 ];
 
 const categories = [
@@ -41,54 +43,39 @@ const Clinic = () => {
 
   return (
     <div className="min-h-screen">
-      {/* Hero Section */}
-      <section className="relative h-[50vh] flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0">
-          <img
-            src="https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=1200"
-            alt="Healthcare"
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-secondary/80 to-secondary/60" />
-        </div>
-        <div className="relative z-10 text-center text-secondary-foreground">
-          <Badge className="mb-4 bg-primary text-primary-foreground">Healthcare Ministry</Badge>
-          <h1 className="text-4xl md:text-6xl font-heading font-bold mb-4 animate-fade-in">
-            St. Anthony <span className="text-primary">Clinic</span>
-          </h1>
-          <p className="text-xl max-w-2xl mx-auto px-4 opacity-90">
-            Compassionate healthcare services for our community
-          </p>
-        </div>
-      </section>
+      <PageHeader
+        eyebrow="Healthcare Ministry"
+        title="St. Anthony Parish Clinic"
+        description="Compassionate healthcare services for our community"
+      />
 
       {/* Info Bar */}
       <section className="bg-primary py-6">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-primary-foreground">
-            <div className="flex items-center gap-3 justify-center md:justify-start">
-              <Clock className="h-6 w-6" />
+            <div className="flex items-center gap-3">
+              <ClockIcon className="h-9 w-9 shrink-0" />
               <div>
                 <p className="font-semibold">Weekdays</p>
                 <p className="text-sm opacity-90">8am – 7pm</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 justify-center md:justify-start">
-              <Clock className="h-6 w-6" />
+            <div className="flex items-center gap-3">
+              <ClockIcon className="h-9 w-9 shrink-0" />
               <div>
                 <p className="font-semibold">Weekends</p>
                 <p className="text-sm opacity-90">9am – 12pm</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 justify-center md:justify-start">
-              <Phone className="h-6 w-6" />
+            <div className="flex items-center gap-3">
+              <PhoneIcon className="h-9 w-9 shrink-0" />
               <div>
                 <p className="font-semibold">Phone</p>
                 <p className="text-sm opacity-90">+234 803 456 7890</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 justify-center md:justify-start">
-              <Mail className="h-6 w-6" />
+            <div className="flex items-center gap-3">
+              <EnvelopeIcon className="h-9 w-9 shrink-0" />
               <div>
                 <p className="font-semibold">Email</p>
                 <p className="text-sm opacity-90">clinic@stanthonygbaja.org</p>
@@ -127,21 +114,43 @@ const Clinic = () => {
         </div>
       </section>
 
-      {/* Services Grid */}
+      {/* Services */}
       <section className="py-16">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-heading font-bold text-center mb-12">
+          <h2 className="text-3xl font-heading font-bold text-left sm:text-center mb-8 sm:mb-12">
             Our <span className="text-primary">Services</span>
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-6">
+
+          {/* Mobile: horizontal list rows */}
+          <div className="flex flex-col gap-3 sm:hidden">
+            {filteredServices.map((service, index) => {
+              const Icon = service.icon;
+              return (
+                <div
+                  key={service.id}
+                  className="flex items-center gap-4 rounded-xl border border-border bg-card px-4 py-3.5 animate-fade-in"
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  <Icon size="md" className="shrink-0" />
+                  <div className="min-w-0 flex-1 text-left">
+                    <p className="font-semibold leading-snug">{service.name}</p>
+                    <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">
+                      {service.description}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Tablet / desktop: card grid */}
+          <div className="hidden sm:grid sm:grid-cols-3 lg:grid-cols-4 gap-6">
             {filteredServices.map((service, index) => {
               const Icon = service.icon;
               return (
                 <Card key={service.id} className="group card-hover animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
                   <CardHeader>
-                    <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                      <Icon className="h-7 w-7 text-primary group-hover:text-primary-foreground transition-colors" />
-                    </div>
+                    <Icon size="md" className="mb-4" />
                     <Badge variant="secondary" className="w-fit mb-2 capitalize">{service.category}</Badge>
                     <CardTitle className="text-lg">{service.name}</CardTitle>
                   </CardHeader>
@@ -184,7 +193,7 @@ const Clinic = () => {
             </div>
             <div className="bg-card rounded-xl p-6 shadow-lg">
               <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-primary" />
+                <PinIcon className="h-8 w-8" />
                 Get Directions
               </h3>
               <div className="aspect-video rounded-lg overflow-hidden bg-muted">

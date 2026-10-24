@@ -1,21 +1,15 @@
-import { useEffect, useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { FileText, Download, Search, Filter, Calendar, ChevronRight, ChevronLeft, FileDown, Target, Users, Heart } from "lucide-react";
+import { Download, Search, Filter, Calendar, ChevronRight, ChevronLeft, FileDown } from "lucide-react";
+import { DiaryIcon, NewsIcon, OpenBookIcon } from "@/components/icons/ParishIcons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 import { useQuery } from "@tanstack/react-query";
 import jsPDF from "jspdf";
-import bannerPhoto from "@/assets/images/church_banner.jpg";
+import bannerPhoto from "@/assets/images/st_anthony.webp";
+import PageHeader from "@/components/layout/PageHeader";
 
 interface Bulletin {
   id: string;
@@ -53,16 +47,6 @@ const WeeklyBulletin = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedBulletin, setSelectedBulletin] = useState<Bulletin | null>(null);
 
-  useEffect(() => {
-    document.title = "Weekly Bulletin | St. Anthony Catholic Church, Gbaja";
-    const metaDescription = document.querySelector('meta[name="description"]');
-    if (metaDescription) {
-      metaDescription.setAttribute(
-        "content",
-        "Access our weekly bulletins to stay informed about church news, events, announcements, and community updates at St. Anthony Catholic Church, Gbaja."
-      );
-    }
-  }, []);
 
   // Fetch bulletins (mock data for now)
   const { data: bulletins = mockBulletins, isLoading } = useQuery<Bulletin[]>({
@@ -169,51 +153,21 @@ const WeeklyBulletin = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Breadcrumb */}
-      <section className="bg-church-pearl border-b">
-        <div className="container mx-auto px-4 py-4">
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink asChild>
-                  <Link to="/">Home</Link>
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator>
-                <ChevronRight className="h-4 w-4" />
-              </BreadcrumbSeparator>
-              <BreadcrumbItem>
-                <BreadcrumbPage>Weekly Bulletin</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
+      <PageHeader
+        tone="light"
+        title="Weekly Bulletin"
+        description="Stay informed with the latest news, events, and announcements from our church community."
+        icon={<OpenBookIcon size="md" />}
+      >
+        <div className="flex flex-wrap justify-center gap-2">
+          <Button onClick={() => scrollToSection("latest")} variant="outline" size="sm">
+            Latest Bulletin
+          </Button>
+          <Button onClick={() => scrollToSection("past-bulletins")} variant="outline" size="sm">
+            Past Bulletins
+          </Button>
         </div>
-      </section>
-
-      {/* Hero Section */}
-      <section className="relative py-16 bg-gradient-to-r from-primary/10 via-primary/5 to-accent/10">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center">
-            <div className="flex items-center justify-center mb-4">
-              <FileText className="h-12 w-12 text-primary" />
-            </div>
-            <h1 className="text-4xl md:text-5xl font-heading font-bold mb-4 text-church-charcoal">
-              Weekly Bulletin
-            </h1>
-            <p className="text-lg text-muted-foreground mb-6">
-              Stay informed with the latest news, events, and announcements from our church community.
-            </p>
-            <div className="flex flex-wrap justify-center gap-2">
-              <Button onClick={() => scrollToSection("latest")} variant="outline" size="sm">
-                Latest Bulletin
-              </Button>
-              <Button onClick={() => scrollToSection("past-bulletins")} variant="outline" size="sm">
-                Past Bulletins
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
+      </PageHeader>
 
       {/* Latest Bulletin */}
       {latestBulletin && (
@@ -352,7 +306,7 @@ const WeeklyBulletin = () => {
                 {paginatedBulletins.map((bulletin) => (
                   <Card key={bulletin.id} className="hover:shadow-lg transition-shadow">
                     <div className="relative">
-                      <img
+                      <img loading="lazy" decoding="async"
                         src={bulletin.thumbnail}
                         alt={bulletin.title}
                         className="w-full h-48 object-cover"
@@ -455,17 +409,17 @@ const WeeklyBulletin = () => {
             More Ways to Stay Connected
           </h2>
           <p className="text-muted-foreground mb-8 text-center">
-            Our weekly bulletin provides important information about upcoming events, service times, and ways to get involved.
+            Our weekly bulletin provides important information about upcoming events, Mass times, and ways to get involved.
           </p>
           <div className="grid md:grid-cols-2 lg:grid-cols-2 gap-8 text-center">
             <Card className="p-6 hover:shadow-xl transition-shadow text-center">
-              <Users className="h-12 w-12 text-primary mb-4 mx-auto" />
+              <NewsIcon size="md" className="mx-auto mb-4" />
               <h3 className="text-xl font-heading font-semibold mb-2">Monthly Newsletter</h3>
               <p className="text-muted-foreground mb-4">Subscribe to our monthly newsletter for in-depth updates.</p>
               <Button variant="church" size="lg" className="mt-4">Subscribe</Button>
             </Card>
             <Card className="p-6 hover:shadow-xl transition-shadow text-center">
-              <Target className="h-12 w-12 text-primary mb-4 mx-auto" />
+              <DiaryIcon size="md" className="mx-auto mb-4" />
               <h3 className="text-xl font-heading font-semibold mb-2">Event Calendar</h3>
               <p className="text-muted-foreground mb-4">View our event calendar to see upcoming activities and services.</p>
               <Link to="/events" className="inline-block">
@@ -486,11 +440,11 @@ const WeeklyBulletin = () => {
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
             Our bulletin is a great way to stay connected with our church community. Don't miss out on important announcements and opportunities to get involved.
           </p>
-          <Link to="/contact" className="inline-block">
-            <Button variant="secondary" size="lg">
+          <Button variant="secondary" size="lg" asChild>
+            <Link to="/contact" className="inline-block">
               Contact Us
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       </section>
     </div>

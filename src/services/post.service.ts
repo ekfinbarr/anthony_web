@@ -51,14 +51,21 @@ export interface Post {
   post_type?: string;
   published: boolean;
   image?: string;
+  image_alt?: string | null;
   video?: string;
   allow_comment: boolean;
   rate?: number;
   archived: boolean;
+  is_featured?: boolean;
+  published_at?: string | null;
+  meta_title?: string | null;
+  meta_description?: string | null;
+  og_image?: string | null;
   created_at: string;
   updated_at: string;
   deleted_at?: string | null;
   /** Optional eager-loaded relations (if backend includes them). */
+  author?: { id: string; name: string } | null;
   categories?: CategoryRef[];
   tags?: TagRef[];
 }
@@ -77,11 +84,25 @@ export interface CreatePostPayload {
   post_type?: string;
   published?: boolean;
   image?: string;
+  image_alt?: string;
   video?: string;
   allow_comment?: boolean;
+  is_featured?: boolean;
+  published_at?: string | null;
+  meta_title?: string;
+  meta_description?: string;
+  og_image?: string;
   /** Selected taxonomy (UUIDs). */
   category_ids?: string[];
   tag_ids?: string[];
+}
+
+/**
+ * Laravel resource-collection page (pagination info lives under `meta`).
+ */
+export interface PublishedPostsResponse {
+  data: Post[];
+  meta?: { current_page: number; last_page: number; per_page: number; total: number };
 }
 
 /**
@@ -97,8 +118,14 @@ export interface PostQueryParams {
   per_page?: number;
   published?: boolean;
   type?: string;
+  /** Classification filter: post | news | announcement | article */
+  post_type?: string;
   author_id?: string;
   search?: string;
+  /** Category slug or UUID */
+  category?: string;
+  /** Featured flag filter for published lists */
+  featured?: boolean | 0 | 1 | "0" | "1";
 }
 
 /**
@@ -147,8 +174,8 @@ export const getById = async (id: string): Promise<Post> => {
  * @returns Post details
  */
 export const getBySlug = async (slug: string): Promise<Post> => {
-  const response = await apiClient.get<Post>(`posts/slug/${slug}`);
-  return response.data;
+  const response = await apiClient.get<{ data: Post }>(`posts/slug/${slug}`);
+  return response.data.data;
 };
 
 /**
@@ -189,20 +216,28 @@ export const remove = async (id: string): Promise<void> => {
  * @param params Query parameters
  * @returns Paginated list of published posts
  */
-export const getPublished = async (params?: PostQueryParams): Promise<PaginatedResponse<Post>> => {
-  const response = await apiClient.get<PaginatedResponse<Post>>('posts/published', toQueryParams(params));
+export const getPublished = async (params?: PostQueryParams): Promise<PublishedPostsResponse> => {
+  const response = await apiClient.get<PublishedPostsResponse>('posts/published', toQueryParams(params));
   return response.data;
 };
 
 /**
  * Get popular posts
- * 
+ *
  * @param limit Number of posts to return
  * @returns List of popular posts
  */
 export const getPopular = async (limit: number = 5): Promise<Post[]> => {
   const response = await apiClient.get<Post[]>('posts/popular', { limit });
   return response.data;
+};
+
+/**
+ * Related published posts for an article slug.
+ */
+export const getRelated = async (slug: string, limit: number = 3): Promise<Post[]> => {
+  const response = await apiClient.get<{ data: Post[] }>(`posts/slug/${encodeURIComponent(slug)}/related`, { limit });
+  return response.data.data ?? [];
 };
 
 /**
@@ -245,6 +280,7 @@ const postService = {
   remove,
   getPublished,
   getPopular,
+  getRelated,
   getByAuthor,
   getByType,
 };

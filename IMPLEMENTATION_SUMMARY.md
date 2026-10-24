@@ -60,12 +60,12 @@ VITE_OPENAI_API_KEY=sk-your-actual-openai-api-key-here
 
 ### 2. Install Dependencies
 ```bash
-npm install --legacy-peer-deps
+yarn install
 ```
 
 ### 3. Run the Application
 ```bash
-npm run dev
+yarn dev
 ```
 
 ### 4. Test the Chatbot

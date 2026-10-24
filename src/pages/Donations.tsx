@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Heart, Building2, Gift, HandHeart, Upload, CreditCard, Copy, CheckCircle } from "lucide-react";
+import { Copy, CheckCircle, Heart } from "lucide-react";
+import { BasketIcon, BricksIcon, CoinsIcon, GiftIcon } from "@/components/icons/ParishIcons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,16 +8,28 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import PageHeader from "@/components/layout/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import donationAccountService, { DonationAccount } from "@/services/donationAccount.service";
+import OnlineDonationForm from "@/components/payments/OnlineDonationForm";
+import AmountInput from "@/components/forms/AmountInput";
+import ProofFileField from "@/components/forms/ProofFileField";
+import { DonationType } from "@/services/payment.service";
+
+// Each giving category maps to a backend donation type
+const DONATION_TYPES: Record<string, DonationType> = {
+  projects: "building",
+  charity: "welfare",
+  freewill: "offering",
+  tithe: "tithe",
+};
 
 const donationCategories = [
   {
     id: "projects",
     name: "Parish Projects",
-    icon: Building2,
+    icon: BricksIcon,
     description: "Support ongoing construction and renovation projects",
-    color: "bg-blue-500",
     bankDetails: {
       bankName: "First Bank of Nigeria",
       accountName: "St. Anthony Catholic Church Projects",
@@ -26,9 +39,8 @@ const donationCategories = [
   {
     id: "charity",
     name: "Charity & Welfare",
-    icon: HandHeart,
+    icon: BasketIcon,
     description: "Help the less privileged in our community",
-    color: "bg-green-500",
     bankDetails: {
       bankName: "Zenith Bank",
       accountName: "St. Anthony Catholic Church Charity",
@@ -38,9 +50,8 @@ const donationCategories = [
   {
     id: "freewill",
     name: "Freewill Offering",
-    icon: Gift,
+    icon: GiftIcon,
     description: "General donations to support parish activities",
-    color: "bg-purple-500",
     bankDetails: {
       bankName: "GTBank",
       accountName: "St. Anthony Catholic Church Gbaja",
@@ -50,9 +61,8 @@ const donationCategories = [
   {
     id: "tithe",
     name: "Tithe & Offerings",
-    icon: Heart,
+    icon: CoinsIcon,
     description: "Regular tithes and thanksgiving offerings",
-    color: "bg-primary",
     bankDetails: {
       bankName: "UBA",
       accountName: "St. Anthony Catholic Church Tithe",
@@ -64,6 +74,9 @@ const donationCategories = [
 const Donations = () => {
   const [selectedCategory, setSelectedCategory] = useState(donationCategories[0]);
   const [copiedAccount, setCopiedAccount] = useState("");
+  const [receiptAmount, setReceiptAmount] = useState<number | null>(null);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptError, setReceiptError] = useState("");
   const [donationAccounts, setDonationAccounts] = useState<DonationAccount[]>([]);
   const { toast } = useToast();
 
@@ -93,6 +106,11 @@ const Donations = () => {
 
   const handleReceiptSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!receiptFile) {
+      setReceiptError("Upload a photo or PDF of your receipt.");
+      return;
+    }
+    setReceiptError("");
     toast({
       title: "Receipt Submitted",
       description: "Thank you! Your donation receipt has been received.",
@@ -101,26 +119,11 @@ const Donations = () => {
 
   return (
     <div className="min-h-screen">
-      {/* Hero Section */}
-      <section className="relative h-[45vh] flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0">
-          <img
-            src="https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?w=1200"
-            alt="Giving"
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-secondary/80 to-secondary/60" />
-        </div>
-        <div className="relative z-10 text-center text-secondary-foreground">
-          <Badge className="mb-4 bg-primary text-primary-foreground">Support Our Parish</Badge>
-          <h1 className="text-4xl md:text-6xl font-heading font-bold mb-4 animate-fade-in">
-            Donations & <span className="text-primary">Giving</span>
-          </h1>
-          <p className="text-xl max-w-2xl mx-auto px-4 opacity-90">
-            Your generosity helps us serve God and our community
-          </p>
-        </div>
-      </section>
+      <PageHeader
+        eyebrow="Support Our Parish"
+        title="Donations & Giving"
+        description="Your generosity helps us serve God and our community"
+      />
 
       {/* Scripture Quote */}
       <section className="py-8 bg-primary text-primary-foreground">
@@ -152,9 +155,7 @@ const Donations = () => {
                   onClick={() => setSelectedCategory(category)}
                 >
                   <CardContent className="pt-6 text-center">
-                    <div className={`w-16 h-16 rounded-full ${category.color} flex items-center justify-center mx-auto mb-4`}>
-                      <Icon className="h-8 w-8 text-white" />
-                    </div>
+                    <Icon size="lg" className="mx-auto mb-4" />
                     <h3 className="font-semibold text-lg mb-2">{category.name}</h3>
                     {/* Hide description on mobile */}
                     <p className="text-sm text-muted-foreground hidden md:block text-center">{category.description}</p>
@@ -176,11 +177,19 @@ const Donations = () => {
               <CardDescription>{selectedCategory.description}</CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="bank" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
+              <Tabs defaultValue="online" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="online">Give Online</TabsTrigger>
                   <TabsTrigger value="bank">Bank Transfer</TabsTrigger>
                   <TabsTrigger value="receipt">Upload Receipt</TabsTrigger>
                 </TabsList>
+
+                <TabsContent value="online" className="pt-2">
+                  <OnlineDonationForm
+                    donationType={DONATION_TYPES[selectedCategory.id] ?? "other"}
+                    purposeLabel={selectedCategory.name}
+                  />
+                </TabsContent>
 
                 <TabsContent value="bank" className="space-y-4">
                   <div className="bg-muted rounded-lg p-6 space-y-4">
@@ -278,21 +287,23 @@ const Donations = () => {
 
                     <div className="space-y-2">
                       <Label htmlFor="amount">Amount Donated *</Label>
-                      <Input id="amount" type="number" placeholder="Enter amount in Naira" required />
+                      <AmountInput id="amount" value={receiptAmount} onValueChange={setReceiptAmount} placeholder="5,000.00" />
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="receipt">Upload Receipt *</Label>
-                      <div className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary transition-colors">
-                        <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                        <p className="text-sm text-muted-foreground mb-2">
-                          Click to upload or drag and drop
-                        </p>
-                        <Input id="receipt" type="file" className="hidden" accept="image/*,.pdf" />
-                        <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById("receipt")?.click()}>
-                          Choose File
-                        </Button>
-                      </div>
+                      <ProofFileField
+                        id="receipt"
+                        value={receiptFile}
+                        onChange={(file) => {
+                          setReceiptFile(file);
+                          if (file) setReceiptError("");
+                        }}
+                        aria-invalid={receiptError ? true : undefined}
+                        aria-describedby={receiptError ? "receipt-error" : undefined}
+                        aria-required
+                      />
+                      {receiptError && <p id="receipt-error" className="text-sm text-destructive" role="alert">{receiptError}</p>}
                     </div>
 
                     <div className="space-y-2">
@@ -308,22 +319,6 @@ const Donations = () => {
               </Tabs>
             </CardContent>
           </Card>
-        </div>
-      </section>
-
-      {/* Online Payment Section */}
-      <section className="py-16 bg-muted">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-heading font-bold mb-4">
-            Prefer to <span className="text-primary">Pay Online?</span>
-          </h2>
-          <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-            Coming soon! We're working on integrating online payment options for your convenience.
-          </p>
-          <Button variant="outline" size="lg" disabled className="gap-2">
-            <CreditCard className="h-5 w-5" />
-            Online Payment Coming Soon
-          </Button>
         </div>
       </section>
 

@@ -180,14 +180,14 @@ export default function NotificationSettings() {
     }
   });
 
-  // Mock notifications data
+  // Mock notifications data (fixed timestamps — Date.now() is impure during render)
   const [notifications, setNotifications] = useState<Notification[]>([
     {
       id: '1',
       type: 'event',
-      title: 'Upcoming Sunday Service',
-      message: 'Join us for this Sunday\'s worship service at 10:00 AM. Special guest speaker Pastor Johnson.',
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+      title: 'Upcoming Sunday Mass',
+      message: 'Join us for Sunday Mass at 10:00 AM. Very Rev. Fr. Sylvester Tolulope Oladunjoye will be the principal celebrant.',
+      timestamp: new Date('2026-10-23T01:00:00'),
       read: false,
       priority: 'high',
       actionUrl: '/events',
@@ -198,7 +198,7 @@ export default function NotificationSettings() {
       type: 'spiritual',
       title: 'Prayer Streak Achievement',
       message: 'Congratulations! You\'ve maintained a 7-day prayer streak. Keep up the great work!',
-      timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000), // 5 hours ago
+      timestamp: new Date('2026-10-22T22:00:00'),
       read: false,
       priority: 'medium',
       actionUrl: '/dashboard?tab=growth',
@@ -209,7 +209,7 @@ export default function NotificationSettings() {
       type: 'community',
       title: 'New Small Group Match',
       message: 'We found a small group that matches your interests: "Young Adults Bible Study".',
-      timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
+      timestamp: new Date('2026-10-22T03:00:00'),
       read: true,
       priority: 'medium',
       actionUrl: '/dashboard?tab=community',
@@ -220,7 +220,7 @@ export default function NotificationSettings() {
       type: 'reminder',
       title: 'Goal Check-in Reminder',
       message: 'It\'s time to update your spiritual growth goals. How are you progressing?',
-      timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
+      timestamp: new Date('2026-10-21T03:00:00'),
       read: true,
       priority: 'low',
       actionUrl: '/dashboard?tab=growth',
@@ -230,8 +230,8 @@ export default function NotificationSettings() {
       id: '5',
       type: 'update',
       title: 'New Content Available',
-      message: 'Pastor Michael has uploaded a new sermon: "Finding Hope in Difficult Times".',
-      timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
+      message: 'A new recorded Mass is available: "Finding Hope in Difficult Times".',
+      timestamp: new Date('2026-10-20T03:00:00'),
       read: true,
       priority: 'low',
       actionUrl: '/sermons',
@@ -402,12 +402,12 @@ export default function NotificationSettings() {
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link to="/dashboard">
-                <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/dashboard">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back to Dashboard
-                </Button>
-              </Link>
+                </Link>
+              </Button>
               <div>
                 <h1 className="text-2xl font-bold flex items-center gap-2">
                   <Bell className="h-6 w-6" />

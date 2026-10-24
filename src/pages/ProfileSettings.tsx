@@ -31,6 +31,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { IsoDatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -305,12 +306,12 @@ export default function ProfileSettings() {
       <div className="border-b bg-background/95 backdrop-blur sticky top-0 z-40">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center gap-4">
-            <Link to="/dashboard">
-              <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/dashboard">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Dashboard
-              </Button>
-            </Link>
+              </Link>
+            </Button>
             <div>
               <h1 className="text-2xl font-bold">Profile Settings</h1>
               <p className="text-muted-foreground">Manage your account and preferences</p>
@@ -430,11 +431,10 @@ export default function ProfileSettings() {
 
                       <div className="space-y-2">
                         <Label htmlFor="dateOfBirth">Date of Birth</Label>
-                        <Input
+                        <IsoDatePicker
                           id="dateOfBirth"
-                          type="date"
                           value={profileData.dateOfBirth}
-                          onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+                          onChange={(value) => handleInputChange('dateOfBirth', value)}
                           disabled={!isEditing}
                         />
                       </div>

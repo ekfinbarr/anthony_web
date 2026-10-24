@@ -64,6 +64,8 @@ export interface CreateUserPayload {
   password: string;
   phone?: string | null;
   is_active?: boolean;
+  /** Role names to assign (super admin only). */
+  roles?: string[];
 }
 
 /**
@@ -202,6 +204,16 @@ export const getUnverified = async (params?: UserQueryParams): Promise<Paginated
   return response.data;
 };
 
+export const importUsers = async (file: File) => {
+  const form = new FormData();
+  form.append('file', file);
+  const response = await apiClient.postForm<{
+    message: string;
+    data: { imported: number; failed: number; errors?: Array<{ row: number; message: string }> };
+  }>('users/import', form);
+  return response.data;
+};
+
 // Export all functions as default object
 const userService = {
   list,
@@ -215,6 +227,7 @@ const userService = {
   create,
   update,
   remove,
+  importUsers,
 };
 
 export default userService;

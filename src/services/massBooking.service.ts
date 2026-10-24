@@ -62,6 +62,27 @@ export interface CreateGuestMassBookingPayload extends CreateMassBookingPayload 
   guest_phone?: string;
 }
 
+export interface BulkCreateMassBookingPayload {
+  mode: 'parishioner' | 'guest';
+  user_id?: string;
+  guest_name?: string;
+  guest_email?: string;
+  guest_phone?: string;
+  intention: string;
+  offered_by?: string;
+  amount?: number | null;
+  currency?: string;
+  payment_status?: string;
+  payment_method?: string;
+  payment_evidence?: string;
+  payment_date?: string;
+  bookings: {
+    booking_date: string;
+    mass_schedule_id: string;
+  }[];
+  metadata?: Record<string, unknown>;
+}
+
 export const create = async (
   massScheduleId: string,
   payload: CreateMassBookingPayload
@@ -79,6 +100,16 @@ export const createGuest = async (
 ): Promise<{ message: string; data: MassBooking }> => {
   const response = await apiClient.post<{ message: string; data: MassBooking }>(
     `mass-schedules/${massScheduleId}/bookings/guest`,
+    payload
+  );
+  return response.data;
+};
+
+export const bulkStore = async (
+  payload: BulkCreateMassBookingPayload
+): Promise<{ message: string; data: MassBooking[] }> => {
+  const response = await apiClient.post<{ message: string; data: MassBooking[] }>(
+    "mass-bookings/bulk",
     payload
   );
   return response.data;
@@ -122,6 +153,7 @@ export const cancel = async (id: string, payload?: { reason?: string | null }) =
 export default {
   create,
   createGuest,
+  bulkStore,
   listMine,
   listAdmin,
   getAdminById,

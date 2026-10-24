@@ -1,12 +1,9 @@
 /**
  * Admin Sermons Management Page
- * 
- * Comprehensive admin dashboard for managing sermons with:
- * - List view with search, filters, and pagination
- * - Create/Edit functionality
- * - Sermon details view
- * - Delete with confirmation
- * 
+ *
+ * List view with search, filters, pagination, inline publish/featured toggles,
+ * stats cards, and delete confirmation.
+ *
  * @package Lovable/src/pages/admin
  */
 
@@ -22,21 +19,21 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
 } from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
 } from "@/components/ui/select";
 import {
   Pagination,
@@ -48,6 +45,7 @@ import {
   PaginationEllipsis,
 } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import {
   Plus,
   Search,
@@ -56,19 +54,20 @@ import {
   Edit,
   Trash2,
   BookOpen,
-  Play,
-  Calendar,
-  User,
   AlertCircle,
   Clock,
   Mic2,
-  Layers
+  Layers,
+  Star,
+  Eye as EyeIcon,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import sermonService, { Sermon, SermonQueryParams } from "@/services/sermon.service";
 import DeleteConfirmModal from "@/components/admin/shared/DeleteConfirmModal";
 import { StatusBadge } from "@/components/admin/shared/StatusBadge";
 import { GenericEmptyState } from "@/components/admin/shared/GenericEmptyState";
+import { IconTooltipButton } from "@/components/admin/shared/IconTooltipButton";
 import { format } from "date-fns";
 
 const AdminSermons = () => {
@@ -76,98 +75,103 @@ const AdminSermons = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // State management
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const debouncedSearch = useDebouncedValue(searchInput, 350);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [seriesFilter, setSeriesFilter] = useState<string>("all");
+  const [speakerFilter, setSpeakerFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
   const [selectedSermon, setSelectedSermon] = useState<Sermon | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
-  // Build query parameters
   const queryParams: SermonQueryParams = useMemo(() => {
     const params: SermonQueryParams = {
       page: currentPage,
       per_page: pageSize,
+      sort: "preached_date",
+      order: "desc",
     };
 
-    if (searchQuery) {
-      params.search = searchQuery;
-    }
-
-    if (statusFilter === "published") {
-      params.is_published = true;
-    } else if (statusFilter === "draft") {
-      params.is_published = false;
-    } else if (statusFilter === "featured") {
-      params.is_featured = true;
-    }
+    if (debouncedSearch) params.search = debouncedSearch;
+    if (statusFilter === "published") params.is_published = true;
+    else if (statusFilter === "draft") params.is_published = false;
+    else if (statusFilter === "featured") params.is_featured = true;
+    if (seriesFilter !== "all") params.series = seriesFilter;
+    if (speakerFilter !== "all") params.speaker = speakerFilter;
 
     return params;
-  }, [currentPage, pageSize, searchQuery, statusFilter]);
+  }, [currentPage, pageSize, debouncedSearch, statusFilter, seriesFilter, speakerFilter]);
 
-  // Fetch sermons
   const {
     data: sermonsData,
     isLoading,
-    error
+    error,
   } = useQuery({
     queryKey: ["sermons", "admin-list", queryParams],
     queryFn: () => sermonService.list(queryParams),
     placeholderData: (previousData) => previousData,
   });
 
-  // Transform sermons
-  const sermons: Sermon[] = useMemo(() => {
-    if (!sermonsData || !sermonsData.data) return [];
-    return sermonsData.data;
-  }, [sermonsData]);
+  const { data: stats } = useQuery({
+    queryKey: ["sermons", "stats"],
+    queryFn: () => sermonService.getStats(),
+  });
 
-  // Delete mutation
+  const { data: seriesOptions = [] } = useQuery({
+    queryKey: ["sermons", "series", "admin"],
+    queryFn: () => sermonService.getSeries(),
+  });
+
+  const { data: speakerOptions = [] } = useQuery({
+    queryKey: ["sermons", "speakers", "admin"],
+    queryFn: () => sermonService.getSpeakers(),
+  });
+
+  const sermons: Sermon[] = useMemo(() => sermonsData?.data ?? [], [sermonsData]);
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => sermonService.remove(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sermons"] });
-      toast({
-        title: "Success",
-        description: "Sermon deleted successfully",
-      });
+      toast({ title: "Success", description: "Sermon deleted successfully" });
       setIsDeleteOpen(false);
       setSelectedSermon(null);
     },
-    onError: (error: Error) => {
+    onError: (err: Error) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to delete sermon",
+        description: err.message || "Failed to delete sermon",
         variant: "destructive",
       });
     },
   });
 
-  const handleEdit = (sermon: Sermon) => {
-    navigate(`/admin/sermons/${sermon.id}/edit`);
-  };
+  const toggleMutation = useMutation({
+    mutationFn: ({
+      id,
+      patch,
+    }: {
+      id: string;
+      patch: Partial<Pick<Sermon, "is_published" | "is_featured">>;
+    }) => sermonService.update(id, patch),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sermons"] });
+    },
+    onError: (err: Error) => {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to update sermon",
+        variant: "destructive",
+      });
+      queryClient.invalidateQueries({ queryKey: ["sermons"] });
+    },
+  });
 
   const handleView = (sermon: Sermon) => {
-    navigate(`/sermons/${sermon.slug}`);
+    window.open(`/sermons?sermon=${encodeURIComponent(sermon.slug)}`, "_blank", "noopener,noreferrer");
   };
 
-  const handleDelete = (sermon: Sermon) => {
-    setSelectedSermon(sermon);
-    setIsDeleteOpen(true);
-  };
-
-  const handleCreate = () => {
-    navigate("/admin/sermons/new");
-  };
-
-  const handleDeleteConfirm = () => {
-    if (selectedSermon) {
-      deleteMutation.mutate(selectedSermon.id);
-    }
-  };
-
-  // Pagination helpers
   const totalPages = sermonsData?.last_page || 1;
   const totalItems = sermonsData?.total || 0;
   const from = sermonsData?.from || 0;
@@ -175,7 +179,6 @@ const AdminSermons = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-heading font-bold text-foreground">Sermons Management</h1>
@@ -183,46 +186,138 @@ const AdminSermons = () => {
             Manage church sermons, series, and speakers.
           </p>
         </div>
-        <Button onClick={handleCreate} className="gap-2">
+        <Button onClick={() => navigate("/admin/sermons/new")} className="gap-2">
           <Plus className="h-4 w-4" /> New Sermon
         </Button>
       </div>
 
-      {/* Filters */}
+      {stats ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardContent className="flex items-center gap-3 p-4">
+              <div className="rounded-lg bg-primary/10 p-2">
+                <BookOpen className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Total</p>
+                <p className="text-xl font-semibold">{stats.total_sermons}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="flex items-center gap-3 p-4">
+              <div className="rounded-lg bg-emerald-500/10 p-2">
+                <EyeIcon className="h-5 w-5 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Published</p>
+                <p className="text-xl font-semibold">{stats.published_sermons ?? "—"}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="flex items-center gap-3 p-4">
+              <div className="rounded-lg bg-amber-500/10 p-2">
+                <Star className="h-5 w-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Featured</p>
+                <p className="text-xl font-semibold">{stats.featured_sermons ?? "—"}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="flex items-center gap-3 p-4">
+              <div className="rounded-lg bg-sky-500/10 p-2">
+                <Eye className="h-5 w-5 text-sky-600" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Total views</p>
+                <p className="text-xl font-semibold">{(stats.total_views ?? 0).toLocaleString()}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
+
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
+          <div className="flex flex-col gap-4 lg:flex-row lg:flex-wrap">
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search by title, speaker, series..."
                 className="pl-9"
-                value={searchQuery}
+                value={searchInput}
                 onChange={(e) => {
-                  setSearchQuery(e.target.value);
+                  setSearchInput(e.target.value);
                   setCurrentPage(1);
                 }}
               />
             </div>
-            <Select value={statusFilter} onValueChange={(value) => {
-              setStatusFilter(value);
-              setCurrentPage(1);
-            }}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by status" />
+            <Select
+              value={statusFilter}
+              onValueChange={(value) => {
+                setStatusFilter(value);
+                setCurrentPage(1);
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-[160px]">
+                <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="all">All statuses</SelectItem>
                 <SelectItem value="published">Published</SelectItem>
                 <SelectItem value="draft">Draft</SelectItem>
                 <SelectItem value="featured">Featured</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={pageSize.toString()} onValueChange={(value) => {
-              setPageSize(Number(value));
-              setCurrentPage(1);
-            }}>
-              <SelectTrigger className="w-[140px]">
+            <Select
+              value={seriesFilter}
+              onValueChange={(value) => {
+                setSeriesFilter(value);
+                setCurrentPage(1);
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Series" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All series</SelectItem>
+                {seriesOptions.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={speakerFilter}
+              onValueChange={(value) => {
+                setSpeakerFilter(value);
+                setCurrentPage(1);
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Speaker" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All speakers</SelectItem>
+                {speakerOptions.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={pageSize.toString()}
+              onValueChange={(value) => {
+                setPageSize(Number(value));
+                setCurrentPage(1);
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-[140px]">
                 <SelectValue placeholder="Page size" />
               </SelectTrigger>
               <SelectContent>
@@ -236,7 +331,6 @@ const AdminSermons = () => {
         </CardContent>
       </Card>
 
-      {/* Sermons Table */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -274,12 +368,12 @@ const AdminSermons = () => {
             <GenericEmptyState
               title="No sermons found"
               description={
-                searchQuery || statusFilter !== "all"
+                debouncedSearch || statusFilter !== "all" || seriesFilter !== "all" || speakerFilter !== "all"
                   ? "Try adjusting your search or filters"
                   : "Get started by creating your first sermon"
               }
               actionLabel="New Sermon"
-              onAction={handleCreate}
+              onAction={() => navigate("/admin/sermons/new")}
               icon="book"
             />
           ) : (
@@ -291,7 +385,8 @@ const AdminSermons = () => {
                       <TableHead>Sermon</TableHead>
                       <TableHead>Speaker & Series</TableHead>
                       <TableHead>Date</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Published</TableHead>
+                      <TableHead>Featured</TableHead>
                       <TableHead>Stats</TableHead>
                       <TableHead className="w-[80px] text-right">Actions</TableHead>
                     </TableRow>
@@ -313,7 +408,9 @@ const AdminSermons = () => {
                               </div>
                             )}
                             <div className="max-w-[200px] truncate">
-                              <div className="font-medium truncate" title={sermon.title}>{sermon.title}</div>
+                              <div className="font-medium truncate" title={sermon.title}>
+                                {sermon.title}
+                              </div>
                               <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                                 <Clock className="h-3 w-3" />
                                 {sermon.duration || "N/A"}
@@ -337,19 +434,42 @@ const AdminSermons = () => {
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
-                            {sermon.preached_date ? format(new Date(sermon.preached_date), "MMM d, yyyy") : "N/A"}
+                            {sermon.preached_date
+                              ? format(new Date(sermon.preached_date), "MMM d, yyyy")
+                              : "N/A"}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={Boolean(sermon.is_published)}
+                              disabled={toggleMutation.isPending}
+                              onCheckedChange={(v) =>
+                                toggleMutation.mutate({
+                                  id: sermon.id,
+                                  patch: { is_published: v },
+                                })
+                              }
+                              aria-label={`Publish ${sermon.title}`}
+                            />
                             <StatusBadge
                               status={sermon.is_published ? "active" : "upcoming"}
                               customLabel={sermon.is_published ? "Published" : "Draft"}
                             />
-                            {sermon.is_featured && (
-                              <StatusBadge status="active" customLabel="Featured" />
-                            )}
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          <Switch
+                            checked={Boolean(sermon.is_featured)}
+                            disabled={toggleMutation.isPending}
+                            onCheckedChange={(v) =>
+                              toggleMutation.mutate({
+                                id: sermon.id,
+                                patch: { is_featured: v },
+                              })
+                            }
+                            aria-label={`Feature ${sermon.title}`}
+                          />
                         </TableCell>
                         <TableCell>
                           <div className="text-xs text-muted-foreground space-y-1">
@@ -360,22 +480,27 @@ const AdminSermons = () => {
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
+                              <IconTooltipButton label="Sermon actions">
                                 <MoreVertical className="h-4 w-4" />
-                              </Button>
+                              </IconTooltipButton>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
                               <DropdownMenuItem onClick={() => handleView(sermon)}>
                                 <Eye className="mr-2 h-4 w-4" />
                                 View Publicly
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleEdit(sermon)}>
+                              <DropdownMenuItem
+                                onClick={() => navigate(`/admin/sermons/${sermon.id}/edit`)}
+                              >
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit Sermon
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
-                                onClick={() => handleDelete(sermon)}
+                                onClick={() => {
+                                  setSelectedSermon(sermon);
+                                  setIsDeleteOpen(true);
+                                }}
                                 className="text-destructive focus:text-destructive"
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
@@ -390,7 +515,6 @@ const AdminSermons = () => {
                 </Table>
               </div>
 
-              {/* Pagination */}
               {totalPages > 1 && (
                 <div className="mt-6 flex items-center justify-between">
                   <div className="text-sm text-muted-foreground">
@@ -401,20 +525,17 @@ const AdminSermons = () => {
                       <PaginationItem>
                         <PaginationPrevious
                           onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                          className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          className={
+                            currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"
+                          }
                         />
                       </PaginationItem>
                       {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                         let pageNum: number;
-                        if (totalPages <= 5) {
-                          pageNum = i + 1;
-                        } else if (currentPage <= 3) {
-                          pageNum = i + 1;
-                        } else if (currentPage >= totalPages - 2) {
-                          pageNum = totalPages - 4 + i;
-                        } else {
-                          pageNum = currentPage - 2 + i;
-                        }
+                        if (totalPages <= 5) pageNum = i + 1;
+                        else if (currentPage <= 3) pageNum = i + 1;
+                        else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
+                        else pageNum = currentPage - 2 + i;
                         return (
                           <PaginationItem key={pageNum}>
                             <PaginationLink
@@ -434,8 +555,14 @@ const AdminSermons = () => {
                       )}
                       <PaginationItem>
                         <PaginationNext
-                          onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          onClick={() =>
+                            setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                          }
+                          className={
+                            currentPage === totalPages
+                              ? "pointer-events-none opacity-50"
+                              : "cursor-pointer"
+                          }
                         />
                       </PaginationItem>
                     </PaginationContent>
@@ -447,14 +574,15 @@ const AdminSermons = () => {
         </CardContent>
       </Card>
 
-      {/* Delete Modal */}
       <DeleteConfirmModal
         open={isDeleteOpen}
         onOpenChange={setIsDeleteOpen}
         title="Delete Sermon"
         description="This action cannot be undone. This will permanently delete the sermon record and all its data."
         itemName={selectedSermon?.title}
-        onConfirm={handleDeleteConfirm}
+        onConfirm={() => {
+          if (selectedSermon) deleteMutation.mutate(selectedSermon.id);
+        }}
         isLoading={deleteMutation.isPending}
       />
     </div>

@@ -228,6 +228,26 @@ export const getByRelated = async (
 };
 
 /**
+ * Rebind draft attachments to a real entity id after create.
+ */
+export const rebind = async (
+  relatedType: string,
+  fromRelatedId: string,
+  toRelatedId: string
+): Promise<number> => {
+  const response = await apiClient.post<{ data?: { updated?: number }; updated?: number }>(
+    'attachments/rebind',
+    {
+      related_type: relatedType,
+      from_related_id: fromRelatedId,
+      to_related_id: toRelatedId,
+    }
+  );
+  const body = response.data as { data?: { updated?: number }; updated?: number };
+  return body?.data?.updated ?? body?.updated ?? 0;
+};
+
+/**
  * Get attachments by uploader
  * 
  * @param uploadedBy Uploader user ID
@@ -254,6 +274,7 @@ const attachmentService = {
   getUrl,
   getByRelated,
   getByUploader,
+  rebind,
   // Convenience helper for UI layers
   uploadAndGetUrl,
 };

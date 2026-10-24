@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
+import { notify } from "@/lib/notify";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -35,7 +37,6 @@ import {
   Shield,
   Building2,
   ChevronDown,
-  ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -43,6 +44,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import adminNotificationService from "@/services/adminNotification.service";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const adminSidebarItems = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
@@ -53,9 +56,9 @@ const adminSidebarItems = [
     icon: FileText,
     children: [
       { name: "Posts", href: "/admin/posts", icon: FileText },
+      { name: "Sunday Bulletins", href: "/admin/bulletins", icon: FileText },
       { name: "Sermons", href: "/admin/sermons", icon: BookOpen },
       { name: "Gallery", href: "/admin/gallery", icon: Image },
-
     ]
   },
   { name: "Mass Bookings", href: "/admin/mass-bookings", icon: Church },
@@ -75,10 +78,25 @@ const adminSidebarItems = [
     ],
   },
 
-  { name: "Newsletter", href: "/admin/newsletter", icon: Mail },
-  { name: "Groups", href: "/admin/groups", icon: Users },
+  {
+    name: "Newsletter",
+    icon: Mail,
+    children: [
+      { name: "Campaigns", href: "/admin/newsletter", icon: Mail },
+      { name: "Waitlist", href: "/admin/newsletter/waitlist", icon: Users },
+    ],
+  },
+  {
+    name: "Ministries & Groups",
+    icon: Users,
+    children: [
+      { name: "All ministries", href: "/admin/groups", icon: Users },
+      { name: "Categories", href: "/admin/groups/categories", icon: FileText },
+      { name: "Enquiries", href: "/admin/groups/enquiries", icon: MessageSquare },
+    ],
+  },
   { name: "Membership", href: "/admin/membership", icon: Users },
-  { name: "Users", href: "/admin/users", icon: Users },
+  { name: "Users", href: "/admin/users", icon: Users, superAdminOnly: true },
   { name: "Donations", href: "/admin/donations", icon: CreditCard },
   { name: "Schedules", href: "/admin/schedules", icon: Clock },
   { name: "Contact Messages", href: "/admin/contact", icon: MessageSquare },
@@ -122,6 +140,8 @@ const SidebarContent = ({
     {/* Navigation */}
     <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
       {adminSidebarItems.map((item) => {
+        if ("superAdminOnly" in item && item.superAdminOnly && !isSuperAdmin()) return null;
+
         if (item.children) {
           const isChildActive = item.children.some(
             (child) => locationPathname === child.href || locationPathname.startsWith(child.href + "/")
@@ -145,7 +165,15 @@ const SidebarContent = ({
               </CollapsibleTrigger>
               <CollapsibleContent className="pl-9 space-y-1 mt-1">
                 {item.children.map((child) => {
-                  const isActive = locationPathname === child.href || locationPathname.startsWith(child.href + "/");
+                  const matchesSelf =
+                    locationPathname === child.href || locationPathname.startsWith(child.href + "/");
+                  const hasMoreSpecificSibling = item.children.some(
+                    (sibling) =>
+                      sibling.href !== child.href &&
+                      sibling.href.startsWith(child.href + "/") &&
+                      (locationPathname === sibling.href || locationPathname.startsWith(sibling.href + "/"))
+                  );
+                  const isActive = matchesSelf && !hasMoreSpecificSibling;
                   return (
                     <Link
                       key={child.name}
@@ -211,11 +239,45 @@ const AdminLayout = () => {
   const { user, logout, isSuperAdmin } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const notificationsQuery = useQuery({
+    queryKey: ["admin-notifications"],
+    queryFn: () => adminNotificationService.list({ per_page: 15 }),
+    refetchInterval: 45_000,
+  });
+
+  const unreadCount = notificationsQuery.data?.meta?.unread_count ?? 0;
+  const notifications = notificationsQuery.data?.data ?? [];
+
+  const markReadMutation = useMutation({
+    mutationFn: (id: string) => adminNotificationService.markRead(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-notifications"] }),
+    onError: (error) => notify.error(error, { description: "Could not mark that notification as read." }),
+  });
+
+  const markAllReadMutation = useMutation({
+    mutationFn: () => adminNotificationService.markAllRead(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
+      notify.success("All caught up", "All notifications marked as read.");
+    },
+    onError: (error) => notify.error(error, { description: "Could not mark notifications as read." }),
+  });
 
   const handleLogout = () => {
     logout();
     navigate("/");
+  };
+
+  const formatNotificationTime = (iso?: string) => {
+    if (!iso) return "";
+    try {
+      return new Date(iso).toLocaleString();
+    } catch {
+      return iso;
+    }
   };
 
   return (
@@ -270,6 +332,68 @@ const AdminLayout = () => {
               <Button variant="outline" size="sm" asChild>
                 <Link to="/dashboard">Back to Dashboard</Link>
               </Button>
+
+              {/* Notifications */}
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
+                        <Bell className="h-5 w-5" />
+                        {unreadCount > 0 ? (
+                          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold flex items-center justify-center">
+                            {unreadCount > 99 ? "99+" : unreadCount}
+                          </span>
+                        ) : null}
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>Notifications</TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent align="end" className="w-80 p-0">
+                  <div className="flex items-center justify-between px-3 py-2 border-b">
+                    <DropdownMenuLabel className="p-0">Notifications</DropdownMenuLabel>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs"
+                      disabled={unreadCount === 0 || markAllReadMutation.isPending}
+                      onClick={() => markAllReadMutation.mutate()}
+                    >
+                      Mark all read
+                    </Button>
+                  </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    {notificationsQuery.isLoading ? (
+                      <p className="text-sm text-muted-foreground p-4 text-center">Loading…</p>
+                    ) : notifications.length === 0 ? (
+                      <p className="text-sm text-muted-foreground p-4 text-center">No notifications yet</p>
+                    ) : (
+                      notifications.map((n) => (
+                        <DropdownMenuItem
+                          key={n.id}
+                          className={cn(
+                            "flex flex-col items-start gap-0.5 px-3 py-2.5 cursor-pointer rounded-none",
+                            !n.read_at && "bg-muted/50"
+                          )}
+                          onClick={() => {
+                            if (!n.read_at) markReadMutation.mutate(n.id);
+                            if (n.link) navigate(n.link);
+                          }}
+                        >
+                          <span className="text-sm font-medium leading-snug">{n.title}</span>
+                          {n.body ? (
+                            <span className="text-xs text-muted-foreground line-clamp-2">{n.body}</span>
+                          ) : null}
+                          <span className="text-[10px] text-muted-foreground mt-0.5">
+                            {formatNotificationTime(n.created_at)}
+                          </span>
+                        </DropdownMenuItem>
+                      ))
+                    )}
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               {/* User Menu */}
               <DropdownMenu>

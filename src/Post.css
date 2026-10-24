@@ -74,7 +74,7 @@
 
 
 
-@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,700;1,400&family=Montserrat:wght@400;700&display=swap');
+/* Lora + Montserrat are loaded non-blocking from index.html. */
 
 :root {
     --font-serif: 'Lora', Georgia, serif;

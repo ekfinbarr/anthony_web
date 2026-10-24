@@ -2,22 +2,17 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Target, Eye, Heart, Users, Clock, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
-import stAnthony from "@/assets/images/st_anthony.png";
+import stAnthony from "@/assets/images/st_anthony.webp";
+import PageHeader from "@/components/layout/PageHeader";
 
 const Facilities = () => {
 
     return (
         <div>
-            {/* Hero Section */}
-            <section className="relative py-24 bg-gradient-dark text-church-pearl">
-                <div className="absolute inset-0 pattern-geometric" />
-                <div className="container mx-auto px-4 relative">
-                    <h1 className="text-5xl font-heading font-bold mb-4 text-center">Our Facilities</h1>
-                    <p className="text-xl text-center max-w-3xl mx-auto text-church-pearl/90">
-                        Explore our beautiful spaces where we gather to worship, learn, and serve
-                    </p>
-                </div>
-            </section>
+            <PageHeader
+                title="Our Facilities"
+                description="Explore our beautiful spaces where we gather to worship, learn, and serve"
+            />
 
             {/* Our facilities in picture previews and click to view button */}
             {/* 
@@ -36,7 +31,7 @@ const Facilities = () => {
                     {/* Facilities Grid */}
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                         <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-                            <img
+                            <img loading="lazy" decoding="async"
                                 src={stAnthony}
                                 alt="Event Hall"
                                 className="w-full h-48 object-cover"
@@ -52,7 +47,7 @@ const Facilities = () => {
                             </div>
                         </Card>
                         <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-                            <img
+                            <img loading="lazy" decoding="async"
                                 src={stAnthony}
                                 alt="Books and Sacramentary Shop"
                                 className="w-full h-48 object-cover"
@@ -68,7 +63,7 @@ const Facilities = () => {
                             </div>
                         </Card>
                         <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-                            <img
+                            <img loading="lazy" decoding="async"
                                 src={stAnthony}
                                 alt="Meeting & Conference Rooms"
                                 className="w-full h-48 object-cover"
@@ -84,7 +79,7 @@ const Facilities = () => {
                             </div>
                         </Card>
                         <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-                            <img
+                            <img loading="lazy" decoding="async"
                                 src={stAnthony}
                                 alt="Medical Clinic"
                                 className="w-full h-48 object-cover"
@@ -100,7 +95,7 @@ const Facilities = () => {
                             </div>
                         </Card>
                         <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-                            <img
+                            <img loading="lazy" decoding="async"
                                 src={stAnthony}
                                 alt="Parking Area"
                                 className="w-full h-48 object-cover"
@@ -116,7 +111,7 @@ const Facilities = () => {
                             </div>
                         </Card>
                         <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-                            <img
+                            <img loading="lazy" decoding="async"
                                 src={stAnthony}
                                 alt="Toilets & Restrooms"
                                 className="w-full h-48 object-cover"
@@ -135,7 +130,7 @@ const Facilities = () => {
                 </div>
             </section>
 
-            {/* Service Times */}
+            {/* Facilities CTA */}
             <section id="services" className="py-16 bg-gradient-church">
                 <div className="container mx-auto px-4">
                     <h2 className="text-4xl font-heading font-serif font-bold text-center mb-12 text-church-charcoal">
@@ -143,11 +138,11 @@ const Facilities = () => {
                     
                     </h2>
                     <div className="text-center mt-8">
-                        <Link to="/contact" className="inline-block">
-                            <Button variant="secondary" size="xl">
+                        <Button variant="secondary" size="xl" asChild>
+                            <Link to="/contact" className="inline-block">
                                 Contact Us
-                            </Button>
-                        </Link>
+                            </Link>
+                        </Button>
                     </div>
                 </div>
             </section>

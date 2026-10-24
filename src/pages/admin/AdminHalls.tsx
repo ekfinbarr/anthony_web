@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search, MoreVertical, Edit, Trash2, Building, Users, DollarSign, Calendar, AlertCircle, CheckCircle2, XCircle, Eye } from "lucide-react";
+import { Plus, Search, MoreVertical, Edit, Trash2, Building, Users, DollarSign, Calendar, AlertCircle, CheckCircle2, XCircle, Eye, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import DeleteConfirmModal from "@/components/admin/shared/DeleteConfirmModal";
 import { StatusBadge } from "@/components/admin/shared/StatusBadge";
@@ -39,6 +39,7 @@ import { GenericEmptyState } from "@/components/admin/shared/GenericEmptyState";
 import { AdminPagination } from "@/components/admin/shared/AdminPagination";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { KanbanBoard } from "@/components/admin/shared/KanbanBoard";
+import { downloadAuthenticatedFile } from "@/lib/downloadCsv";
 import facilityService, { Facility } from "@/services/facility.service";
 import facilityBookingService, { FacilityBooking, FacilityBookingStatus } from "@/services/facilityBooking.service";
 
@@ -60,6 +61,9 @@ const AdminHalls = () => {
 
   // Bookings state
   const [bookingStatus, setBookingStatus] = useState<FacilityBookingStatus | "all">("all");
+
+  const isReviewable = (status: string) =>
+    status === "pending_review" || status === "needs_info" || status === "pending";
   const [bookingPage, setBookingPage] = useState(1);
   const [bookingPerPage, setBookingPerPage] = useState(15);
 
@@ -155,10 +159,32 @@ const AdminHalls = () => {
 
   const kanbanColumns = useMemo(() => {
     return [
-      { id: "pending", title: "Requested", getItems: (all: FacilityBooking[]) => all.filter((b) => b.status === "pending") },
-      { id: "approved", title: "Approved", getItems: (all: FacilityBooking[]) => all.filter((b) => b.status === "approved") },
-      { id: "rejected", title: "Rejected", getItems: (all: FacilityBooking[]) => all.filter((b) => b.status === "rejected") },
-      { id: "cancelled", title: "Cancelled", getItems: (all: FacilityBooking[]) => all.filter((b) => b.status === "cancelled") },
+      {
+        id: "pending_review",
+        title: "Requested",
+        getItems: (all: FacilityBooking[]) =>
+          all.filter((b) => b.status === "pending_review" || b.status === "needs_info" || b.status === "pending"),
+      },
+      {
+        id: "approved",
+        title: "Approved",
+        getItems: (all: FacilityBooking[]) => all.filter((b) => b.status === "approved"),
+      },
+      {
+        id: "confirmed",
+        title: "Confirmed",
+        getItems: (all: FacilityBooking[]) => all.filter((b) => b.status === "confirmed"),
+      },
+      {
+        id: "rejected",
+        title: "Rejected",
+        getItems: (all: FacilityBooking[]) => all.filter((b) => b.status === "rejected"),
+      },
+      {
+        id: "cancelled",
+        title: "Cancelled",
+        getItems: (all: FacilityBooking[]) => all.filter((b) => b.status === "cancelled"),
+      },
     ];
   }, []);
 
@@ -175,11 +201,32 @@ const AdminHalls = () => {
           <h1 className="text-3xl font-heading font-bold text-foreground">Halls & Rentals</h1>
           <p className="text-muted-foreground mt-1">Manage parish halls, venues, and booking requests.</p>
         </div>
-        <Button asChild className="gap-2">
-          <Link to="/admin/halls/new">
-            <Plus className="h-4 w-4" /> Add Hall
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={async () => {
+              try {
+                await downloadAuthenticatedFile("facility-bookings/export", "facility-bookings.csv", {
+                  status: bookingStatus !== "all" ? bookingStatus : undefined,
+                });
+              } catch (e) {
+                toast({
+                  title: "Export failed",
+                  description: e instanceof Error ? e.message : "Could not export bookings",
+                  variant: "destructive",
+                });
+              }
+            }}
+          >
+            <Download className="h-4 w-4" /> Export Bookings
+          </Button>
+          <Button asChild className="gap-2">
+            <Link to="/admin/halls/new">
+              <Plus className="h-4 w-4" /> Add Hall
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <Tabs
@@ -331,8 +378,18 @@ const AdminHalls = () => {
                 <Select
                   value={bookingStatus}
                   onValueChange={(v) => {
-                    if (v === "all" || v === "pending" || v === "approved" || v === "rejected" || v === "cancelled") {
-                      setBookingStatus(v);
+                    const allowed = [
+                      "all",
+                      "pending_review",
+                      "needs_info",
+                      "approved",
+                      "confirmed",
+                      "rejected",
+                      "cancelled",
+                      "completed",
+                    ] as const;
+                    if ((allowed as readonly string[]).includes(v)) {
+                      setBookingStatus(v as FacilityBookingStatus | "all");
                       setBookingPage(1);
                     }
                   }}
@@ -342,10 +399,13 @@ const AdminHalls = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="pending">Requested</SelectItem>
+                    <SelectItem value="pending_review">Pending review</SelectItem>
+                    <SelectItem value="needs_info">Needs info</SelectItem>
                     <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="confirmed">Confirmed</SelectItem>
                     <SelectItem value="rejected">Rejected</SelectItem>
                     <SelectItem value="cancelled">Cancelled</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={bookingPerPage.toString()} onValueChange={(v) => { setBookingPerPage(Number(v)); setBookingPage(1); }}>
@@ -389,8 +449,9 @@ const AdminHalls = () => {
                         <TableRow>
                           <TableHead>Reference</TableHead>
                           <TableHead>Date</TableHead>
-                          <TableHead>Guest</TableHead>
+                          <TableHead>Applicant</TableHead>
                           <TableHead>Status</TableHead>
+                          <TableHead>Payment</TableHead>
                           <TableHead className="w-[80px] text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -406,15 +467,24 @@ const AdminHalls = () => {
                             </TableCell>
                             <TableCell>
                               <div>
-                                <div className="font-medium">{b.guest_name || "—"}</div>
-                                <div className="text-sm text-muted-foreground">{b.guest_email || "—"}</div>
+                                <div className="font-medium">{b.applicant_name || b.guest_name || "—"}</div>
+                                <div className="text-sm text-muted-foreground">{b.applicant_email || b.guest_email || "—"}</div>
                               </div>
                             </TableCell>
                             <TableCell>
                               <StatusBadge
-                                status={b.status === "approved" ? "active" : b.status === "rejected" || b.status === "cancelled" ? "cancelled" : "pending"}
-                                customLabel={b.status}
+                                status={
+                                  b.status === "approved" || b.status === "confirmed"
+                                    ? "active"
+                                    : b.status === "rejected" || b.status === "cancelled"
+                                      ? "cancelled"
+                                      : "pending"
+                                }
+                                customLabel={b.public_status || b.status}
                               />
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {b.payment_status || "—"}
                             </TableCell>
                             <TableCell className="text-right">
                               <DropdownMenu>
@@ -424,7 +494,7 @@ const AdminHalls = () => {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-56">
-                                  {b.status === "pending" ? (
+                                  {isReviewable(b.status) ? (
                                     <>
                                       <DropdownMenuItem onClick={() => { setSelectedBooking(b); setBookingAction("approve"); setBookingReason(""); setIsBookingActionOpen(true); }}>
                                         <CheckCircle2 className="mr-2 h-4 w-4" />
@@ -437,7 +507,7 @@ const AdminHalls = () => {
                                       <DropdownMenuSeparator />
                                     </>
                                   ) : null}
-                                  {b.status !== "cancelled" ? (
+                                  {b.status !== "cancelled" && b.status !== "completed" ? (
                                     <DropdownMenuItem onClick={() => { setSelectedBooking(b); setBookingAction("cancel"); setBookingReason(""); setIsBookingActionOpen(true); }}>
                                       <Trash2 className="mr-2 h-4 w-4" />
                                       Cancel
@@ -471,7 +541,7 @@ const AdminHalls = () => {
             <KanbanBoard
               items={bookings}
               columns={kanbanColumns}
-              isMoveAllowed={({ toColumnId }) => toColumnId !== "rejected"} // needs reason
+              isMoveAllowed={({ toColumnId }) => toColumnId !== "rejected" && toColumnId !== "confirmed"}
               onMove={async ({ item, toColumnId }) => {
                 setSelectedBooking(item);
                 if (toColumnId === "approved") {
@@ -488,7 +558,8 @@ const AdminHalls = () => {
                 <div className="space-y-2">
                   <div className="font-medium">{b.reference}</div>
                   <div className="text-xs text-muted-foreground">{b.booking_date}</div>
-                  <div className="text-xs text-muted-foreground">{b.guest_name || "—"}</div>
+                  <div className="text-xs text-muted-foreground">{b.applicant_name || b.guest_name || "—"}</div>
+                  <div className="text-xs text-muted-foreground">{b.payment_status}</div>
                 </div>
               )}
             />
@@ -532,7 +603,10 @@ const AdminHalls = () => {
             <Button
               variant={bookingAction === "approve" ? "default" : "destructive"}
               onClick={() => bookingActionMutation.mutate()}
-              disabled={bookingActionMutation.isPending}
+              disabled={
+                bookingActionMutation.isPending ||
+                ((bookingAction === "reject" || bookingAction === "cancel") && !bookingReason.trim())
+              }
             >
               {bookingActionMutation.isPending ? "Saving..." : "Confirm"}
             </Button>

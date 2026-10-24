@@ -16,29 +16,29 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@/components/ui/table";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator 
+  DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from "@/components/ui/select";
-import { 
+import {
   Pagination,
   PaginationContent,
   PaginationItem,
@@ -49,19 +49,22 @@ import {
 } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { 
-  Plus, 
-  Search, 
-  MoreVertical, 
-  Eye, 
-  Edit, 
-  Trash2, 
+import {
+  Plus,
+  Search,
+  MoreVertical,
+  Eye,
+  Edit,
+  Trash2,
   User,
   Shield,
-  AlertCircle
+  AlertCircle,
+  ExternalLink,
+  MoveUp,
+  MoveDown
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import userService, { User, UserQueryParams } from "@/services/user.service";
+import leadershipService, { Leadership, LeadershipQueryParams } from "@/services/leadership.service";
 import DeleteConfirmModal from "@/components/admin/shared/DeleteConfirmModal";
 import { StatusBadge } from "@/components/admin/shared/StatusBadge";
 import { GenericEmptyState } from "@/components/admin/shared/GenericEmptyState";
@@ -73,15 +76,14 @@ const AdminLeadership = () => {
 
   // State management
   const [searchQuery, setSearchQuery] = useState("");
-  const [roleFilter, setRoleFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
-  const [selectedLeader, setSelectedLeader] = useState<User | null>(null);
+  const [selectedLeader, setSelectedLeader] = useState<Leadership | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
-  // Build query parameters - filter for leadership roles
-  const queryParams: UserQueryParams = useMemo(() => {
-    const params: UserQueryParams = {
+  // Build query parameters
+  const queryParams: LeadershipQueryParams = useMemo(() => {
+    const params: LeadershipQueryParams = {
       page: currentPage,
       per_page: pageSize,
     };
@@ -90,43 +92,31 @@ const AdminLeadership = () => {
       params.search = searchQuery;
     }
 
-    // Filter for admin, priest, or other leadership roles
-    if (roleFilter !== "all") {
-      params.role = roleFilter;
-    } else {
-      // Default to showing leadership roles
-      params.role = "priest";
-    }
-
     return params;
-  }, [currentPage, pageSize, searchQuery, roleFilter]);
+  }, [currentPage, pageSize, searchQuery]);
 
   // Fetch leadership
-  const { 
-    data: leadersData, 
-    isLoading, 
-    error 
+  const {
+    data: leadersData,
+    isLoading,
+    error
   } = useQuery({
-    queryKey: ["users", "leadership", queryParams],
-    queryFn: () => userService.list(queryParams),
+    queryKey: ["leadership", queryParams],
+    queryFn: () => leadershipService.list(queryParams),
     placeholderData: (previousData) => previousData,
   });
 
   // Transform leaders
-  const leaders: User[] = useMemo(() => {
+  const leaders: Leadership[] = useMemo(() => {
     if (!leadersData || !('data' in leadersData) || !leadersData.data) return [];
     return leadersData.data;
   }, [leadersData]);
 
-  // Delete mutation (if needed - typically leadership shouldn't be deleted)
+  // Delete mutation
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => {
-      // Note: This would need a proper delete endpoint
-      // For now, we'll just show a message
-      throw new Error("Leadership deletion not implemented");
-    },
+    mutationFn: (id: string) => leadershipService.remove(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users", "leadership"] });
+      queryClient.invalidateQueries({ queryKey: ["leadership"] });
       toast({
         title: "Success",
         description: "Leader removed successfully",
@@ -143,15 +133,15 @@ const AdminLeadership = () => {
     },
   });
 
-  const handleView = (leader: User) => {
+  const handleView = (leader: Leadership) => {
     setSelectedLeader(leader);
   };
 
-  const handleEdit = (leader: User) => {
+  const handleEdit = (leader: Leadership) => {
     navigate(`/admin/leadership/${leader.id}/edit`);
   };
 
-  const handleDelete = (leader: User) => {
+  const handleDelete = (leader: Leadership) => {
     setSelectedLeader(leader);
     setIsDeleteOpen(true);
   };
@@ -164,6 +154,26 @@ const AdminLeadership = () => {
     if (selectedLeader) {
       deleteMutation.mutate(selectedLeader.id);
     }
+  };
+
+  const updateOrderMutation = useMutation({
+    mutationFn: (orders: { id: string, sort_order: number }[]) => leadershipService.updateOrder(orders),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leadership"] });
+      toast({ title: "Success", description: "Sort order updated" });
+    }
+  });
+
+  const handleMove = (index: number, direction: 'up' | 'down') => {
+    const newLeaders = [...leaders];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+
+    if (targetIndex < 0 || targetIndex >= newLeaders.length) return;
+
+    [newLeaders[index], newLeaders[targetIndex]] = [newLeaders[targetIndex], newLeaders[index]];
+
+    const orders = newLeaders.map((l, i) => ({ id: l.id, sort_order: i + 1 }));
+    updateOrderMutation.mutate(orders);
   };
 
   const getInitials = (name: string) => {
@@ -184,10 +194,16 @@ const AdminLeadership = () => {
   };
 
   // Pagination helpers
-  const totalPages = (leadersData && 'last_page' in leadersData) ? leadersData.last_page : 1;
-  const totalItems = (leadersData && 'total' in leadersData) ? leadersData.total : 0;
-  const from = (leadersData && 'from' in leadersData) ? leadersData.from : 0;
-  const to = (leadersData && 'to' in leadersData) ? leadersData.to : 0;
+  const paginated = leadersData && typeof leadersData === "object" ? leadersData as {
+    last_page?: number;
+    total?: number;
+    from?: number;
+    to?: number;
+  } : null;
+  const totalPages = paginated?.last_page ?? 1;
+  const totalItems = paginated?.total ?? 0;
+  const from = paginated?.from ?? 0;
+  const to = paginated?.to ?? 0;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -211,7 +227,7 @@ const AdminLeadership = () => {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search leaders..."
+                placeholder="Search leaders by name, position or title..."
                 className="pl-9"
                 value={searchQuery}
                 onChange={(e) => {
@@ -220,20 +236,6 @@ const AdminLeadership = () => {
                 }}
               />
             </div>
-            <Select value={roleFilter} onValueChange={(value) => {
-              setRoleFilter(value);
-              setCurrentPage(1);
-            }}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="priest">Priest</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="deacon">Deacon</SelectItem>
-              </SelectContent>
-            </Select>
             <Select value={pageSize.toString()} onValueChange={(value) => {
               setPageSize(Number(value));
               setCurrentPage(1);
@@ -282,7 +284,7 @@ const AdminLeadership = () => {
               <p className="text-muted-foreground mb-4">
                 {error instanceof Error ? error.message : "An unexpected error occurred"}
               </p>
-              <Button onClick={() => queryClient.invalidateQueries({ queryKey: ["users", "leadership"] })}>
+              <Button onClick={() => queryClient.invalidateQueries({ queryKey: ["leadership"] })}>
                 Try Again
               </Button>
             </div>
@@ -290,8 +292,8 @@ const AdminLeadership = () => {
             <GenericEmptyState
               title="No leaders found"
               description={
-                searchQuery || roleFilter !== "all"
-                  ? "Try adjusting your search or filters"
+                searchQuery
+                  ? "Try adjusting your search"
                   : "Get started by adding your first leader"
               }
               actionLabel="Add Leader"
@@ -304,54 +306,72 @@ const AdminLeadership = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-[80px]">Order</TableHead>
                       <TableHead>Leader</TableHead>
-                      <TableHead>Role</TableHead>
+                      <TableHead>Title & Position</TableHead>
                       <TableHead>Email</TableHead>
-                      <TableHead>Phone</TableHead>
-                      <TableHead>Member Since</TableHead>
+                      <TableHead>Website</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="w-[80px] text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {leaders.map((leader) => (
+                    {leaders.map((leader, index) => (
                       <TableRow key={leader.id} className="hover:bg-muted/50">
+                        <TableCell>
+                          <div className="flex flex-col items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              disabled={index === 0}
+                              onClick={() => handleMove(index, 'up')}
+                            >
+                              <MoveUp className="h-3 w-3" />
+                            </Button>
+                            <span className="text-xs font-mono">{leader.sort_order}</span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              disabled={index === leaders.length - 1}
+                              onClick={() => handleMove(index, 'down')}
+                            >
+                              <MoveDown className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar className="h-10 w-10">
-                              <AvatarImage src={leader.avatar} alt={leader.name} />
+                              <AvatarImage src={leader.image_url} alt={leader.name} />
                               <AvatarFallback>{getInitials(leader.name)}</AvatarFallback>
                             </Avatar>
                             <div>
                               <div className="font-medium">{leader.name}</div>
+                              <div className="text-xs text-muted-foreground">@{leader.slug}</div>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Shield className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm capitalize">{roleFilter || "Leader"}</span>
+                          <div className="space-y-0.5">
+                            <div className="text-sm font-medium">{leader.title}</div>
+                            <div className="text-xs text-muted-foreground">{leader.position}</div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="text-sm text-muted-foreground">{leader.email}</div>
+                          <div className="text-sm text-muted-foreground">{leader.email || "—"}</div>
                         </TableCell>
                         <TableCell>
-                          {leader.phone ? (
-                            <div className="text-sm">{leader.phone}</div>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">—</span>
-                          )}
+                          <StatusBadge
+                            status={leader.show_on_website ? "active" : "inactive"}
+                            customLabel={leader.show_on_website ? "Visible" : "Hidden"}
+                          />
                         </TableCell>
                         <TableCell>
-                          <div className="text-sm text-muted-foreground">
-                            {formatDate(leader.created_at)}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <StatusBadge 
-                            status={leader.email_verified_at ? "active" : "inactive"}
-                            customLabel={leader.email_verified_at ? "Active" : "Inactive"}
+                          <StatusBadge
+                            status={leader.is_active ? "active" : "inactive"}
+                            customLabel={leader.is_active ? "Active" : "Inactive"}
                           />
                         </TableCell>
                         <TableCell className="text-right">
@@ -362,16 +382,16 @@ const AdminLeadership = () => {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
-                              <DropdownMenuItem onClick={() => handleView(leader)}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Profile
+                              <DropdownMenuItem onClick={() => window.open(`/about#leadership`, '_blank')}>
+                                <ExternalLink className="mr-2 h-4 w-4" />
+                                View Publicly
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleEdit(leader)}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 onClick={() => handleDelete(leader)}
                                 className="text-destructive"
                               >

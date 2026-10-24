@@ -64,7 +64,11 @@ export default {
         church: {
           gold: "hsl(var(--church-gold))",
           "gold-light": "hsl(var(--church-gold-light))",
+          "gold-warm": "hsl(var(--church-gold-warm))",
+          "gold-soft": "hsl(var(--church-gold-soft))",
           charcoal: "hsl(var(--church-charcoal))",
+          ivory: "hsl(var(--church-ivory))",
+          brown: "hsl(var(--church-brown))",
           pearl: "hsl(var(--church-pearl))",
           stone: "hsl(var(--church-stone))",
         },
@@ -72,6 +76,10 @@ export default {
       fontFamily: {
         heading: ['Nunito Sans', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
         body: ['Nunito Sans', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        serif: ['Lora', 'Georgia', 'Cambria', 'Times New Roman', 'serif'],
+      },
+      boxShadow: {
+        "card-soft": "var(--shadow-card-soft)",
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',

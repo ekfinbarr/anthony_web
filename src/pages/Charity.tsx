@@ -1,24 +1,17 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Target, Eye, Heart, Users, Clock, MapPin } from "lucide-react";
+import { CoinsIcon, CompassIcon, GiftIcon } from "@/components/icons/ParishIcons";
 import { Link } from "react-router-dom";
+import PageHeader from "@/components/layout/PageHeader";
 
 const Charity = () => {
 
     return (
         <div>
-            {/* Hero Section */}
-            <section className="relative py-24 bg-gradient-dark text-church-pearl">
-                <div className="absolute inset-0 pattern-geometric" />
-                <div className="container mx-auto px-4 relative">
-                    <h1 className="text-5xl font-heading font-bold mb-4 text-center">
-                        Support Our Mission
-                    </h1>
-                    <p className="text-xl text-center max-w-3xl mx-auto text-church-pearl/90">
-                        Support the church and its mission through your generous giving.
-                    </p>
-                </div>
-            </section>
+            <PageHeader
+                title="Support Our Mission"
+                description="Support the church and its mission through your generous giving."
+            />
 
             {/* Giving Options */}
             <section className="py-16 bg-background">
@@ -28,19 +21,19 @@ const Charity = () => {
                     </p>
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                         <Card className="p-6 hover:shadow-xl transition-shadow text-center">
-                            <Heart className="h-12 w-12 text-primary mb-4 mx-auto" />
+                            <GiftIcon size="md" className="mx-auto mb-4" />
                             <h3 className="text-xl font-heading font-semibold mb-2">One-Time Donation</h3>
                             <p className="text-muted-foreground mb-4">Make a single contribution to support our ministries.</p>
                             <Button variant="church" size="lg" className="mt-4">Donate Now</Button>
                         </Card>
                         <Card className="p-6 hover:shadow-xl transition-shadow text-center">
-                            <Users className="h-12 w-12 text-primary mb-4 mx-auto" />
+                            <CoinsIcon size="md" className="mx-auto mb-4" />
                             <h3 className="text-xl font-heading font-semibold mb-2">Recurring Donation</h3>
                             <p className="text-muted-foreground mb-4">Set up a monthly gift to provide ongoing support.</p>
                             <Button variant="church" size="lg" className="mt-4">Set Up Recurring</Button>
                         </Card>
                         <Card className="p-6 hover:shadow-xl transition-shadow text-center">
-                            <Target className="h-12 w-12 text-primary mb-4 mx-auto" />
+                            <CompassIcon size="md" className="mx-auto mb-4" />
                             <h3 className="text-xl font-heading font-semibold mb-2">Designated Giving</h3>
                             <p className="text-muted-foreground mb-4">Support a specific ministry or project.</p>
                             <Button variant="church" size="lg" className="mt-4">Give to a Cause</Button>

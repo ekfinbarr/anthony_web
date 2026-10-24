@@ -1,23 +1,18 @@
 /**
  * Admin Gallery Album Items Page
  *
- * Dedicated route for managing a single album's items:
- * - Upload new item (multipart + metadata)
- * - List existing items
- * - Delete items
- *
- * Route:
- * - /admin/gallery/albums/:albumId
+ * Route: /admin/gallery/albums/:albumId
  */
 
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Image as ImageIcon, Play, Trash2, Upload } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUp, Edit, Image as ImageIcon, Play, Trash2, Upload } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -32,8 +27,11 @@ import tagService from "@/services/tag.service";
 import galleryAlbumService, { GalleryAlbum, GalleryAlbumItem } from "@/services/galleryAlbum.service";
 
 type ItemDraft = {
+  id?: string;
   title: string;
   description: string;
+  alt_text: string;
+  credit: string;
   is_published: boolean;
   sort_order: number;
   category_ids: string[];
@@ -44,6 +42,8 @@ type ItemDraft = {
 const emptyItemDraft = (): ItemDraft => ({
   title: "",
   description: "",
+  alt_text: "",
+  credit: "",
   is_published: true,
   sort_order: 0,
   category_ids: [],
@@ -57,6 +57,10 @@ function toOptions(items: { id: string; label: string; slug?: string; color?: st
     label: i.label,
     description: i.slug ? `/${i.slug}` : undefined,
   }));
+}
+
+function isVideoFile(filetype?: string | null) {
+  return typeof filetype === "string" && filetype.startsWith("video/");
 }
 
 export default function AdminGalleryAlbumItemsPage() {
@@ -92,33 +96,79 @@ export default function AdminGalleryAlbumItemsPage() {
     enabled: !!safeAlbumId,
   });
 
-  const items: GalleryAlbumItem[] = itemsQuery.data?.data ?? [];
+  const items: GalleryAlbumItem[] = useMemo(() => {
+    const list = itemsQuery.data?.data ?? [];
+    return [...list].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  }, [itemsQuery.data?.data]);
 
-  const [draft, setDraft] = useState<ItemDraft>(emptyItemDraft());
+  const [createDraft, setCreateDraft] = useState<ItemDraft>(emptyItemDraft());
+  const [editDraft, setEditDraft] = useState<ItemDraft>(emptyItemDraft());
+  const [editOpen, setEditOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<GalleryAlbumItem | null>(null);
+
+  const invalidate = async () => {
+    await qc.invalidateQueries({ queryKey: ["gallery-albums", safeAlbumId, "items", "admin"] });
+    await qc.invalidateQueries({ queryKey: ["gallery-albums", "admin"] });
+    await qc.invalidateQueries({ queryKey: ["gallery-albums", safeAlbumId, "admin-show"] });
+  };
 
   const createItemMutation = useMutation({
     mutationFn: async () => {
       if (!safeAlbumId) throw new Error("Missing album id");
-      if (!draft.file) throw new Error("Please select a file");
-      if (!draft.title.trim()) throw new Error("Title is required");
+      if (!createDraft.file) throw new Error("Please select a file");
+      if (!createDraft.title.trim()) throw new Error("Title is required");
 
       return await galleryAlbumService.createAlbumItem(safeAlbumId, {
-        title: draft.title.trim(),
-        description: draft.description.trim() ? draft.description.trim() : null,
-        file: draft.file,
-        is_published: draft.is_published,
-        sort_order: draft.sort_order,
-        category_ids: draft.category_ids,
-        tag_ids: draft.tag_ids,
+        title: createDraft.title.trim(),
+        description: createDraft.description.trim() ? createDraft.description.trim() : null,
+        alt_text: createDraft.alt_text.trim() || null,
+        credit: createDraft.credit.trim() || null,
+        file: createDraft.file,
+        is_published: createDraft.is_published,
+        sort_order: createDraft.sort_order,
+        category_ids: createDraft.category_ids,
+        tag_ids: createDraft.tag_ids,
       });
     },
     onSuccess: async () => {
       toast({ title: "Success", description: "Album item uploaded." });
-      setDraft(emptyItemDraft());
-      await qc.invalidateQueries({ queryKey: ["gallery-albums", safeAlbumId, "items", "admin"] });
-      await qc.invalidateQueries({ queryKey: ["gallery-albums", "admin"] });
-      await qc.invalidateQueries({ queryKey: ["gallery-albums", safeAlbumId, "admin-show"] });
+      setCreateDraft(emptyItemDraft());
+      await invalidate();
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const updateItemMutation = useMutation({
+    mutationFn: async () => {
+      if (!safeAlbumId || !editDraft.id) throw new Error("Missing item");
+      return await galleryAlbumService.updateAlbumItem(safeAlbumId, editDraft.id, {
+        title: editDraft.title.trim(),
+        description: editDraft.description.trim() ? editDraft.description.trim() : null,
+        alt_text: editDraft.alt_text.trim() || null,
+        credit: editDraft.credit.trim() || null,
+        file: editDraft.file ?? undefined,
+        is_published: editDraft.is_published,
+        sort_order: editDraft.sort_order,
+        category_ids: editDraft.category_ids,
+        tag_ids: editDraft.tag_ids,
+      });
+    },
+    onSuccess: async () => {
+      toast({ title: "Saved", description: "Item updated." });
+      setEditOpen(false);
+      setEditDraft(emptyItemDraft());
+      await invalidate();
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const reorderMutation = useMutation({
+    mutationFn: async (orders: { id: string; sort_order: number }[]) => {
+      if (!safeAlbumId) throw new Error("Missing album id");
+      return await galleryAlbumService.reorderAdminItems(safeAlbumId, orders);
+    },
+    onSuccess: async () => {
+      await invalidate();
     },
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
@@ -131,18 +181,45 @@ export default function AdminGalleryAlbumItemsPage() {
     onSuccess: async () => {
       toast({ title: "Deleted", description: "Item removed from album." });
       setDeleteTarget(null);
-      await qc.invalidateQueries({ queryKey: ["gallery-albums", safeAlbumId, "items", "admin"] });
-      await qc.invalidateQueries({ queryKey: ["gallery-albums", "admin"] });
-      await qc.invalidateQueries({ queryKey: ["gallery-albums", safeAlbumId, "admin-show"] });
+      await invalidate();
     },
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
+
+  const openEdit = (item: GalleryAlbumItem) => {
+    setEditDraft({
+      id: item.id,
+      title: item.title,
+      description: item.description ?? "",
+      alt_text: item.alt_text ?? "",
+      credit: item.credit ?? "",
+      is_published: !!item.is_published,
+      sort_order: item.sort_order ?? 0,
+      category_ids: (item.categories ?? []).map((c) => c.id),
+      tag_ids: (item.tags ?? []).map((t) => t.id),
+      file: null,
+    });
+    setEditOpen(true);
+  };
+
+  const moveItem = (index: number, direction: -1 | 1) => {
+    const next = index + direction;
+    if (next < 0 || next >= items.length) return;
+    const reordered = [...items];
+    const [moved] = reordered.splice(index, 1);
+    reordered.splice(next, 0, moved);
+    const orders = reordered.map((item, i) => ({ id: item.id, sort_order: i }));
+    reorderMutation.mutate(orders);
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
-          <Link to="/admin/gallery" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+          <Link
+            to="/admin/gallery"
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+          >
             <ArrowLeft className="h-4 w-4" />
             Back to Gallery Albums
           </Link>
@@ -152,13 +229,22 @@ export default function AdminGalleryAlbumItemsPage() {
           {album?.description ? <p className="text-sm text-muted-foreground">{album.description}</p> : null}
           <div className="flex flex-wrap gap-2">
             <Badge variant="secondary">{items.length} items</Badge>
+            {typeof album?.photo_count === "number" ? (
+              <Badge variant="outline">{album.photo_count} photos</Badge>
+            ) : null}
+            {typeof album?.video_count === "number" ? (
+              <Badge variant="outline">{album.video_count} videos</Badge>
+            ) : null}
             {album?.is_featured ? <Badge>Featured</Badge> : null}
-            {album?.is_published ? <Badge variant="secondary">Published</Badge> : <Badge variant="outline">Unpublished</Badge>}
+            {album?.is_published ? (
+              <Badge variant="secondary">Published</Badge>
+            ) : (
+              <Badge variant="outline">Unpublished</Badge>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Upload form */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Add a new item</CardTitle>
@@ -168,37 +254,63 @@ export default function AdminGalleryAlbumItemsPage() {
             <Label>File</Label>
             <Input
               type="file"
-              accept="image/*,video/*,audio/*"
-              onChange={(e) => setDraft((p) => ({ ...p, file: e.target.files?.[0] ?? null }))}
+              accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime"
+              onChange={(e) => setCreateDraft((p) => ({ ...p, file: e.target.files?.[0] ?? null }))}
             />
-            <p className="text-xs text-muted-foreground">Accepted: images, videos, audio (max 50MB).</p>
+            <p className="text-xs text-muted-foreground">Images and videos only (max 50MB).</p>
           </div>
 
           <div className="space-y-2">
             <Label>Title</Label>
             <Input
-              value={draft.title}
-              onChange={(e) => setDraft((p) => ({ ...p, title: e.target.value }))}
+              value={createDraft.title}
+              onChange={(e) => setCreateDraft((p) => ({ ...p, title: e.target.value }))}
               placeholder="e.g. Harvest Thanksgiving - Procession"
             />
           </div>
 
           <div className="space-y-2">
             <Label>Sort order</Label>
-            <Input type="number" value={draft.sort_order} onChange={(e) => setDraft((p) => ({ ...p, sort_order: Number(e.target.value) }))} />
+            <Input
+              type="number"
+              value={createDraft.sort_order}
+              onChange={(e) => setCreateDraft((p) => ({ ...p, sort_order: Number(e.target.value) }))}
+            />
           </div>
 
           <div className="space-y-2 md:col-span-2">
             <Label>Description</Label>
-            <Textarea value={draft.description} onChange={(e) => setDraft((p) => ({ ...p, description: e.target.value }))} placeholder="Optional description…" />
+            <Textarea
+              value={createDraft.description}
+              onChange={(e) => setCreateDraft((p) => ({ ...p, description: e.target.value }))}
+              placeholder="Optional description…"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Alt text</Label>
+            <Input
+              value={createDraft.alt_text}
+              onChange={(e) => setCreateDraft((p) => ({ ...p, alt_text: e.target.value }))}
+              placeholder="Describe the image for accessibility"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Credit</Label>
+            <Input
+              value={createDraft.credit}
+              onChange={(e) => setCreateDraft((p) => ({ ...p, credit: e.target.value }))}
+              placeholder="Photographer or source"
+            />
           </div>
 
           <div className="space-y-2 md:col-span-2">
             <MultiSelect
               label="Categories"
               options={categoryOptions}
-              value={draft.category_ids}
-              onValueChange={(next) => setDraft((p) => ({ ...p, category_ids: next }))}
+              value={createDraft.category_ids}
+              onValueChange={(next) => setCreateDraft((p) => ({ ...p, category_ids: next }))}
               placeholder="Select categories…"
             />
           </div>
@@ -207,21 +319,24 @@ export default function AdminGalleryAlbumItemsPage() {
             <MultiSelect
               label="Tags"
               options={tagOptions}
-              value={draft.tag_ids}
-              onValueChange={(next) => setDraft((p) => ({ ...p, tag_ids: next }))}
+              value={createDraft.tag_ids}
+              onValueChange={(next) => setCreateDraft((p) => ({ ...p, tag_ids: next }))}
               placeholder="Select tags…"
             />
           </div>
 
           <div className="flex items-center justify-between md:col-span-2">
             <div className="flex items-center gap-2">
-              <Switch checked={draft.is_published} onCheckedChange={(v) => setDraft((p) => ({ ...p, is_published: v }))} />
+              <Switch
+                checked={createDraft.is_published}
+                onCheckedChange={(v) => setCreateDraft((p) => ({ ...p, is_published: v }))}
+              />
               <span className="text-sm text-muted-foreground">Published</span>
             </div>
 
             <Button
               onClick={() => createItemMutation.mutate()}
-              disabled={createItemMutation.isPending || !draft.title.trim() || !draft.file}
+              disabled={createItemMutation.isPending || !createDraft.title.trim() || !createDraft.file}
               className="gap-2"
             >
               <Upload className="h-4 w-4" />
@@ -231,7 +346,6 @@ export default function AdminGalleryAlbumItemsPage() {
         </CardContent>
       </Card>
 
-      {/* Items list */}
       <div>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="font-heading text-lg font-semibold">Items</h2>
@@ -259,43 +373,145 @@ export default function AdminGalleryAlbumItemsPage() {
             <p className="text-sm text-muted-foreground">No items yet. Upload the first media to this album.</p>
           </Card>
         ) : (
-          <div className="grid gap-4 grid-cols-2 sm:grid-cols-2 lg:grid-cols-4">
-            {items.map((it) => (
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {items.map((it, index) => (
               <Card key={it.id} className="overflow-hidden">
-                {/* Separate image and video handling */}
-                {(it.filetype && (it.filetype.startsWith("video/") || it.filetype === "mp4")) ? (
-                  <div className="relative flex h-40 w-full items-center justify-center bg-black">
-                    <Play className="absolute z-10 h-12 w-12 text-white/90" />
-                    <video className="h-40 w-full object-cover opacity-60" src={it.media_url} muted preload="metadata" controls />
-                  </div>
-                ) : (
-                  <img className="h-40 w-full object-cover" src={it.media_url} alt={it.title} loading="lazy" />
-                )}
-
-                {/* {it.media_url ? (
-                  <img className="h-40 w-full object-cover" src={it.media_url} alt={it.title} loading="lazy" />
+                {it.media_url ? (
+                  isVideoFile(it.filetype) ? (
+                    <div className="relative flex h-40 w-full items-center justify-center bg-black">
+                      <Play className="absolute z-10 h-10 w-10 text-white/90" aria-hidden="true" />
+                      <video
+                        className="h-40 w-full object-cover opacity-60"
+                        src={it.media_url}
+                        muted
+                        preload="metadata"
+                      />
+                    </div>
+                  ) : (
+                    <img className="h-40 w-full object-cover" src={it.media_url} alt={it.title} loading="lazy" />
+                  )
                 ) : (
                   <div className="flex h-40 w-full items-center justify-center bg-muted">
                     <ImageIcon className="h-8 w-8 text-muted-foreground" />
                   </div>
-                )} */}
-                <div className="space-y-1 p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="line-clamp-1 font-medium">{it.title}</p>
-                      <p className="line-clamp-1 text-xs text-muted-foreground">{it.filetype ?? "—"}</p>
+                )}
+
+                <div className="space-y-2 p-3">
+                  <div className="flex items-start justify-between gap-1">
+                    <div className="min-w-0">
+                      <p className="line-clamp-1 text-sm font-medium">{it.title}</p>
+                      <p className="text-xs text-muted-foreground">Order {it.sort_order}</p>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(it)} className="text-destructive hover:bg-destructive/10">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        disabled={index === 0 || reorderMutation.isPending}
+                        onClick={() => moveItem(index, -1)}
+                        aria-label="Move up"
+                      >
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        disabled={index === items.length - 1 || reorderMutation.isPending}
+                        onClick={() => moveItem(index, 1)}
+                        aria-label="Move down"
+                      >
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(it)} aria-label="Edit">
+                        <Edit className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                        onClick={() => setDeleteTarget(it)}
+                        aria-label="Delete"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
-                  {it.description ? <p className="line-clamp-2 text-sm text-muted-foreground">{it.description}</p> : null}
+                  {!it.is_published ? <Badge variant="outline">Unpublished</Badge> : null}
                 </div>
               </Card>
             ))}
           </div>
         )}
       </div>
+
+      <Dialog
+        open={editOpen}
+        onOpenChange={(open) => {
+          setEditOpen(open);
+          if (!open) setEditDraft(emptyItemDraft());
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit item</DialogTitle>
+            <DialogDescription>Update caption, accessibility text, credit, and publication.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <div className="space-y-2">
+              <Label>Title</Label>
+              <Input
+                value={editDraft.title}
+                onChange={(e) => setEditDraft((p) => ({ ...p, title: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                value={editDraft.description}
+                onChange={(e) => setEditDraft((p) => ({ ...p, description: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Alt text</Label>
+              <Input
+                value={editDraft.alt_text}
+                onChange={(e) => setEditDraft((p) => ({ ...p, alt_text: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Credit</Label>
+              <Input
+                value={editDraft.credit}
+                onChange={(e) => setEditDraft((p) => ({ ...p, credit: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Replace file (optional)</Label>
+              <Input
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime"
+                onChange={(e) => setEditDraft((p) => ({ ...p, file: e.target.files?.[0] ?? null }))}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={editDraft.is_published}
+                  onCheckedChange={(v) => setEditDraft((p) => ({ ...p, is_published: v }))}
+                />
+                <span className="text-sm">Published</span>
+              </div>
+              <Button
+                onClick={() => updateItemMutation.mutate()}
+                disabled={updateItemMutation.isPending || !editDraft.title.trim()}
+              >
+                {updateItemMutation.isPending ? "Saving…" : "Save changes"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <DeleteConfirmModal
         open={!!deleteTarget}
@@ -314,5 +530,3 @@ export default function AdminGalleryAlbumItemsPage() {
     </div>
   );
 }
-
-

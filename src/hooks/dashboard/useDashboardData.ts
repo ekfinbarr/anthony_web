@@ -145,7 +145,7 @@ export function useDashboardData(config: DashboardConfig = {}) {
       return data as DashboardData;
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
-      throw new Error('Failed to load dashboard data');
+      throw new Error('Failed to load dashboard data', { cause: error });
     }
   }, [mockData, personalizationMetrics]);
 
@@ -465,7 +465,7 @@ function generateMockCommunityConnections(): CommunityConnection[] {
       memberCount: 25,
       matchScore: 78,
       tags: ['service', 'community', 'outreach'],
-      leader: 'Pastor Michael',
+      leader: 'Fr. Sylvester Oladunjoye',
       meetingSchedule: 'Saturdays at 9:00 AM',
       location: 'Various Community Locations',
       isJoined: false,

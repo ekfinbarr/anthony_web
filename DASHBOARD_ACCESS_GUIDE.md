@@ -81,7 +81,7 @@ The personalized dashboard is fully implemented (`/dashboard` route) but current
 **Recommended for quick, secure implementation**
 
 ```bash
-npm install firebase
+yarn add firebase
 ```
 
 ```tsx
@@ -100,7 +100,7 @@ export const auth = getAuth(app);
 **Enterprise-grade authentication service**
 
 ```bash
-npm install @auth0/auth0-react
+yarn add @auth0/auth0-react
 ```
 
 #### **Option 3: Custom Backend Authentication**

@@ -78,6 +78,7 @@ const AdminGroups = () => {
   // State management
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [kindFilter, setKindFilter] = useState<string>("all");
   const [acceptingFilter, setAcceptingFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
@@ -103,8 +104,14 @@ const AdminGroups = () => {
       params.accepting_members = acceptingFilter === "accepting";
     }
 
+    if (kindFilter !== "all") {
+      params.kind = kindFilter as "service" | "society";
+    }
+
+    params.include_unpublished = true;
+
     return params;
-  }, [currentPage, pageSize, searchQuery, statusFilter, acceptingFilter]);
+  }, [currentPage, pageSize, searchQuery, statusFilter, acceptingFilter, kindFilter]);
 
   // Fetch ministries/groups
   const {
@@ -113,7 +120,7 @@ const AdminGroups = () => {
     error
   } = useQuery({
     queryKey: ["ministries", queryParams],
-    queryFn: () => ministryService.list(queryParams),
+    queryFn: () => ministryService.listAdmin(queryParams),
     placeholderData: (previousData) => previousData,
   });
 
@@ -167,10 +174,10 @@ const AdminGroups = () => {
         headers.join(","),
         ...data.map(group => [
           `"${group.name.replace(/"/g, '""')}"`,
-          `"${(group as any).category?.name || "Uncategorized"}"`,
+          `"${group.category?.name || "Uncategorized"}"`,
           group.is_active ? "Active" : "Inactive",
           group.accepting_members ? "Yes" : "No",
-          `"${(group as any).leader?.name || ""}"`,
+          `"${group.leader?.name || ""}"`,
           group.contact_email || "",
           group.contact_phone || "",
           `"${(group.meeting_location || "").replace(/"/g, '""')}"`
@@ -210,10 +217,10 @@ const AdminGroups = () => {
 
       const tableData = data.map(group => [
         group.name,
-        (group as any).category?.name || "Uncategorized",
+        group.category?.name || "Uncategorized",
         group.is_active ? "Active" : "Inactive",
         group.accepting_members ? "Yes" : "No",
-        (group as any).leader?.name || "-"
+        group.leader?.name || "-"
       ]);
 
       autoTable(doc, {
@@ -266,9 +273,9 @@ const AdminGroups = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-heading font-bold text-foreground">Groups & Ministries</h1>
+          <h1 className="text-3xl font-heading font-bold text-foreground">Ministries & Groups</h1>
           <p className="text-muted-foreground mt-1">
-            Manage parish groups, ministries, and societies.
+            Manage Serve Others ministries and parish groups or societies.
           </p>
         </div>
       </div>
@@ -310,6 +317,19 @@ const AdminGroups = () => {
                 }}
               />
             </div>
+            <Select value={kindFilter} onValueChange={(value) => {
+              setKindFilter(value);
+              setCurrentPage(1);
+            }}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All types</SelectItem>
+                <SelectItem value="service">Serve Others</SelectItem>
+                <SelectItem value="society">Groups & Societies</SelectItem>
+              </SelectContent>
+            </Select>
             <Select value={statusFilter} onValueChange={(value) => {
               setStatusFilter(value);
               setCurrentPage(1);
@@ -407,8 +427,8 @@ const AdminGroups = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Mission</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Summary</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Membership</TableHead>
                       <TableHead className="w-[80px] text-right">Actions</TableHead>
@@ -424,16 +444,14 @@ const AdminGroups = () => {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="max-w-md">
-                            <p className="text-sm text-muted-foreground line-clamp-2">
-                              {group.description || "—"}
-                            </p>
-                          </div>
+                          <span className="text-sm capitalize text-muted-foreground">
+                            {group.kind === "service" ? "Serve Others" : "Society"}
+                          </span>
                         </TableCell>
                         <TableCell>
                           <div className="max-w-md">
                             <p className="text-sm text-muted-foreground line-clamp-2">
-                              {group.mission || "—"}
+                              {group.short_description || group.description || "—"}
                             </p>
                           </div>
                         </TableCell>
@@ -468,6 +486,16 @@ const AdminGroups = () => {
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit
                               </DropdownMenuItem>
+                              {group.slug && group.kind === "service" && (
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    window.open(`/serve-others/${group.slug}`, "_blank", "noopener,noreferrer")
+                                  }
+                                >
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  Preview public page
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 onClick={() => handleDelete(group)}

@@ -479,18 +479,18 @@ export default function Dashboard() {
               Last updated: {uiUtils.formatRelativeTime(lastUpdated)}
             </p>
             <div className="flex items-center gap-4">
-              <Link to="/settings">
-                <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/settings">
                   <Settings className="h-4 w-4 mr-2" />
                   Settings
-                </Button>
-              </Link>
-              <Link to="/notification-settings">
-                <Button variant="ghost" size="sm">
+                </Link>
+              </Button>
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/notification-settings">
                   <Bell className="h-4 w-4 mr-2" />
                   Notifications
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
           </div>
         </div>

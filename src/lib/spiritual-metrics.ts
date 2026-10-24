@@ -172,7 +172,7 @@ export class SpiritualMetricsCalculator {
     const lastActivity = typeActivities[0].date;
     let currentStreak = 0;
     let longestStreak = 0;
-    let tempStreak = 0;
+    let tempStreak: number;
 
     // Calculate current streak (from most recent activity backwards)
     const today = new Date();
@@ -454,7 +454,7 @@ export class SpiritualMetricsCalculator {
         prayer: 'prayer session',
         reading: 'scripture reading',
         service: 'community service',
-        attendance: 'church service',
+        attendance: 'Mass',
         donation: 'charitable giving',
         ministry: 'ministry involvement'
       };

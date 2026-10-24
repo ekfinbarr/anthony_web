@@ -1,4 +1,5 @@
 import { createChatBotMessage } from 'react-chatbot-kit';
+import { massTimesAnswer } from '@/config/parish';
 
 type ChatbotState = {
     messages: unknown[];
@@ -109,7 +110,7 @@ class ActionProvider {
     };
 
     handleMassTimes = () => {
-        const message = this.createChatBotMessage("Our Mass times are:\n• Sunday: 9:00 AM & 11:00 AM\n• Wednesday: 7:00 PM\n\nWe also have other services throughout the week. Would you like more information?");
+        const message = this.createChatBotMessage(`${massTimesAnswer()}\n\nConfessions are heard on Saturdays. Would you like more information?`);
         this.setState((prev: ChatbotState) => ({
             ...prev,
             messages: [...prev.messages, message],

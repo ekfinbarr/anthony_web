@@ -58,7 +58,7 @@ export default function ClinicGallery({ facilities }: ClinicGalleryProps) {
             >
               <CardContent className="p-0">
                 <div className="aspect-square overflow-hidden bg-gray-100">
-                  <img
+                  <img loading="lazy" decoding="async"
                     src={facility.image}
                     alt={facility.title}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"

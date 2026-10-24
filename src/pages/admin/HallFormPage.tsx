@@ -34,7 +34,11 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 
-import facilityService, { Facility, UpsertFacilityPayload } from "@/services/facility.service";
+import facilityService, {
+  Facility,
+  FacilityTimeBlockDto,
+  UpsertFacilityPayload,
+} from "@/services/facility.service";
 import { uploadAndGetUrl } from "@/services/attachment.service";
 import AttachmentUploadModal from "@/components/attachments/AttachmentUploadModal";
 import MoneyInput, { MoneyCurrency } from "@/components/forms/MoneyInput";
@@ -82,11 +86,25 @@ export default function HallFormPage() {
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
 
+  // Time blocks (edit mode)
+  const [blockName, setBlockName] = useState("");
+  const [blockStart, setBlockStart] = useState("09:00");
+  const [blockEnd, setBlockEnd] = useState("12:00");
+  const [blockPrice, setBlockPrice] = useState<number | null>(50000);
+
   const hallQuery = useQuery<{ data: Facility }>({
     queryKey: ["admin-hall", hallId],
     queryFn: () => facilityService.getById(hallId),
     enabled: isEdit && !!hallId,
   });
+
+  const timeBlocksQuery = useQuery({
+    queryKey: ["admin-hall-time-blocks", hallId],
+    queryFn: () => facilityService.listTimeBlocks(hallId),
+    enabled: isEdit && !!hallId,
+  });
+
+  const timeBlocks: FacilityTimeBlockDto[] = timeBlocksQuery.data?.data ?? [];
 
   // Initialize from backend
   useEffect(() => {
@@ -213,7 +231,57 @@ export default function HallFormPage() {
     },
   });
 
-  const isBusy = hallQuery.isLoading || saveMutation.isPending;
+  const createBlockMutation = useMutation({
+    mutationFn: async () => {
+      if (!hallId) throw new Error("Save the hall first");
+      if (!blockName.trim()) throw new Error("Block name is required");
+      if (blockPrice === null || blockPrice < 0) throw new Error("Enter a valid price");
+      return facilityService.createTimeBlock(hallId, {
+        name: blockName.trim(),
+        start_time: blockStart,
+        end_time: blockEnd,
+        price: blockPrice,
+        is_combinable: true,
+        is_online: true,
+        is_active: true,
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Time block added", description: "Visitors can select this block when requesting a rental." });
+      setBlockName("");
+      qc.invalidateQueries({ queryKey: ["admin-hall-time-blocks", hallId] });
+      qc.invalidateQueries({ queryKey: ["admin-halls-facilities"] });
+    },
+    onError: (e: unknown) => {
+      toast({
+        title: "Could not add block",
+        description: e instanceof Error ? e.message : "Failed to create time block",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteBlockMutation = useMutation({
+    mutationFn: (blockId: string) => facilityService.deleteTimeBlock(hallId, blockId),
+    onSuccess: () => {
+      toast({ title: "Time block removed" });
+      qc.invalidateQueries({ queryKey: ["admin-hall-time-blocks", hallId] });
+      qc.invalidateQueries({ queryKey: ["admin-halls-facilities"] });
+    },
+    onError: (e: unknown) => {
+      toast({
+        title: "Could not delete block",
+        description: e instanceof Error ? e.message : "Failed to delete time block",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const isBusy =
+    hallQuery.isLoading ||
+    saveMutation.isPending ||
+    createBlockMutation.isPending ||
+    deleteBlockMutation.isPending;
 
   return (
     <div className="space-y-6">
@@ -296,6 +364,99 @@ export default function HallFormPage() {
                   Note: currently we store only the numeric amount on the backend (currency is UI-only).
                 </p>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Fixed time-block rates */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Bookable time blocks</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!isEdit ? (
+                <p className="text-sm text-muted-foreground">
+                  Save the hall first, then add fixed time blocks (morning, afternoon, etc.) with Naira rates. Online requests require at least one active online block.
+                </p>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Applicants select these blocks on the public Rentals page. Prices are fixed per block — not hourly.
+                  </p>
+                  {timeBlocksQuery.isLoading ? (
+                    <p className="text-sm text-muted-foreground">Loading blocks…</p>
+                  ) : timeBlocks.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No time blocks yet. Add one below.</p>
+                  ) : (
+                    <div className="rounded-md border divide-y">
+                      {timeBlocks.map((b) => (
+                        <div key={b.id} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
+                          <div>
+                            <div className="font-medium">{b.name}</div>
+                            <div className="text-muted-foreground">
+                              {String(b.start_time).slice(0, 5)}–{String(b.end_time).slice(0, 5)} · ₦
+                              {Number(b.price).toLocaleString("en-NG")}
+                              {b.is_online === false ? " · offline only" : ""}
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive"
+                            disabled={isBusy}
+                            onClick={() => deleteBlockMutation.mutate(b.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label>Block name</Label>
+                      <Input
+                        value={blockName}
+                        onChange={(e) => setBlockName(e.target.value)}
+                        placeholder="e.g. Morning session"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Start</Label>
+                      <Input type="time" value={blockStart} onChange={(e) => setBlockStart(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>End</Label>
+                      <Input type="time" value={blockEnd} onChange={(e) => setBlockEnd(e.target.value)} />
+                    </div>
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label>Fixed price (NGN)</Label>
+                      <MoneyInput
+                        value={blockPrice}
+                        onValueChange={setBlockPrice}
+                        currency="NGN"
+                        onCurrencyChange={() => {
+                          /* prices are stored in NGN */
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2"
+                    disabled={isBusy || !blockName.trim() || blockPrice === null}
+                    onClick={() => createBlockMutation.mutate()}
+                  >
+                    {createBlockMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Plus className="h-4 w-4" />
+                    )}
+                    Add time block
+                  </Button>
+                </>
+              )}
             </CardContent>
           </Card>
 

@@ -1,228 +1,288 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
-import { Image as ImageIcon, Search, Sparkles } from "lucide-react";
-
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import PageHeader from "@/components/layout/PageHeader";
+import SEOHead from "@/components/seo/SEOHead";
+import GalleryAlbumCard from "@/components/gallery/GalleryAlbumCard";
+import GalleryFeatured from "@/components/gallery/GalleryFeatured";
+import GalleryFilters from "@/components/gallery/GalleryFilters";
+import GalleryMediaCard from "@/components/gallery/GalleryMediaCard";
+import GalleryEmptyState from "@/components/gallery/GalleryEmptyState";
+import GalleryLightbox from "@/components/gallery/GalleryLightbox";
+import categoryService from "@/services/category.service";
+import galleryAlbumService, {
+  type GalleryAlbum,
+  type GalleryAlbumItem,
+  type GalleryAlbumSort,
+  type GalleryMediaTypeFilter,
+} from "@/services/galleryAlbum.service";
 
-import categoryService, { Category } from "@/services/category.service";
-import tagService, { Tag } from "@/services/tag.service";
-import galleryAlbumService, { GalleryAlbum } from "@/services/galleryAlbum.service";
-
-type FilterState = {
-  search: string;
-  categoryId: string;
-  tagId: string;
-  featuredOnly: boolean;
-};
+const PER_PAGE = 12;
 
 const Gallery = () => {
-  const [filters, setFilters] = useState<FilterState>({
-    search: "",
-    categoryId: "all",
-    tagId: "all",
-    featuredOnly: false,
+  const [searchParams, setSearchParams] = useSearchParams();
+  const page = Math.max(1, Number(searchParams.get("page") || "1") || 1);
+  const categoryId = searchParams.get("category") || "";
+  const year = searchParams.get("year") || "";
+  const typeParam = searchParams.get("type") || "";
+  const mediaType: "" | GalleryMediaTypeFilter =
+    typeParam === "photo" || typeParam === "video" ? typeParam : "";
+  const sortParam = searchParams.get("sort") || "newest";
+  const sort: GalleryAlbumSort =
+    sortParam === "oldest" || sortParam === "featured" ? sortParam : "newest";
+  const qParam = searchParams.get("q") || "";
+  const [searchInput, setSearchInput] = useState(() => qParam);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      const next = searchInput.trim();
+      if (next === qParam) return;
+      setSearchParams(
+        (prev) => {
+          const params = new URLSearchParams(prev);
+          if (next) params.set("q", next);
+          else params.delete("q");
+          params.delete("page");
+          return params;
+        },
+        { replace: true },
+      );
+    }, 350);
+    return () => window.clearTimeout(handle);
+  }, [searchInput, qParam, setSearchParams]);
+
+  const updateParams = useCallback(
+    (patch: Record<string, string | null>, resetPage = true) => {
+      setSearchParams((prev) => {
+        const params = new URLSearchParams(prev);
+        Object.entries(patch).forEach(([key, value]) => {
+          if (value === null || value === "") params.delete(key);
+          else params.set(key, value);
+        });
+        if (resetPage) params.delete("page");
+        return params;
+      });
+    },
+    [setSearchParams],
+  );
+
+  const hasActiveFilters = Boolean(categoryId || year || mediaType || qParam || sort !== "newest");
+  const showCollections = !mediaType;
+  const showFeatured = showCollections && !hasActiveFilters && page === 1;
+
+  const yearsQuery = useQuery({
+    queryKey: ["gallery-albums", "years"],
+    queryFn: () => galleryAlbumService.listPublicYears(),
   });
 
-  const albumQueryParams = useMemo(() => {
-    return {
-      search: filters.search || undefined,
-      category_id: filters.categoryId !== "all" ? filters.categoryId : undefined,
-      tag_id: filters.tagId !== "all" ? filters.tagId : undefined,
-      is_featured: filters.featuredOnly ? true : undefined,
-      per_page: 24,
-    };
-  }, [filters]);
-
-  const { data: categoriesData, isLoading: isLoadingCategories } = useQuery({
+  const categoriesQuery = useQuery({
     queryKey: ["categories", "active"],
     queryFn: () => categoryService.list({ active: true }),
   });
 
-  const { data: tagsData, isLoading: isLoadingTags } = useQuery({
-    queryKey: ["tags", "active"],
-    queryFn: () => tagService.list({ active: true }),
+  const featuredQuery = useQuery({
+    queryKey: ["gallery-albums", "featured-hero"],
+    queryFn: async () => {
+      const featured = await galleryAlbumService.listPublicAlbums({
+        is_featured: true,
+        sort: "newest",
+        per_page: 1,
+      });
+      if (featured.data?.[0]) return featured.data[0];
+      const latest = await galleryAlbumService.listPublicAlbums({ sort: "newest", per_page: 1 });
+      return latest.data?.[0] ?? null;
+    },
+    enabled: showFeatured,
   });
 
-  const {
-    data: albumsData,
-    isLoading: isLoadingAlbums,
-    error: albumsError,
-  } = useQuery({
-    queryKey: ["gallery-albums", "public", albumQueryParams],
-    queryFn: () => galleryAlbumService.listPublicAlbums(albumQueryParams),
+  const albumsQuery = useQuery({
+    queryKey: ["gallery-albums", "public", page, categoryId, year, qParam, sort],
+    queryFn: () =>
+      galleryAlbumService.listPublicAlbums({
+        page,
+        per_page: PER_PAGE,
+        search: qParam || undefined,
+        category_id: categoryId || undefined,
+        year: year || undefined,
+        sort,
+      }),
+    enabled: showCollections,
+    placeholderData: (prev) => prev,
   });
 
-  const categories: Category[] = categoriesData?.data ?? [];
-  const tags: Tag[] = tagsData?.data ?? [];
-  const albums: GalleryAlbum[] = albumsData?.data ?? [];
+  const mediaQuery = useQuery({
+    queryKey: ["gallery-albums", "media", page, mediaType, categoryId, year, qParam],
+    queryFn: () =>
+      galleryAlbumService.listPublicMedia({
+        page,
+        per_page: PER_PAGE,
+        type: mediaType || undefined,
+        search: qParam || undefined,
+        category_id: categoryId || undefined,
+        year: year || undefined,
+      }),
+    enabled: !showCollections,
+    placeholderData: (prev) => prev,
+  });
+
+  const albums: GalleryAlbum[] = albumsQuery.data?.data ?? [];
+  const mediaItems: GalleryAlbumItem[] = mediaQuery.data?.data ?? [];
+  const featured = featuredQuery.data ?? null;
+  const activeQuery = showCollections ? albumsQuery : mediaQuery;
+  const lastPage = activeQuery.data?.meta?.last_page ?? 1;
+  const total = activeQuery.data?.meta?.total ?? 0;
+
+  const listWithoutFeatured = useMemo(() => {
+    if (!showFeatured || !featured) return albums;
+    return albums.filter((a) => a.id !== featured.id);
+  }, [albums, featured, showFeatured]);
+
+  const categoryOptions = useMemo(
+    () =>
+      (categoriesQuery.data?.data ?? []).map((c) => ({
+        id: c.id,
+        label: c.label,
+      })),
+    [categoriesQuery.data],
+  );
+
+  const isEmptyFeed = !activeQuery.isLoading && !activeQuery.isError && total === 0 && !hasActiveFilters;
+  const isNoResults = !activeQuery.isLoading && !activeQuery.isError && total === 0 && hasActiveFilters;
+
+  const openMediaAt = (idx: number) => {
+    setLightboxIndex(idx);
+    setLightboxOpen(true);
+  };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <section className="relative overflow-hidden border-b">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/10 to-secondary/10" />
-        <div className="container relative py-16 md:py-20">
-          <div className="mx-auto max-w-3xl text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border bg-background/70 px-4 py-2 text-sm text-muted-foreground backdrop-blur">
-              <ImageIcon className="h-4 w-4" />
-              Albums & highlights from parish life
+    <div className="bg-church-pearl/40">
+      <SEOHead
+        title="Parish Gallery"
+        description="Explore photographs and videos from the life of St. Anthony Catholic Church, Gbaja — sacred celebrations, fellowship, and service."
+        path="/gallery"
+      />
+
+      <PageHeader
+        eyebrow="LIFE IN OUR PARISH"
+        title="Moments of Faith & Community"
+        description="From sacred celebrations to moments of fellowship and service, explore the memories that bring our parish community together."
+        size="compact"
+      />
+
+      <section className="py-12 md:py-16">
+        <div className="container mx-auto px-4">
+          <GalleryFilters
+            search={searchInput}
+            onSearchChange={setSearchInput}
+            onClearSearch={() => {
+              setSearchInput("");
+              updateParams({ q: null });
+            }}
+            categories={categoryOptions}
+            categoryId={categoryId}
+            onCategoryChange={(id) => updateParams({ category: id || null })}
+            years={yearsQuery.data ?? []}
+            year={year}
+            onYearChange={(y) => updateParams({ year: y || null })}
+            mediaType={mediaType}
+            onMediaTypeChange={(t) => updateParams({ type: t || null })}
+            sort={sort}
+            onSortChange={(s) => updateParams({ sort: s === "newest" ? null : s })}
+          />
+
+          {showFeatured && featured && !featuredQuery.isLoading && <GalleryFeatured album={featured} />}
+
+          {featuredQuery.isLoading && showFeatured && (
+            <Skeleton className="mb-14 h-72 w-full rounded-xl" />
+          )}
+
+          <div className="mb-8 flex items-end justify-between gap-4">
+            <div>
+              <h2 className="font-serif text-2xl font-semibold text-church-charcoal md:text-3xl">
+                {showCollections ? "Event Collections" : mediaType === "video" ? "Videos" : "Photos"}
+              </h2>
+              <div className="mt-2 h-0.5 w-10 rounded-full bg-gradient-church" aria-hidden="true" />
             </div>
+            {total > 0 && (
+              <p className="text-sm text-muted-foreground">
+                {total} {showCollections ? (total === 1 ? "collection" : "collections") : total === 1 ? "item" : "items"}
+              </p>
+            )}
+          </div>
 
-            <h1 className="mt-6 font-heading text-4xl font-bold tracking-tight text-church-charcoal md:text-5xl">
-              Gallery Albums
-          </h1>
-            <p className="mt-4 text-base text-muted-foreground md:text-lg">
-              Browse celebrations and moments—Harvest, Galilee Day, sacraments, outreaches, and more—organized into albums for easy viewing.
-          </p>
-        </div>
-
-          {/* Filters */}
-          <div className="mx-auto mt-10 grid max-w-4xl grid-cols-1 gap-3 md:grid-cols-12">
-            <div className="md:col-span-6">
-                <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={filters.search}
-                  onChange={(e) => setFilters((p) => ({ ...p, search: e.target.value }))}
-                  placeholder="Search albums…"
-                  className="pl-9"
+          {activeQuery.isLoading ? (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-80 w-full rounded-lg" />
+              ))}
+            </div>
+          ) : activeQuery.isError ? (
+            <GalleryEmptyState variant="error" onRetry={() => activeQuery.refetch()} />
+          ) : isEmptyFeed ? (
+            <GalleryEmptyState variant="empty" />
+          ) : isNoResults ? (
+            <GalleryEmptyState
+              variant="no-results"
+              onClearFilters={() => {
+                setSearchInput("");
+                setSearchParams({});
+              }}
+            />
+          ) : showCollections ? (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {listWithoutFeatured.map((album, i) => (
+                <GalleryAlbumCard
+                  key={album.id}
+                  album={album}
+                  featuredLayout={i === 0 && listWithoutFeatured.length > 3 && page === 1}
                 />
-                      </div>
-                    </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              {mediaItems.map((item, idx) => (
+                <GalleryMediaCard key={item.id} item={item} onOpen={() => openMediaAt(idx)} />
+              ))}
+            </div>
+          )}
 
-            <div className="md:col-span-3">
-              <Select
-                value={filters.categoryId}
-                onValueChange={(v) => setFilters((p) => ({ ...p, categoryId: v }))}
-                disabled={isLoadingCategories}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All categories</SelectItem>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-                  </div>
-
-            <div className="md:col-span-3">
-              <Select value={filters.tagId} onValueChange={(v) => setFilters((p) => ({ ...p, tagId: v }))} disabled={isLoadingTags}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Tag" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All tags</SelectItem>
-                  {tags.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-                </div>
-
-            <div className="md:col-span-12 flex flex-wrap items-center justify-between gap-3">
+          {lastPage > 1 && !activeQuery.isError && total > 0 && (
+            <nav className="mt-12 flex items-center justify-center gap-4" aria-label="Gallery pagination">
               <Button
-                variant={filters.featuredOnly ? "default" : "outline"}
-                onClick={() => setFilters((p) => ({ ...p, featuredOnly: !p.featuredOnly }))}
-                className="gap-2"
+                variant="outline"
+                disabled={page <= 1}
+                onClick={() => updateParams({ page: String(page - 1) }, false)}
               >
-                <Sparkles className="h-4 w-4" />
-                Featured
+                Previous
               </Button>
-
-              <div className="text-sm text-muted-foreground">
-                {isLoadingAlbums ? "Loading albums…" : `${albums.length} album${albums.length === 1 ? "" : "s"}`}
-              </div>
-                </div>
-          </div>
+              <span className="text-sm text-muted-foreground">
+                Page {page} of {lastPage}
+              </span>
+              <Button
+                variant="outline"
+                disabled={page >= lastPage}
+                onClick={() => updateParams({ page: String(page + 1) }, false)}
+              >
+                Next
+              </Button>
+            </nav>
+          )}
         </div>
       </section>
 
-      {/* Content */}
-      <section className="container py-10 md:py-12">
-        {albumsError ? (
-          <Card className="p-6">
-            <p className="text-sm text-destructive">Failed to load albums. Please try again.</p>
-          </Card>
-        ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {isLoadingAlbums
-              ? Array.from({ length: 8 }).map((_, i) => (
-                  <Card key={i} className="overflow-hidden">
-                    <Skeleton className="h-44 w-full" />
-                    <div className="space-y-3 p-4">
-                      <Skeleton className="h-5 w-3/4" />
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-4 w-2/3" />
-                    </div>
-                  </Card>
-                ))
-              : albums.map((album) => (
-                  <Link key={album.id} to={`/gallery/${album.slug}`} className="group">
-                    <Card className="overflow-hidden transition hover:shadow-lg">
-                      <div className="relative">
-                        {album.cover_url ? (
-                          <img
-                            src={album.cover_url}
-                            alt={album.title}
-                            className="h-44 w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                            loading="lazy"
-                    />
-                  ) : (
-                          <div className="flex h-44 w-full items-center justify-center bg-gradient-to-br from-primary/10 to-secondary/10">
-                            <ImageIcon className="h-10 w-10 text-muted-foreground" />
-                </div>
-              )}
-
-                        <div className="absolute left-3 top-3 flex flex-wrap gap-2">
-                          {album.is_featured ? <Badge>Featured</Badge> : null}
-                          {!album.is_published ? <Badge variant="secondary">Unpublished</Badge> : null}
-            </div>
-
-                        <div className="absolute bottom-3 right-3">
-                          <Badge variant="secondary">{album.items_count ?? 0} items</Badge>
-                </div>
-              </div>
-
-                      <div className="space-y-2 p-4">
-                        <h3 className="line-clamp-1 font-heading text-lg font-semibold text-church-charcoal">{album.title}</h3>
-                        {album.description ? (
-                          <p className="line-clamp-2 text-sm text-muted-foreground">{album.description}</p>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">Open album</p>
-                        )}
-
-                        <div className="flex flex-wrap gap-2 pt-1">
-                          {(album.categories ?? []).slice(0, 2).map((c) => (
-                            <Badge key={c.id} variant="outline" className="font-normal">
-                              {c.label}
-                            </Badge>
-                          ))}
-                          {(album.tags ?? []).slice(0, 1).map((t) => (
-                            <Badge key={t.id} variant="outline" className="font-normal">
-                              {t.label}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    </Card>
-                  </Link>
-                ))}
-          </div>
-        )}
-      </section>
+      {!showCollections && (
+        <GalleryLightbox
+          items={mediaItems}
+          open={lightboxOpen}
+          index={lightboxIndex}
+          onOpenChange={setLightboxOpen}
+          onIndexChange={setLightboxIndex}
+        />
+      )}
     </div>
   );
 };

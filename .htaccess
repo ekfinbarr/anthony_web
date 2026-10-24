@@ -1,124 +1,123 @@
-RewriteEngine On
-# About this file:
-# This .htaccess file is used to configure URL redirection and rewriting rules for the server.
-# It includes rules to enforce HTTPS, redirect from www to non-www, and route requests to a specific subfolder.
-# Make sure to replace 'subfolder' with the actual folder name where your application is located.
-# Usage:
-# Place this .htaccess file in the root directory of your website.
+# ---------------------------------------------------------
+# St. Anthony Catholic Church, Gbaja — Apache configuration
+#
+# Deployment layout (unchanged): this file sits in the web root next to the
+# built `dist/` folder; every public URL is served from `dist/`.
+#
+# `npm run build` writes into dist/:
+#   index.html          home page (route-specific <head>)
+#   <route>.html        one file per registered route, e.g. about.html,
+#                       book-mass/guest.html (route-specific <head>)
+#   app-shell.html      dynamic pages (/news/<slug>, /gallery/<slug>)
+#   noindex.html        private areas and 404 responses
+#   sitemap.xml, robots.txt
+# ---------------------------------------------------------
+
+DirectoryIndex index.html
+
+# Unknown URLs get a real 404 status; the SPA shell then renders the "Page Not Found" view.
+ErrorDocument 404 /dist/noindex.html
 
 # ---------------------------------------------------------
-# 0️⃣ Custom Error Pages
-# ---------------------------------------------------------
-ErrorDocument 404 /404.html
-ErrorDocument 500 /404.html
-
-# ---------------------------------------------------------
-# 📄 MIME Types and Compression
+# MIME Types and Compression
 # ---------------------------------------------------------
 <IfModule mod_mime.c>
-    AddType application/javascript .js
+    AddType application/javascript .js .mjs
     AddType text/css .css
     AddType image/svg+xml .svg
+    AddType image/webp .webp
+    AddType image/avif .avif
     AddType application/xml .xml
-    AddType text/xml .xml
-    AddType application/rss+xml .rss
-    AddType application/atom+xml .atom
+    AddType application/manifest+json .webmanifest
+    AddType font/woff2 .woff2
 </IfModule>
 
-# Enable Gzip compression
 <IfModule mod_deflate.c>
-    AddOutputFilterByType DEFLATE text/plain
-    AddOutputFilterByType DEFLATE text/html
-    AddOutputFilterByType DEFLATE text/xml
-    AddOutputFilterByType DEFLATE text/css
-    AddOutputFilterByType DEFLATE application/xml
-    AddOutputFilterByType DEFLATE application/xhtml+xml
-    AddOutputFilterByType DEFLATE application/rss+xml
-    AddOutputFilterByType DEFLATE application/javascript
-    AddOutputFilterByType DEFLATE application/x-javascript
-    AddOutputFilterByType DEFLATE image/svg+xml
+    AddOutputFilterByType DEFLATE text/plain text/html text/xml text/css
+    AddOutputFilterByType DEFLATE application/xml application/xhtml+xml application/rss+xml
+    AddOutputFilterByType DEFLATE application/javascript application/x-javascript application/json
+    AddOutputFilterByType DEFLATE application/manifest+json image/svg+xml
 </IfModule>
 
 # ---------------------------------------------------------
-# 🚀 Caching Rules for Performance
-# ---------------------------------------------------------
-<IfModule mod_expires.c>
-    ExpiresActive on
-    
-    # Images
-    ExpiresByType image/jpg "access plus 1 month"
-    ExpiresByType image/jpeg "access plus 1 month"
-    ExpiresByType image/gif "access plus 1 month"
-    ExpiresByType image/png "access plus 1 month"
-    ExpiresByType image/svg+xml "access plus 1 month"
-    ExpiresByType image/webp "access plus 1 month"
-    ExpiresByType image/ico "access plus 1 month"
-    ExpiresByType image/x-icon "access plus 1 month"
-    
-    # Video
-    ExpiresByType video/mp4 "access plus 1 month"
-    ExpiresByType video/mpeg "access plus 1 month"
-    
-    # CSS and JavaScript
-    ExpiresByType text/css "access plus 1 month"
-    ExpiresByType application/javascript "access plus 1 month"
-    ExpiresByType application/x-javascript "access plus 1 month"
-    
-    # Fonts
-    ExpiresByType font/woff2 "access plus 1 year"
-    ExpiresByType font/woff "access plus 1 year"
-    ExpiresByType font/ttf "access plus 1 year"
-    ExpiresByType application/font-woff "access plus 1 year"
-    
-    # Other
-    ExpiresByType application/pdf "access plus 1 month"
-    ExpiresByType text/javascript "access plus 1 month"
-    ExpiresByType application/xml "access plus 1 day"
-    ExpiresByType text/xml "access plus 1 day"
-    
-    # HTML
-    ExpiresByType text/html "access plus 1 hour"
-</IfModule>
-
-# ---------------------------------------------------------
-# 🔒 Security Headers
+# Security Headers
 # ---------------------------------------------------------
 <IfModule mod_headers.c>
-    # Security headers
     Header always set X-Content-Type-Options "nosniff"
     Header always set X-Frame-Options "SAMEORIGIN"
-    Header always set X-XSS-Protection "1; mode=block"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
-    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
-    
-    # Cache control
-    <FilesMatch "\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|webp|mp4)$">
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(self)"
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains" "expr=%{HTTPS} == 'on'"
+    Header always unset X-Powered-By
+</IfModule>
+
+# ---------------------------------------------------------
+# Caching
+#   - Hashed build assets (/assets/*) never change → cache for a year.
+#   - HTML, sitemap and robots must revalidate so deployments show up immediately.
+# ---------------------------------------------------------
+<IfModule mod_headers.c>
+    <FilesMatch "\.(js|mjs|css|woff2?|ttf)$">
         Header set Cache-Control "public, max-age=31536000, immutable"
     </FilesMatch>
-    
-    <FilesMatch "\.(html|htm)$">
-        Header set Cache-Control "public, max-age=3600"
+    <FilesMatch "\.(png|jpe?g|gif|webp|avif|svg|ico|mp4|mp3)$">
+        Header set Cache-Control "public, max-age=2592000"
+    </FilesMatch>
+    <FilesMatch "\.(html|xml|txt|json|webmanifest)$">
+        Header set Cache-Control "no-cache"
     </FilesMatch>
 </IfModule>
 
 # ---------------------------------------------------------
-# 1️⃣ Force HTTPS
+# Rewrites (production Apache; local development uses `npm run dev`)
 # ---------------------------------------------------------
+RewriteEngine On
+
+# 1. Force HTTPS
 RewriteCond %{HTTPS} !=on
 RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
-# ---------------------------------------------------------
-# 2️⃣ Force non-www (if you prefer www, invert this section)
-# ---------------------------------------------------------
+# 2. Force non-www (if you prefer www, invert this section)
 RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
 RewriteRule ^ https://%1%{REQUEST_URI} [L,R=301]
 
-# ---------------------------------------------------------
-# 3️⃣ Redirect root domain to subfolder
-# ---------------------------------------------------------
-# Replace 'subfolder' with your actual folder name
-RewriteCond %{HTTP_HOST} ^(stanthonygbaja\.org)$ [NC]
+# 3. Never expose dot-files (except /.well-known/), source or dependencies
+RewriteCond %{REQUEST_URI} !^/\.well-known/
+RewriteRule (^|/)\. - [F,L]
+RewriteRule ^(src|node_modules|seo|public)(/|$) - [F,L]
+
+# 4. One canonical URL per page: no /dist/ prefix, no .html extension, no trailing slash
+RewriteCond %{THE_REQUEST} \s/+dist/(\S*?)(?:index)?(?:\.html)?[\s?]
+RewriteRule ^ /%1 [R=301,L,NE]
+RewriteCond %{THE_REQUEST} \s/+(\S+?)\.html[\s?]
+RewriteRule ^ /%1 [R=301,L,NE]
+RewriteRule ^(.+)/$ /$1 [R=301,L]
+
+# 5. Legacy / duplicate URLs (keep in sync with routeRedirects in src/config/routes.seo.ts)
+RewriteRule ^(landing|index)$ / [R=301,L]
+RewriteRule ^anthem$ /parish-anthem [R=301,L]
+RewriteRule ^privacy$ /privacy-policy [R=301,L]
+RewriteRule ^terms$ /terms-of-service [R=301,L]
+RewriteRule ^ministries$ /groups [R=301,L]
+RewriteRule ^mass-booking$ /book-mass [R=301,L]
+
+# 6. Home page and prerendered route pages
+RewriteRule ^$ /dist/index.html [END]
+RewriteCond %{DOCUMENT_ROOT}/dist/$1.html -f
+RewriteRule ^(.+)$ /dist/$1.html [END]
+
+# 7. Real files inside dist/ (hashed assets, sitemap.xml, robots.txt, icons, manifest…)
+RewriteCond %{DOCUMENT_ROOT}/dist/$1 -f
+RewriteRule ^(.+)$ /dist/$1 [END]
+
+# 8. Dynamic public pages and private app areas are rendered client-side
+RewriteRule ^(news|gallery|events|bulletin)/[^/]+$ /dist/app-shell.html [END]
+RewriteRule ^rentals/status/[^/]+$ /dist/app-shell.html [END]
+RewriteRule ^llms\.txt$ /dist/llms.txt [END]
+RewriteRule ^\.well-known/llms\.txt$ /dist/llms.txt [END]
+RewriteRule ^(admin|dashboard|auth)(/.*)?$ /dist/noindex.html [END]
+
+# 9. Everything else is a genuine 404 (served with the noindex SPA shell above).
+#    This also keeps project files in the web root (package.json, .env, …) unreachable.
 RewriteCond %{REQUEST_URI} !^/dist/
-RewriteRule ^(.*)$ /dist/$1 [L]
-# End of .htaccess file
-# ---------------------------------------------------------
+RewriteRule ^ - [R=404,L]

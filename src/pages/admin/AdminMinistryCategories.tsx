@@ -30,6 +30,7 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { RequiredLabel } from "@/components/admin/shared/RequiredLabel";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
@@ -54,7 +55,8 @@ const AdminMinistryCategories = () => {
     const [formData, setFormData] = useState({
         name: "",
         description: "",
-        is_active: true
+        is_active: true,
+        sort_order: 0,
     });
 
     const { data, isLoading } = useQuery({
@@ -73,18 +75,29 @@ const AdminMinistryCategories = () => {
             resetForm();
             toast({ title: "Success", description: "Category created successfully" });
         },
-        onError: () => toast({ title: "Error", description: "Failed to create category", variant: "destructive" })
+        onError: (error: unknown) =>
+            toast({
+                title: "Error",
+                description: error instanceof Error ? error.message : "Failed to create category",
+                variant: "destructive",
+            }),
     });
 
     const updateMutation = useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => ministryCategoryService.update(id, data),
+        mutationFn: ({ id, data }: { id: string; data: Parameters<typeof ministryCategoryService.update>[1] }) =>
+            ministryCategoryService.update(id, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["ministry-categories"] });
             setIsFormOpen(false);
             resetForm();
             toast({ title: "Success", description: "Category updated successfully" });
         },
-        onError: () => toast({ title: "Error", description: "Failed to update category", variant: "destructive" })
+        onError: (error: unknown) =>
+            toast({
+                title: "Error",
+                description: error instanceof Error ? error.message : "Failed to update category",
+                variant: "destructive",
+            }),
     });
 
     const deleteMutation = useMutation({
@@ -95,15 +108,17 @@ const AdminMinistryCategories = () => {
             setCategoryToDelete(null);
             toast({ title: "Success", description: "Category deleted successfully" });
         },
-        onError: (error: any) => {
-            // Handle "Cannot delete" specifically if possible
-            const msg = error?.response?.data?.message || "Failed to delete category";
-            toast({ title: "Error", description: msg, variant: "destructive" });
+        onError: (error: unknown) => {
+            toast({
+                title: "Error",
+                description: error instanceof Error ? error.message : "Failed to delete category",
+                variant: "destructive",
+            });
         }
     });
 
     const resetForm = () => {
-        setFormData({ name: "", description: "", is_active: true });
+        setFormData({ name: "", description: "", is_active: true, sort_order: 0 });
         setEditingCategory(null);
     };
 
@@ -117,7 +132,8 @@ const AdminMinistryCategories = () => {
         setFormData({
             name: category.name,
             description: category.description || "",
-            is_active: category.is_active
+            is_active: category.is_active,
+            sort_order: category.sort_order ?? 0,
         });
         setIsFormOpen(true);
     };
@@ -137,7 +153,7 @@ const AdminMinistryCategories = () => {
     }
 
     const categories = data?.data || [];
-    const meta = data?.meta;
+    const totalPages = data?.last_page || 1;
 
     return (
         <div className="space-y-6 animate-fade-in p-6 pb-20">
@@ -231,7 +247,7 @@ const AdminMinistryCategories = () => {
                     <div className="mt-4">
                         <AdminPagination
                             currentPage={page}
-                            totalPages={meta?.last_page || 1}
+                            totalPages={totalPages}
                             onPageChange={setPage}
                         />
                     </div>
@@ -249,12 +265,13 @@ const AdminMinistryCategories = () => {
                     </DialogHeader>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="name">Name</Label>
+                            <RequiredLabel htmlFor="name">Name</RequiredLabel>
                             <Input
                                 id="name"
                                 value={formData.name}
                                 onChange={e => setFormData({ ...formData, name: e.target.value })}
                                 required
+                                aria-required
                                 placeholder="e.g. Pious Societies"
                             />
                         </div>
@@ -265,6 +282,21 @@ const AdminMinistryCategories = () => {
                                 value={formData.description}
                                 onChange={e => setFormData({ ...formData, description: e.target.value })}
                                 placeholder="Optional description"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="sort_order">Display order</Label>
+                            <Input
+                                id="sort_order"
+                                type="number"
+                                min={0}
+                                value={formData.sort_order}
+                                onChange={(e) =>
+                                    setFormData({
+                                        ...formData,
+                                        sort_order: Number(e.target.value) || 0,
+                                    })
+                                }
                             />
                         </div>
                         <div className="flex items-center space-x-2 pt-2">
@@ -278,7 +310,14 @@ const AdminMinistryCategories = () => {
 
                         <DialogFooter>
                             <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>Cancel</Button>
-                            <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+                            <Button
+                                type="submit"
+                                disabled={
+                                    createMutation.isPending ||
+                                    updateMutation.isPending ||
+                                    !formData.name.trim()
+                                }
+                            >
                                 {createMutation.isPending || updateMutation.isPending ? "Saving..." : "Save Category"}
                             </Button>
                         </DialogFooter>

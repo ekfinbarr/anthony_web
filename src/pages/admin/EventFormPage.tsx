@@ -42,9 +42,11 @@ import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import eventService, { Event, CreateEventPayload, UpdateEventPayload } from "@/services/event.service";
+import categoryService from "@/services/category.service";
 import { DatePicker } from "@/components/ui/date-picker";
 import { TimePicker } from "@/components/ui/time-picker";
 import AttachmentUploadModal from "@/components/attachments/AttachmentUploadModal";
+import { ExternalLink } from "lucide-react";
 
 const EventFormPage = () => {
   const navigate = useNavigate();
@@ -61,16 +63,39 @@ const EventFormPage = () => {
   // Form data state using Date objects and time objects for better UX
   const [formData, setFormData] = useState({
     name: "",
+    slug: "",
     description: "",
+    summary: "",
     start_date: undefined as Date | undefined,
     start_time: undefined as { hours: number; minutes: number } | undefined,
     end_date: undefined as Date | undefined,
     end_time: undefined as { hours: number; minutes: number } | undefined,
+    is_all_day: false,
     location: "",
+    venue_address: "",
+    online_url: "",
     is_public: true,
+    is_featured: false,
+    is_published: true,
     rsvp_enabled: false,
     max_attendees: "",
-    image: "",
+    registration_deadline: undefined as Date | undefined,
+    event_state: "scheduled",
+    category_ids: [] as string[],
+    image: "" as string,
+  });
+
+  const categoriesQuery = useQuery({
+    queryKey: ["admin-event-categories"],
+    queryFn: async () => {
+      const res = await categoryService.list({ active: true });
+      const all = res.data || [];
+      const children = all.filter((c) => {
+        const parent = all.find((p) => p.id === c.parent_id);
+        return parent?.slug === "events";
+      });
+      return children.length ? children : all;
+    },
   });
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -86,61 +111,73 @@ const EventFormPage = () => {
   // Initialize form data from event
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (isEditMode && event?.data) {
-        const eventData = { ...(event as Event)?.data || {} };
-        // Validate and parse dates safely
+      if (isEditMode && event) {
+        const eventData = event as Event;
         const startDate = eventData.start_date ? new Date(eventData.start_date) : undefined;
         const endDate = eventData.end_date ? new Date(eventData.end_date) : undefined;
-
-        const startTime = eventData.start_time ? new Date(eventData.start_time) : undefined;
-        const endTime = eventData.end_time ? new Date(eventData.end_time) : undefined;
-
+        const startTime = eventData.start_date ? new Date(eventData.start_date) : undefined;
+        const endTime = eventData.end_date ? new Date(eventData.end_date) : undefined;
         const isValidStartTime = startTime && !isNaN(startTime.getTime());
         const isValidEndTime = endTime && !isNaN(endTime.getTime());
 
-        const validStartTime = isValidStartTime ? startTime : undefined;
-        const validEndTime = isValidEndTime ? endTime : (isValidStartTime ? startTime : undefined);
-
         setFormData({
           name: eventData.name || "",
+          slug: eventData.slug || "",
           description: eventData.description || "",
+          summary: eventData.summary || "",
           start_date: startDate,
-          start_time: validStartTime ? {
-            hours: validStartTime.getHours(),
-            minutes: validStartTime.getMinutes(),
-          } : undefined,
+          start_time: isValidStartTime
+            ? { hours: startTime!.getHours(), minutes: startTime!.getMinutes() }
+            : undefined,
           end_date: endDate,
-          end_time: validEndTime ? {
-            hours: validEndTime.getHours(),
-            minutes: validEndTime.getMinutes(),
-          } : undefined,
+          end_time: isValidEndTime
+            ? { hours: endTime!.getHours(), minutes: endTime!.getMinutes() }
+            : undefined,
+          is_all_day: Boolean(eventData.is_all_day),
           location: eventData.location || "",
+          venue_address: eventData.venue_address || "",
+          online_url: eventData.online_url || "",
           is_public: eventData.is_public ?? true,
-          // Optional fields that may exist on the backend but not in the type definition
-          rsvp_enabled: ("rsvp_enabled" in eventData ? (eventData as Event & { rsvp_enabled?: boolean }).rsvp_enabled : false) ?? false,
-          max_attendees: ("max_attendees" in eventData ? (eventData as unknown as Event & { max_attendees?: number }).max_attendees?.toString() : "") || "",
-          image: typeof eventData.image === 'string' ? undefined : eventData.image || undefined,
+          is_featured: Boolean(eventData.is_featured),
+          is_published: eventData.is_published ?? true,
+          rsvp_enabled: Boolean(eventData.rsvp_enabled),
+          max_attendees: eventData.max_attendees ? String(eventData.max_attendees) : "",
+          registration_deadline: eventData.registration_deadline
+            ? new Date(eventData.registration_deadline)
+            : undefined,
+          event_state: eventData.event_state || "scheduled",
+          category_ids: (eventData.categories || []).map((c) => c.id),
+          image: typeof eventData.image === "string" ? eventData.image : "",
         });
 
-        if (typeof eventData.image === 'string' && eventData.image) {
+        if (typeof eventData.image === "string" && eventData.image) {
           setImagePreview(eventData.image);
         } else {
           setImagePreview(null);
         }
       } else if (!isEditMode) {
-        // Reset form for new event
         setFormData({
           name: "",
+          slug: "",
           description: "",
+          summary: "",
           start_date: undefined,
           start_time: undefined,
           end_date: undefined,
           end_time: undefined,
+          is_all_day: false,
           location: "",
+          venue_address: "",
+          online_url: "",
           is_public: true,
+          is_featured: false,
+          is_published: true,
           rsvp_enabled: false,
           max_attendees: "",
-          image: null,
+          registration_deadline: undefined,
+          event_state: "scheduled",
+          category_ids: [],
+          image: "",
         });
         setImagePreview(null);
       }
@@ -231,16 +268,25 @@ const EventFormPage = () => {
     if (!formData.name.trim()) {
       toast({
         title: "Validation Error",
-        description: "Event name is required",
+        description: "Event name is required *",
         variant: "destructive",
       });
       return;
     }
 
-    if (!formData.start_date || !formData.start_time) {
+    if (!formData.start_date) {
       toast({
         title: "Validation Error",
-        description: "Start date and time are required",
+        description: "Start date is required *",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.is_all_day && !formData.start_time) {
+      toast({
+        title: "Validation Error",
+        description: "Start time is required unless the event is all-day *",
         variant: "destructive",
       });
       return;
@@ -248,32 +294,49 @@ const EventFormPage = () => {
 
     setIsSubmitting(true);
 
-    // Combine date and time objects into Date objects
     const startDateTime = new Date(formData.start_date);
-    startDateTime.setHours(formData.start_time.hours, formData.start_time.minutes, 0, 0);
+    if (formData.is_all_day) {
+      startDateTime.setHours(0, 0, 0, 0);
+    } else if (formData.start_time) {
+      startDateTime.setHours(formData.start_time.hours, formData.start_time.minutes, 0, 0);
+    }
 
-    // Use end date/time if provided, otherwise use start date/time
-    const endDateTime = formData.end_date && formData.end_time
-      ? (() => {
-        const end = new Date(formData.end_date);
-        end.setHours(formData.end_time.hours, formData.end_time.minutes, 0, 0);
-        return end;
-      })()
-      : startDateTime;
+    const endDateTime =
+      formData.end_date
+        ? (() => {
+            const end = new Date(formData.end_date);
+            if (formData.is_all_day) end.setHours(23, 59, 0, 0);
+            else if (formData.end_time) end.setHours(formData.end_time.hours, formData.end_time.minutes, 0, 0);
+            return end;
+          })()
+        : undefined;
 
-    // Prepare payload
     const payload: CreateEventPayload | UpdateEventPayload = {
       name: formData.name.trim(),
+      slug: formData.slug.trim() || undefined,
       description: formData.description.trim() || undefined,
-      image: formData.image,
+      summary: formData.summary.trim() || undefined,
+      image: formData.image || undefined,
       start_date: startDateTime.toISOString(),
-      start_time: startDateTime.toISOString(),
-      end_date: endDateTime.toISOString(),
-      end_time: endDateTime.toISOString(),
+      start_time: formData.is_all_day ? undefined : startDateTime.toISOString(),
+      end_date: endDateTime?.toISOString(),
+      end_time: endDateTime && !formData.is_all_day ? endDateTime.toISOString() : undefined,
+      is_all_day: formData.is_all_day,
       location: formData.location.trim() || undefined,
+      venue_address: formData.venue_address.trim() || undefined,
+      online_url: formData.online_url.trim() || undefined,
       is_public: formData.is_public,
+      is_featured: formData.is_featured,
+      is_published: saveAsDraft ? false : formData.is_published,
+      is_approved: saveAsDraft ? false : true,
+      status: saveAsDraft ? "draft" : "published",
       rsvp_enabled: formData.rsvp_enabled,
-      max_attendees: formData.max_attendees ? parseInt(formData.max_attendees) : undefined
+      max_attendees: formData.max_attendees ? parseInt(formData.max_attendees, 10) : null,
+      registration_deadline: formData.registration_deadline
+        ? formData.registration_deadline.toISOString()
+        : null,
+      event_state: formData.event_state,
+      category_ids: formData.category_ids,
     };
 
     if (isEditMode && id) {
@@ -377,6 +440,29 @@ const EventFormPage = () => {
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="slug">Slug (optional)</Label>
+                <Input
+                  id="slug"
+                  placeholder="auto-generated-from-name"
+                  value={formData.slug}
+                  onChange={(e) => handleInputChange("slug", e.target.value)}
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="summary">Short summary</Label>
+                <Textarea
+                  id="summary"
+                  placeholder="Brief description for listings…"
+                  value={formData.summary}
+                  onChange={(e) => handleInputChange("summary", e.target.value)}
+                  rows={2}
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
@@ -389,6 +475,37 @@ const EventFormPage = () => {
                 <p className="text-xs text-muted-foreground">
                   {formData.description.length} characters
                 </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Categories</Label>
+                <div className="flex flex-wrap gap-2">
+                  {(categoriesQuery.data || []).map((cat) => {
+                    const selected = formData.category_ids.includes(cat.id);
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        disabled={isSubmitting}
+                        onClick={() =>
+                          handleInputChange(
+                            "category_ids",
+                            selected
+                              ? formData.category_ids.filter((cid) => cid !== cat.id)
+                              : [...formData.category_ids, cat.id],
+                          )
+                        }
+                        className={`rounded border px-2.5 py-1 text-xs font-medium ${
+                          selected
+                            ? "border-primary bg-primary/10 text-foreground"
+                            : "border-border text-muted-foreground"
+                        }`}
+                      >
+                        {cat.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Start Date and Time */}
@@ -407,7 +524,7 @@ const EventFormPage = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="start_time">
-                    Start Time <span className="text-destructive">*</span>
+                    Start Time {!formData.is_all_day && <span className="text-destructive">*</span>}
                   </Label>
                   <TimePicker
                     time={formData.start_time}
@@ -445,8 +562,21 @@ const EventFormPage = () => {
                 </div>
               </div>
 
+              <div className="flex items-center justify-between rounded-md border px-3 py-2">
+                <div>
+                  <Label htmlFor="is_all_day">All-day event</Label>
+                  <p className="text-xs text-muted-foreground">No specific start/end time</p>
+                </div>
+                <Switch
+                  id="is_all_day"
+                  checked={formData.is_all_day}
+                  onCheckedChange={(checked) => handleInputChange("is_all_day", checked)}
+                  disabled={isSubmitting}
+                />
+              </div>
+
               <div className="space-y-2">
-                <Label htmlFor="location">Location</Label>
+                <Label htmlFor="location">Venue / Location</Label>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -458,6 +588,29 @@ const EventFormPage = () => {
                     disabled={isSubmitting}
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="venue_address">Full address</Label>
+                <Input
+                  id="venue_address"
+                  placeholder="Street, city…"
+                  value={formData.venue_address}
+                  onChange={(e) => handleInputChange("venue_address", e.target.value)}
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="online_url">Online meeting URL</Label>
+                <Input
+                  id="online_url"
+                  type="url"
+                  placeholder="https://"
+                  value={formData.online_url}
+                  onChange={(e) => handleInputChange("online_url", e.target.value)}
+                  disabled={isSubmitting}
+                />
               </div>
             </CardContent>
           </Card>
@@ -546,11 +699,59 @@ const EventFormPage = () => {
               <Separator />
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label htmlFor="is_public" className="cursor-pointer">
+                  <Label htmlFor="is_featured" className="cursor-pointer">
+                    Featured
+                  </Label>
+                  <p className="text-xs text-muted-foreground">Highlight on the Events page</p>
+                </div>
+                <Switch
+                  id="is_featured"
+                  checked={formData.is_featured}
+                  onCheckedChange={(checked) => handleInputChange("is_featured", checked)}
+                  disabled={isSubmitting}
+                />
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="is_published" className="cursor-pointer">
+                    Published
+                  </Label>
+                  <p className="text-xs text-muted-foreground">Visible on the public site</p>
+                </div>
+                <Switch
+                  id="is_published"
+                  checked={formData.is_published}
+                  onCheckedChange={(checked) => handleInputChange("is_published", checked)}
+                  disabled={isSubmitting}
+                />
+              </div>
+              <Separator />
+              <div className="space-y-2">
+                <Label htmlFor="event_state">Event status</Label>
+                <Select
+                  value={formData.event_state}
+                  onValueChange={(v) => handleInputChange("event_state", v)}
+                  disabled={isSubmitting}
+                >
+                  <SelectTrigger id="event_state">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="scheduled">Scheduled</SelectItem>
+                    <SelectItem value="rescheduled">Rescheduled</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="rsvp_enabled" className="cursor-pointer">
                     Enable RSVP
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    Allow members to RSVP for this event.
+                    Allow public registration for this event.
                   </p>
                 </div>
                 <Switch
@@ -561,12 +762,23 @@ const EventFormPage = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="max_attendees">Max Attendees</Label>
+                <Label htmlFor="max_attendees">Max attendees (blank = unlimited)</Label>
                 <Input
                   id="max_attendees"
                   type="number"
+                  min={0}
                   value={formData.max_attendees}
                   onChange={(e) => handleInputChange("max_attendees", e.target.value)}
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="registration_deadline">Registration deadline</Label>
+                <DatePicker
+                  date={formData.registration_deadline}
+                  onDateChange={(date) => handleInputChange("registration_deadline", date)}
+                  placeholder="Optional"
+                  disabled={isSubmitting}
                 />
               </div>
             </CardContent>
@@ -588,8 +800,64 @@ const EventFormPage = () => {
                     : "Creating..."
                   : isEditMode
                     ? "Update Event"
-                    : "Create Event"}
+                    : "Publish Event"}
               </Button>
+              <Button
+                variant="secondary"
+                onClick={() => handleSubmit(true)}
+                disabled={isSubmitting}
+                className="w-full"
+              >
+                Save as draft
+              </Button>
+              {isEditMode && event?.slug && event.is_published && (
+                <Button variant="outline" className="w-full" asChild>
+                  <a href={`/events/${event.slug}`} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Preview public page
+                  </a>
+                </Button>
+              )}
+              {isEditMode && id && formData.rsvp_enabled && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  type="button"
+                  onClick={() => {
+                    const token = (() => {
+                      try {
+                        return JSON.parse(localStorage.getItem("church_user") || "{}")?.token;
+                      } catch {
+                        return null;
+                      }
+                    })();
+                    const url = eventService.exportRsvpsUrl(id);
+                    if (!token) {
+                      toast({ title: "Sign in required", variant: "destructive" });
+                      return;
+                    }
+                    fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: "text/csv" } })
+                      .then(async (res) => {
+                        if (!res.ok) throw new Error("Export failed");
+                        const blob = await res.blob();
+                        const href = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = href;
+                        a.download = `event-${id}-rsvps.csv`;
+                        a.click();
+                        URL.revokeObjectURL(href);
+                      })
+                      .catch(() =>
+                        toast({
+                          title: "Could not export RSVPs",
+                          variant: "destructive",
+                        }),
+                      );
+                  }}
+                >
+                  Export RSVPs (CSV)
+                </Button>
+              )}
               <Button
                 variant="outline"
                 onClick={() => navigate("/admin/events")}

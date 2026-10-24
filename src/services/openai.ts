@@ -1,10 +1,24 @@
 import OpenAI from 'openai';
+import { addressLine, officeContact, scheduleLines } from '@/config/parishFacts';
+import { site } from '@/config/site';
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true // Note: In production, this should be handled server-side
-});
+/**
+ * SECURITY: any VITE_* variable is embedded in the public JavaScript bundle.
+ * The OpenAI key is therefore only read in development builds; production builds
+ * compile it out and the chatbot uses the rule-based fallback. To offer the AI
+ * assistant in production, proxy requests through the backend (AnthonyServer)
+ * and keep the key server-side.
+ */
+const OPENAI_API_KEY: string | undefined = import.meta.env.DEV ? import.meta.env.VITE_OPENAI_API_KEY : undefined;
+
+const PLACEHOLDER_KEYS = ['your_openai_api_key_here', 'sk-your-development-key-here'];
+
+export const isOpenAIEnabled = Boolean(OPENAI_API_KEY && !PLACEHOLDER_KEYS.includes(OPENAI_API_KEY));
+
+// Initialize OpenAI client (development only)
+const openai = isOpenAIEnabled
+  ? new OpenAI({ apiKey: OPENAI_API_KEY, dangerouslyAllowBrowser: true })
+  : null;
 
 export interface ChatMessage {
   id: string;
@@ -16,8 +30,8 @@ export interface ChatMessage {
 export interface ChatbotConfig {
   churchName: string;
   location: string;
-  pastorName: string;
-  serviceTimes: string[];
+  parishPriestName: string;
+  massTimes: string[];
   contactInfo: {
     phone: string;
     email: string;
@@ -27,28 +41,24 @@ export interface ChatbotConfig {
 
 // Church-specific configuration
 const CHURCH_CONFIG: ChatbotConfig = {
-  churchName: "St. Anthony, Gbaja",
-  location: "Gbaja, Lagos, Nigeria",
-  pastorName: "Very. Rev. Msgr. Bernard Okodua",
-  serviceTimes: [
-    "Sunday: 7:00 AM, 9:00 AM, 5:00 PM",
-    "Wednesday: 7:00 PM (Bible Study)",
-    "Saturday: 4:00 PM - 5:00 PM (Confession)"
-  ],
+  churchName: "St. Anthony Catholic Church, Gbaja",
+  location: "Gbaja, Surulere, Lagos, Nigeria",
+  parishPriestName: "Very Rev. Fr. Sylvester Tolulope Oladunjoye",
+  massTimes: scheduleLines,
   contactInfo: {
-    phone: "(555) 123-4567",
-    email: "info@stanthonygbaja.org",
-    address: "123 Church Street, Gbaja, Lagos"
+    phone: site.telephone ?? "not published — please email the parish office",
+    email: site.email,
+    address: addressLine
   }
 };
 
 // System prompt for the church chatbot
-const SYSTEM_PROMPT = `You are a helpful AI assistant for ${CHURCH_CONFIG.churchName}, a Catholic church located in ${CHURCH_CONFIG.location}. 
+const SYSTEM_PROMPT = `You are a helpful AI assistant for ${CHURCH_CONFIG.churchName}, a Catholic parish located in ${CHURCH_CONFIG.location}. 
 
-Our Parish Priest is ${CHURCH_CONFIG.pastorName}.
+Our Parish Priest is ${CHURCH_CONFIG.parishPriestName}.
 
-Service Times:
-${CHURCH_CONFIG.serviceTimes.join('\n')}
+Mass Times:
+${CHURCH_CONFIG.massTimes.join('\n')}
 
 Contact Information:
 - Phone: ${CHURCH_CONFIG.contactInfo.phone}
@@ -56,25 +66,25 @@ Contact Information:
 - Address: ${CHURCH_CONFIG.contactInfo.address}
 
 You should help visitors and members with:
-- Service times and schedules
-- Church events and activities
+- Mass times and parish schedules
+- Parish events and activities
 - General Catholic teachings and prayers
 - Directions and contact information
 - Ministry information
-- Sacrament preparation (Baptism, Confirmation, Marriage, etc.)
+- Sacrament preparation (Baptism, Confirmation, Eucharist, Confession, Marriage, etc.)
 - Prayer requests (respond with compassion)
-- Church facilities and services
+- Parish facilities
 
 Guidelines:
 - Be warm, welcoming, and compassionate
-- Use appropriate Catholic terminology
-- Provide accurate information about our church
-- For urgent matters, direct them to contact the church directly
-- For complex theological questions, suggest speaking with our pastor
+- Use Catholic liturgical terminology: say "Mass" (not "service"), "Parish Priest" or "priest" (not "pastor"), "homily" (not "sermon" when referring to the Mass)
+- Provide accurate information about our parish
+- For urgent matters, direct them to contact the parish office directly
+- For complex theological questions, suggest speaking with our parish priest
 - Always maintain a respectful and prayerful tone
-- If you don't know specific information about our church, be honest and suggest contacting us directly
+- If you don't know specific information about our parish, be honest and suggest contacting us directly
 
-Remember, you represent our church community, so embody our values of love, faith, and service.`;
+Remember, you represent our Catholic parish community, so embody the values of faith, charity, and communion.`;
 
 export class ChurchChatbotService {
   private messages: ChatMessage[] = [];
@@ -106,6 +116,8 @@ export class ChurchChatbotService {
         role: msg.role,
         content: msg.content
       }));
+
+      if (!openai) throw new Error('OpenAI is not configured');
 
       // Call OpenAI API
       const completion = await openai.chat.completions.create({
@@ -139,8 +151,7 @@ export class ChurchChatbotService {
       const fallbackMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "I'm sorry, I'm experiencing technical difficulties. Please contact our church office at " + 
-                CHURCH_CONFIG.contactInfo.phone + " for immediate assistance.",
+        content: `I'm sorry, I'm experiencing technical difficulties. Please contact ${officeContact} for assistance.`,
         timestamp: new Date()
       };
 
@@ -163,16 +174,16 @@ export class ChurchChatbotService {
   getQuickResponses(): Array<{ question: string; response: string }> {
     return [
       {
-        question: "What are your service times?",
-        response: CHURCH_CONFIG.serviceTimes.join('\n')
+        question: "What are your Mass times?",
+        response: CHURCH_CONFIG.massTimes.join('\n')
       },
       {
         question: "How can I contact the church?",
         response: `You can reach us at:\nPhone: ${CHURCH_CONFIG.contactInfo.phone}\nEmail: ${CHURCH_CONFIG.contactInfo.email}\nAddress: ${CHURCH_CONFIG.contactInfo.address}`
       },
       {
-        question: "Who is the pastor?",
-        response: `Our Parish Priest is ${CHURCH_CONFIG.pastorName}.`
+        question: "Who is the parish priest?",
+        response: `Our Parish Priest is ${CHURCH_CONFIG.parishPriestName}.`
       },
       {
         question: "Where is the church located?",

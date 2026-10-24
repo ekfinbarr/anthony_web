@@ -10,13 +10,16 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow hover:bg-primary/90 hover:shadow-lg",
-        church: "bg-gradient-church text-church-charcoal font-semibold hover:shadow-glow hover:scale-[1.02]",
+        default:
+          "bg-church-gold-soft text-church-charcoal shadow-md hover:bg-church-gold-warm hover:text-white focus-visible:ring-church-gold-soft active:scale-[0.98]",
+        church:
+          "bg-church-gold-soft text-church-charcoal font-semibold shadow-md hover:bg-church-gold-warm hover:text-white focus-visible:ring-church-gold-soft active:scale-[0.98]",
         secondary: "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
         outline: "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
-        outlineGold: "border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground",
+        outlineGold:
+          "border-2 border-church-gold-soft text-church-gold-warm hover:bg-church-gold-soft hover:text-church-charcoal focus-visible:ring-church-gold-soft",
         ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
+        link: "text-church-gold-warm underline-offset-4 hover:underline",
         destructive: "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
       },
       size: {

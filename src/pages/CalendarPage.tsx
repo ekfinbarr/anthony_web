@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import calendarService, { CalendarEvent } from "@/services/calendar.service";
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Copy, ExternalLink } from "lucide-react";
+import PageHeader from "@/components/layout/PageHeader";
 
 /**
  * Public Calendar Page
@@ -72,20 +73,16 @@ export default function CalendarPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-primary/10 to-secondary/10 py-12">
-        <div className="container mx-auto px-4">
-          <div className="text-center">
-            <div className="mx-auto mb-3 w-12 h-12 rounded-lg bg-gradient-church flex items-center justify-center">
-              <CalendarIcon className="h-6 w-6 text-primary-foreground" />
-            </div>
-            <h1 className="text-4xl md:text-5xl font-heading font-bold text-church-charcoal mb-3">Parish Calendar</h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              A bird-eye view of parish celebrations and liturgical observances—subscribe to receive reminders in your calendar app.
-            </p>
+      <PageHeader
+        tone="light"
+        title="Parish Calendar"
+        description="A bird-eye view of parish celebrations and liturgical observances—subscribe to receive reminders in your calendar app."
+        icon={
+          <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-gradient-church">
+            <CalendarIcon className="h-5 w-5 text-primary-foreground" />
           </div>
-        </div>
-      </div>
+        }
+      />
 
       <div className="container mx-auto px-4 py-10 space-y-8">
         <Card>

@@ -7,8 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Mail, Lock, User, ChevronRight } from "lucide-react";
 import logo from "@/assets/images/logo.png";
-import stAnthony from "@/assets/images/st_anthony.png";
-import churchHero from "@/assets/church-hero.jpg";
+import stAnthony from "@/assets/images/st_anthony.webp";
+import churchHero from "@/assets/church-hero.webp";
 
 // Sample church images for rotation
 const coverImages = [

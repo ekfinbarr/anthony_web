@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { IsoDatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -247,11 +248,10 @@ const MarriageClassRegisterModal: React.FC<MarriageClassRegisterModalProps> = ({
               </div>
               <div>
                 <Label htmlFor="weddingDate">Wedding Date</Label>
-                <Input
+                <IsoDatePicker
                   id="weddingDate"
-                  type="date"
                   value={formData.weddingDate}
-                  onChange={(e) => handleInputChange('weddingDate', e.target.value)}
+                  onChange={(value) => handleInputChange('weddingDate', value)}
                 />
               </div>
             </div>

@@ -75,6 +75,7 @@ import DeleteConfirmModal from "@/components/admin/shared/DeleteConfirmModal";
 import ApprovalWorkflowModal from "@/components/admin/shared/ApprovalWorkflowModal";
 import { StatusBadge } from "@/components/admin/shared/StatusBadge";
 import { GenericEmptyState } from "@/components/admin/shared/GenericEmptyState";
+import { IconTooltipButton } from "@/components/admin/shared/IconTooltipButton";
 
 type EventStatus = "upcoming" | "ongoing" | "recurring" | "past" | "draft" | "pending" | "approved" | "rejected";
 
@@ -466,7 +467,17 @@ const AdminEvents = () => {
                           <div className="flex items-center gap-2">
                             <Calendar className="h-4 w-4 text-muted-foreground" />
                             <div>
-                              <div className="font-medium">{event.name}</div>
+                              <div className="font-medium">
+                                {event.name}
+                                {event.is_featured && (
+                                  <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+                                    Featured
+                                  </span>
+                                )}
+                              </div>
+                              {event.slug && (
+                                <div className="text-xs text-muted-foreground">/{event.slug}</div>
+                              )}
                               {event.description && (
                                 <div className="text-sm text-muted-foreground line-clamp-1">
                                   {event.description}
@@ -509,9 +520,9 @@ const AdminEvents = () => {
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
+                              <IconTooltipButton label="Event actions">
                                 <MoreVertical className="h-4 w-4" />
-                              </Button>
+                              </IconTooltipButton>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
                               <DropdownMenuItem onClick={() => handleView(event)}>

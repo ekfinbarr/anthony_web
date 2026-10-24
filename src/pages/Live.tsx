@@ -1,201 +1,266 @@
-import { motion } from "framer-motion";
-import { Calendar, Clock, Users, MessageCircle } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
-import EmbedVidWidget from "@/components/live/EmbedVidWidget";
+import { useMemo, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { motion, useReducedMotion } from "framer-motion";
+import PageHeader from "@/components/layout/PageHeader";
+import SEOHead from "@/components/seo/SEOHead";
+import LiveIntro, { type LivePageState } from "@/components/live/LiveIntro";
+import LivePlayerStage from "@/components/live/LivePlayerStage";
+import UpcomingBroadcasts from "@/components/live/UpcomingBroadcasts";
+import RecentCelebrations from "@/components/live/RecentCelebrations";
+import livestreamService, { type Livestream } from "@/services/livestream.service";
+import { site } from "@/config/site";
+import churchBanner from "@/assets/images/st_anthony.webp";
+
+const PAST_PAGE_SIZE = 9;
 
 const Live = () => {
-  // This would be dynamic in production
-  const isLive = true;
-  const nextService = {
-    title: "Sunday Mass",
-    date: "Sunday, January 14, 2024",
-    time: "9:00 AM WAT",
+  const { id } = useParams<{ id?: string }>();
+  const reduceMotion = useReducedMotion();
+  const [pastPage, setPastPage] = useState(1);
+  const [pastAccumulated, setPastAccumulated] = useState<Livestream[]>([]);
+
+  const currentQuery = useQuery({
+    queryKey: ["livestreams", "current"],
+    queryFn: () => livestreamService.getCurrent(),
+    staleTime: 30_000,
+    refetchInterval: (query) => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return false;
+      return query.state.data?.status === "live" ? 60_000 : 120_000;
+    },
+  });
+
+  const upcomingQuery = useQuery({
+    queryKey: ["livestreams", "upcoming"],
+    queryFn: () => livestreamService.getUpcoming({ per_page: 8 }),
+    staleTime: 60_000,
+  });
+
+  const detailQuery = useQuery({
+    queryKey: ["livestream", id],
+    queryFn: () => livestreamService.getById(id!),
+    enabled: Boolean(id),
+    staleTime: 30_000,
+    retry: false,
+  });
+
+  const pastQuery = useQuery({
+    queryKey: ["livestreams", "past", pastPage],
+    queryFn: async () => {
+      const res = await livestreamService.getPast({
+        page: pastPage,
+        per_page: PAST_PAGE_SIZE,
+        recordings_only: true,
+      });
+      setPastAccumulated((prev) => {
+        if (pastPage === 1) return res.data;
+        const seen = new Set(prev.map((p) => p.id));
+        return [...prev, ...res.data.filter((p) => !seen.has(p.id))];
+      });
+      return res;
+    },
+    staleTime: 60_000,
+  });
+
+  const upcoming = upcomingQuery.data?.data ?? [];
+  const nextUpcoming = upcoming[0] ?? null;
+  const current = currentQuery.data ?? null;
+  const detail = detailQuery.data ?? null;
+
+  const { state, primaryStream, sharePath } = useMemo(() => {
+    const loading =
+      currentQuery.isLoading ||
+      upcomingQuery.isLoading ||
+      (Boolean(id) && detailQuery.isLoading);
+
+    if (currentQuery.isError && upcomingQuery.isError && (!id || detailQuery.isError)) {
+      return { state: "error" as LivePageState, primaryStream: null, sharePath: "/live" };
+    }
+
+    if (loading) {
+      return { state: "loading" as LivePageState, primaryStream: null, sharePath: "/live" };
+    }
+
+    // Explicit LIVE from API only
+    if (current && current.status === "live" && current.is_live) {
+      // If viewing a different recording id while something is live, still prioritize live on hub;
+      // on detail of another stream, show that stream if ended with recording
+      if (id && detail && detail.id !== current.id) {
+        if (detail.status === "ended" || detail.recorded_url) {
+          return {
+            state: "ended" as LivePageState,
+            primaryStream: detail,
+            sharePath: `/live/${detail.id}`,
+          };
+        }
+        if (detail.status === "scheduled") {
+          return {
+            state: "upcoming" as LivePageState,
+            primaryStream: detail,
+            sharePath: `/live/${detail.id}`,
+          };
+        }
+      }
+      return {
+        state: "live" as LivePageState,
+        primaryStream: current,
+        sharePath: `/live/${current.id}`,
+      };
+    }
+
+    if (id && detail) {
+      if (detail.status === "live" && detail.is_live) {
+        return {
+          state: "live" as LivePageState,
+          primaryStream: detail,
+          sharePath: `/live/${detail.id}`,
+        };
+      }
+      if (detail.status === "ended" || detail.recorded_url) {
+        return {
+          state: "ended" as LivePageState,
+          primaryStream: detail,
+          sharePath: `/live/${detail.id}`,
+        };
+      }
+      if (detail.status === "scheduled") {
+        return {
+          state: "upcoming" as LivePageState,
+          primaryStream: detail,
+          sharePath: `/live/${detail.id}`,
+        };
+      }
+      if (detail.status === "cancelled" || detail.status === "unavailable") {
+        return {
+          state: "offline" as LivePageState,
+          primaryStream: detail,
+          sharePath: `/live/${detail.id}`,
+        };
+      }
+    }
+
+    if (id && detailQuery.isError) {
+      // Unknown id — fall through to hub state
+    }
+
+    if (nextUpcoming) {
+      return {
+        state: "upcoming" as LivePageState,
+        primaryStream: nextUpcoming,
+        sharePath: `/live/${nextUpcoming.id}`,
+      };
+    }
+
+    return { state: "offline" as LivePageState, primaryStream: null, sharePath: "/live" };
+  }, [
+    current,
+    currentQuery.isError,
+    currentQuery.isLoading,
+    detail,
+    detailQuery.isError,
+    detailQuery.isLoading,
+    id,
+    nextUpcoming,
+    upcomingQuery.isError,
+    upcomingQuery.isLoading,
+  ]);
+
+  const shareUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}${sharePath}`
+      : `${site.url}${sharePath}`;
+
+  const seoTitle =
+    state === "live" && primaryStream
+      ? `Live: ${primaryStream.title}`
+      : state === "ended" && primaryStream
+        ? primaryStream.title
+        : "Live Mass & Worship";
+
+  const seoDescription =
+    primaryStream?.description ||
+    "Join St. Anthony Catholic Church, Gbaja for live Mass and worship online. Watch livestreams and recent celebrations.";
+
+  const fade = reduceMotion
+    ? undefined
+    : { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 } };
+
+  const retryAll = () => {
+    void currentQuery.refetch();
+    void upcomingQuery.refetch();
+    void pastQuery.refetch();
+    if (id) void detailQuery.refetch();
   };
 
+  const pastItems = pastAccumulated.length ? pastAccumulated : pastQuery.data?.data ?? [];
+  const pastHasMore = (pastQuery.data?.current_page ?? 1) < (pastQuery.data?.last_page ?? 1);
+
   return (
-    <div>
-      <section className="relative py-7 bg-gradient-dark text-church-pearl">
+    <div className="bg-[#faf7f2]">
+      <SEOHead title={seoTitle} description={seoDescription} path={sharePath} />
+
+      <PageHeader
+        size="compact"
+        title="Live Stream"
+        description="Mass and celebrations from St. Anthony Catholic Church, Gbaja"
+        image={{ src: churchBanner, alt: "" }}
+        breadcrumbs="auto"
+      />
+
+      <section className="border-b border-church-stone/20 bg-[#faf7f2] py-10 sm:py-12">
         <div className="container mx-auto px-4">
-          <h1 className="text-5xl font-heading font-bold mb-4 text-center">Live Stream</h1>
-          <p className="text-xl text-center max-w-3xl mx-auto">
-            Join us for worship from anywhere in the world
-          </p>
+          <motion.div {...(fade ?? {})} transition={{ duration: 0.45 }}>
+            <LiveIntro state={state} current={current} />
+          </motion.div>
         </div>
       </section>
 
-      {/* Main Content */}
-      <section className="py-16 bg-background">
+      <section className="py-10 sm:py-14">
         <div className="container mx-auto px-4">
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Video Player */}
-            <div className="lg:col-span-2">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-              >
-                <Card className="overflow-hidden">
-                  <div className="relative aspect-video bg-secondary flex items-center justify-center">
-                    {isLive ? (
-                      <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-2 animate-pulse">
-                        <div className="w-2 h-2 bg-white rounded-full" />
-                        {/* <EmbedVidWidget /> */}
-                        <iframe
-                        src="https://www.facebook.com/plugins/video.php?height=314&href=https%3A%2F%2Fweb.facebook.com%2Freel%2F31869071726074221%2F&show_text=false&width=560&t=0"
-                        width="560"
-                        height="314"
-                        // style="border:none;overflow:hidden"
-                        style={{
-                          border: "none",
-                          overflow: "hidden"
-                        }}
-                        scrolling="no"
-                        frameBorder="0"
-                        allowFullScreen={true}
-                        allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-                        ></iframe>
-                        LIVE
-                      </div>
-                    ) : (
-                        <div className="text-center p-8">
-                        <Calendar className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                        <h3 className="text-2xl font-serif font-bold mb-2">Stream is Offline</h3>
-                        <p className="text-muted-foreground mb-6">
-                          The next live service will begin soon
-                        </p>
-                        <div className="space-y-2">
-                          <p className="font-semibold">{nextService.title}</p>
-                          <p className="text-sm text-muted-foreground">{nextService.date}</p>
-                          <p className="text-sm text-muted-foreground">{nextService.time}</p>
-                        </div>
-                      </div>
-                    )}
+          <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.85fr)] lg:gap-10">
+            <motion.div
+              {...(fade ?? {})}
+              transition={{ duration: 0.45, delay: reduceMotion ? 0 : 0.05 }}
+            >
+              <LivePlayerStage
+                state={state}
+                stream={primaryStream}
+                nextUpcoming={nextUpcoming}
+                shareUrl={shareUrl}
+                onRetry={retryAll}
+              />
+            </motion.div>
 
-                    {/* YouTube embed would go here when live */}
-                    {isLive && (
-                      <iframe
-                        width="100%"
-                        height="100%"
-                        src="https://www.youtube.com/embed/YOUR_VIDEO_ID"
-                        title="Live Stream"
-                        frameBorder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        className="absolute inset-0"
-                      />
-                    )}
-                  </div>
+            <aside className="space-y-10 lg:pt-1">
+              <UpcomingBroadcasts
+                items={upcoming}
+                isLoading={upcomingQuery.isLoading}
+              />
 
-                  <div className="p-6">
-                    <h2 className="text-2xl font-serif font-bold mb-4">
-                      {isLive ? "Live Now: Sunday Mass" : "Join Us This Sunday"}
-                    </h2>
-                    <p className="text-muted-foreground">
-                      Experience our vibrant worship service with uplifting music, inspiring
-                      preaching, and warm fellowship. Whether you're joining from home or planning
-                      to visit in person, we're glad you're here.
-                    </p>
-                  </div>
-                </Card>
-
-                {/* Past Services */}
-                <div className="mt-8">
-                  <h3 className="text-2xl font-serif font-bold mb-6">Past Services</h3>
-                  <div className="space-y-4">
-                    {[1, 2, 3].map((i) => (
-                      <Card key={i} className="p-4 hover-lift cursor-pointer group">
-                        <div className="flex gap-4">
-                          <div className="w-32 h-20 bg-secondary rounded flex-shrink-0 flex items-center justify-center">
-                            <MessageCircle className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors" />
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-semibold mb-1">Sunday Mass - January {7 - i}, 2024</h4>
-                            <p className="text-sm text-muted-foreground mb-2">
-                              Fr. Alexander Fatimehin • 1 hour 23 min
-                            </p>
-                            <Button variant="outline" size="sm">Watch Recording</Button>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Schedule */}
-              <motion.div
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6 }}
-              >
-                <Card className="p-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Clock className="w-5 h-5 text-primary" />
-                    <h3 className="text-lg font-semibold">Live Stream Schedule</h3>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="pb-3 border-b">
-                      <p className="font-semibold">Sunday</p>
-                      <p className="text-sm text-muted-foreground">7:00 AM, 9:00 AM, 5:00 PM</p>
-                    </div>
-                    <div className="pb-3 border-b">
-                      <p className="font-semibold">Wednesday</p>
-                      <p className="text-sm text-muted-foreground">Bible Study - 7:00 PM</p>
-                    </div>
-                    <div>
-                      <p className="font-semibold">Special Events</p>
-                      <p className="text-sm text-muted-foreground">Announced on social media</p>
-                    </div>
-                  </div>
-                </Card>
-              </motion.div>
-
-              {/* Live Chat Placeholder */}
-              <motion.div
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, delay: 0.1 }}
-              >
-                <Card className="p-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <MessageCircle className="w-5 h-5 text-primary" />
-                    <h3 className="text-lg font-semibold">Live Chat</h3>
-                  </div>
-                  {isLive ? (
-                    <div className="h-96 bg-secondary rounded p-4">
-                      <p className="text-sm text-muted-foreground">
-                        Chat will appear here during live streams
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <Users className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                      <p className="text-sm text-muted-foreground">
-                        Join the conversation when the stream goes live
-                      </p>
-                    </div>
-                  )}
-                </Card>
-              </motion.div>
-
-              {/* Connection Card */}
-              <Card className="p-6 bg-primary text-primary-foreground">
-                <h3 className="text-lg font-semibold mb-3">Can't Make It Online?</h3>
-                <p className="text-sm opacity-90 mb-4">
-                  We'd love to see you in person! Check out our service times and plan your visit.
+              <div className="border border-church-stone/25 bg-church-brown px-5 py-6 text-white">
+                <h2 className="font-serif text-xl font-semibold">Worship with us in person</h2>
+                <p className="mt-2 text-sm leading-relaxed text-white/85">
+                  Online streams are a gift when you cannot attend. Whenever you can, we would love to
+                  welcome you at St. Anthony, Gbaja.
                 </p>
-                <Link to="/visit">
-                  <Button variant="secondary" className="w-full bg-background text-primary hover:bg-background/90">
-                    Plan Your Visit
-                  </Button>
+                <Link
+                  to="/visit"
+                  className="mt-4 inline-flex text-sm font-semibold text-church-gold-soft underline-offset-4 hover:underline"
+                >
+                  Plan your visit
                 </Link>
-              </Card>
-            </div>
+              </div>
+            </aside>
+          </div>
+
+          <div className="mx-auto mt-16 max-w-6xl border-t border-church-stone/25 pt-14">
+            <RecentCelebrations
+              items={pastItems}
+              isLoading={pastQuery.isLoading && pastPage === 1}
+              hasMore={pastHasMore}
+              loadingMore={pastQuery.isFetching && pastPage > 1}
+              onLoadMore={() => setPastPage((p) => p + 1)}
+            />
           </div>
         </div>
       </section>

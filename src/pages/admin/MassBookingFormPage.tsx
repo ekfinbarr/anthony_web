@@ -59,7 +59,7 @@ import massScheduleService, { MassSchedule } from "@/services/massSchedule.servi
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Label } from "@radix-ui/react-label";
 import userService from "@/services/user.service";
-import MoneyInput, { MoneyCurrency } from "@/components/forms/MoneyInput";
+import AmountInput from "@/components/forms/AmountInput";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Separator } from "@/components/ui/separator";
 import { Avatar } from "@/components/ui/avatar";
@@ -81,6 +81,7 @@ const formSchema = z.object({
     guest_email: z.string().email("Invalid email address").optional().or(z.literal('')),
     guest_phone: z.string().optional(),
     payment_status: z.enum(["pending", "paid", "cancelled"]).default("pending"),
+    payment_method: z.enum(["cash", "bank_transfer", "mobile_money", "card", "other"]).optional().or(z.literal('')),
     payment_evidence: z.string().optional(),
     payment_date: z.date().optional(),
     amount: z.number().nullable().optional(),
@@ -110,6 +111,23 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
+
+type MultipleBookingDraft = {
+    booking_date: Date;
+    mass_schedule_id: string;
+};
+
+type SuccessBooking = {
+    booking_date: string;
+    intention?: string;
+    mass_schedule?: { title?: string; start_time?: string } | null;
+};
+
+type SuccessData = {
+    status?: string;
+    bookings: SuccessBooking[];
+    [key: string]: unknown;
+};
 
 // Internal component for the Receipt Preview
 const ReceiptPreview = ({ control, schedules }: { control: Control<FormValues>, schedules: MassSchedule[] }) => {
@@ -152,12 +170,23 @@ const ReceiptPreview = ({ control, schedules }: { control: Control<FormValues>, 
                 </div>
                 <div className="flex justify-between">
                     <span className="text-muted-foreground">Schedules:</span>
-                    {values.schedule_type === 'single' && (
-                        <span className="font-semibold">{selectedSchedule ? `${selectedSchedule.title} — ${selectedSchedule.day_of_week} ${selectedSchedule.start_time}` : "---"}</span>
-                    )}
-                    {values.schedule_type === 'multiple' && (
-                        <span className="font-semibold">{values?.multipleBookings?.map((booking: any) => booking?.booking_date ? format(booking?.booking_date, "dd/MM/yyyy") : "---").join(", ")}</span>
-                    )}
+                    <div className="text-right">
+                        {values.schedule_type === 'single' ? (
+                            <span className="font-semibold block">{selectedSchedule ? `${selectedSchedule.title} — ${selectedSchedule.day_of_week} ${selectedSchedule.start_time}` : "---"}</span>
+                        ) : (
+                            <div className="space-y-1">
+                                {values.multipleBookings?.map((booking: MultipleBookingDraft, idx: number) => {
+                                    const sch = schedules.find(s => s.id === booking.mass_schedule_id);
+                                    return (
+                                        <span key={idx} className="font-semibold block text-xs">
+                                            {booking.booking_date ? format(booking.booking_date, "dd/MM/yyyy") : "---"}
+                                            {sch ? ` (${sch.title})` : ""}
+                                        </span>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 <div className="border-t border-dashed border-black/20 my-4" />
@@ -196,14 +225,15 @@ const MassBookingFormPage = () => {
     const navigate = useNavigate();
     const { toast } = useToast();
     const queryClient = useQueryClient();
-    const [successData, setSuccessData] = useState<any | null>(null);
+    const [successData, setSuccessData] = useState<SuccessData | null>(null);
     const isEditMode = !!id;
     // Shared open states for the reusable upload modal.
     const [isImageUploadOpen, setIsImageUploadOpen] = useState(false);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [draftAttachmentGroupId] = useState(() => `mass-booking-draft-${Date.now()}`);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const [multipleBookings, setMultipleBookings] = useState<any[]>([
+    const [multipleBookings, setMultipleBookings] = useState<MultipleBookingDraft[]>([
         {
             booking_date: new Date(),
             mass_schedule_id: "",
@@ -290,35 +320,56 @@ const MassBookingFormPage = () => {
     // Create Mutation
     const createMutation = useMutation({
         mutationFn: async (data: FormValues) => {
-            const formattedDate = format(data.booking_date, "yyyy-MM-dd");
-            return massBookingService.createGuest(data.mass_schedule_id, {
-                booking_date: formattedDate,
-                intention: data.intention,
-                offered_by: data.offered_by || undefined,
+            const bookings = data.schedule_type === 'single'
+                ? [{
+                    booking_date: format(data.booking_date, "yyyy-MM-dd"),
+                    mass_schedule_id: data.mass_schedule_id
+                }]
+                : data.multipleBookings?.map(b => ({
+                    booking_date: format(b.booking_date, "yyyy-MM-dd"),
+                    mass_schedule_id: b.mass_schedule_id
+                })) || [];
+
+            const payload = {
+                mode: data.mode,
+                user_id: data.mode === 'parishioner' ? data.user_id : undefined,
                 guest_name: data.mode === 'guest' ? data.guest_name : undefined,
                 guest_email: data.mode === 'guest' ? data.guest_email : undefined,
                 guest_phone: data.mode === 'guest' ? data.guest_phone : undefined,
-                user_id: data.mode === 'parishioner' ? data.user_id : undefined,
-                // Pass extra fields if backend accepts them, otherwise they'll be ignored or need backend update
-                // payment_status: data.payment_status, 
-                // amount: data.amount,
-                // currency: data.currency
-            });
+                intention: data.intention,
+                offered_by: data.offered_by || undefined,
+                amount: data.amount,
+                currency: data.currency,
+                payment_status: data.payment_status,
+                payment_method: data.payment_status === 'paid' ? data.payment_method : undefined,
+                payment_date: data.payment_status === 'paid' && data.payment_date ? format(data.payment_date, "yyyy-MM-dd HH:mm:ss") : undefined,
+                payment_evidence: data.payment_status === 'paid' ? data.payment_evidence : undefined,
+                bookings,
+                metadata: {
+                    schedule_type: data.schedule_type
+                }
+            };
+
+            return massBookingService.bulkStore(payload);
         },
         onSuccess: (response, variables) => {
+            setIsSubmitting(false);
             toast({
-                title: "Booking Created",
-                description: "The mass booking has been successfully recorded.",
+                title: "Bookings Created",
+                description: `Successfully created ${response.data.length} mass booking(s).`,
             });
             queryClient.invalidateQueries({ queryKey: ["admin-mass-bookings"] });
 
             // Set success data for receipt view
             setSuccessData({
-                ...response.data,
-                schedule_title: schedules.find(s => s.id === variables.mass_schedule_id)?.title,
-                schedule_time: schedules.find(s => s.id === variables.mass_schedule_id)?.start_time,
-                amount: variables.amount,
+                bookings: response.data,
+                total_amount: variables.amount,
                 currency: variables.currency,
+                guest_name: variables.guest_name,
+                guest_email: variables.guest_email,
+                guest_phone: variables.guest_phone,
+                mode: variables.mode,
+                user_id: variables.user_id,
             });
         },
         onError: (error: Error) => {
@@ -327,10 +378,13 @@ const MassBookingFormPage = () => {
                 description: error.message || "Failed to create booking",
                 variant: "destructive",
             });
+            setIsSubmitting(false);
         },
     });
 
     const onSubmit = (data: FormValues) => {
+        console.log('FORM DATA: ', data);
+        setIsSubmitting(true);
         createMutation.mutate(data);
     };
 
@@ -339,6 +393,7 @@ const MassBookingFormPage = () => {
     };
 
     const handleReset = () => {
+        setIsSubmitting(false);
         setSuccessData(null);
         form.reset({
             schedule_type: "single",
@@ -411,35 +466,38 @@ const MassBookingFormPage = () => {
 
                         <div className="border rounded-lg p-6 bg-muted/30 print:bg-transparent print:border">
                             <h3 className="font-semibold mb-4 text-lg border-b pb-2">Booking Details</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8">
-                                <div>
-                                    <span className="text-sm text-muted-foreground">Mass Schedule</span>
-                                    <p className="font-medium">{successData.schedule_title || "Standard Mass"}</p>
-                                    <p className="text-sm text-muted-foreground">{successData.schedule_time}</p>
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {successData.bookings.map((booking: SuccessBooking, idx: number) => (
+                                        <div key={idx} className="border-b pb-2 last:border-0 last:pb-0">
+                                            <span className="text-sm text-muted-foreground uppercase text-[10px]">Booking {idx + 1}</span>
+                                            <p className="font-medium">{booking.mass_schedule?.title || "Standard Mass"}</p>
+                                            <div className="flex justify-between text-sm">
+                                                <span>{format(new Date(booking.booking_date), "PPP")}</span>
+                                                <span className="text-muted-foreground">{booking.mass_schedule?.start_time}</span>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
-                                <div>
-                                    <span className="text-sm text-muted-foreground">Requested Date</span>
-                                    <p className="font-medium run-in">{format(new Date(successData.booking_date), "PPP")}</p>
-                                </div>
-                                <div className="md:col-span-2">
+                                <div className="pt-2">
                                     <span className="text-sm text-muted-foreground">Intention</span>
-                                    <p className="font-medium italic">"{successData.intention}"</p>
+                                    <p className="font-medium italic">"{successData.bookings[0]?.intention}"</p>
                                 </div>
-                                {successData.offered_by && (
-                                    <div className="md:col-span-2">
+                                {successData.bookings[0]?.offered_by && (
+                                    <div>
                                         <span className="text-sm text-muted-foreground">Offered By</span>
-                                        <p className="font-medium">{successData.offered_by}</p>
+                                        <p className="font-medium">{successData.bookings[0]?.offered_by}</p>
                                     </div>
                                 )}
                             </div>
                         </div>
 
                         {/* Amount Paid Section */}
-                        {(successData.amount !== null && successData.amount !== undefined) && (
+                        {(successData.total_amount !== null && successData.total_amount !== undefined) && (
                             <div className="flex justify-between items-center border-t border-b py-4">
-                                <span className="font-bold text-lg">Amount Paid</span>
+                                <span className="font-bold text-lg">Total offering</span>
                                 <span className="font-mono text-xl font-bold">
-                                    {new Intl.NumberFormat("en-NG", { style: "currency", currency: successData.currency || "NGN" }).format(successData.amount)}
+                                    {new Intl.NumberFormat("en-NG", { style: "currency", currency: successData.currency || "NGN" }).format(successData.total_amount)}
                                 </span>
                             </div>
                         )}
@@ -450,7 +508,12 @@ const MassBookingFormPage = () => {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <span className="text-sm text-muted-foreground">Name</span>
-                                    <p className="font-medium">{successData.guest_name || "(Parishioner)"}</p>
+                                    <p className="font-medium">
+                                        {successData.mode === 'parishioner'
+                                            ? parishioners.find(p => p.id === successData.user_id)?.name || "Parishioner"
+                                            : successData.guest_name || "Guest"
+                                        }
+                                    </p>
                                 </div>
                                 {successData.guest_email && (
                                     <div>
@@ -515,7 +578,7 @@ const MassBookingFormPage = () => {
                     </Button>
                     <div>
                         <h1 className="text-2xl font-bold font-heading">New Mass Booking</h1>
-                        <p className="text-muted-foreground">Create a booking request on behalf of a donor.</p>
+                        <p className="text-muted-foreground">Create mass booking requests (Single or Multiple).</p>
                     </div>
                 </div>
             </div>
@@ -688,7 +751,7 @@ const MassBookingFormPage = () => {
                                 {form.getValues("schedule_type") === 'multiple' && (<div className="grid grid-cols-1 md:grid-cols-1 gap-4 rounded-md">
                                     {/* Create a dynamic input form. Users should be able to click and add a new item */}
                                     {/* For each added item, select date, amount, and automatically calculate total number of days */}
-                                    {form.getValues("schedule_type") === 'multiple' && multipleBookings.map((booking: any, index: number) => (
+                                    {form.getValues("schedule_type") === 'multiple' && multipleBookings.map((booking: MultipleBookingDraft, index: number) => (
                                         <div key={index + '-multiple-booking'} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 gap-4 bg-primary/10 p-4 rounded-md">
                                             <FormField
                                                 control={form.control}
@@ -842,11 +905,11 @@ const MassBookingFormPage = () => {
                                                 control={form.control}
                                                 name="amount"
                                                 render={({ field }) => (
-                                                    <Input
-                                                        type="number"
+                                                    <AmountInput
+                                                        currency={form.watch("currency") || "NGN"}
+                                                        value={typeof field.value === "number" ? field.value : null}
+                                                        onValueChange={(next) => field.onChange(next)}
                                                         placeholder="0.00"
-                                                        value={field.value ?? ""}
-                                                        onChange={(e) => field.onChange(e.target.valueAsNumber || null)}
                                                     />
                                                 )}
                                             />
@@ -948,7 +1011,7 @@ const MassBookingFormPage = () => {
                                                                 size="icon"
                                                                 className="absolute top-2 right-2"
                                                                 onClick={removeImage}
-                                                                disabled={createMutation.isPending}
+                                                                disabled={isSubmitting}
                                                             >
                                                                 <X className="h-4 w-4" />
                                                             </Button>
@@ -964,7 +1027,7 @@ const MassBookingFormPage = () => {
                                                                 variant="outline"
                                                                 size="sm"
                                                                 onClick={() => setIsImageUploadOpen(true)}
-                                                                disabled={createMutation.isPending}
+                                                                disabled={isSubmitting}
                                                             >
                                                                 Upload Payment Evidence
                                                             </Button>
@@ -994,12 +1057,12 @@ const MassBookingFormPage = () => {
                             <CardContent className="p-4 space-y-2">
                                 <Button
                                     type="submit"
-                                    disabled={createMutation.isPending}
+                                    disabled={isSubmitting}
                                     className="w-full"
                                     size="lg"
                                 >
                                     <Save className="mr-2 h-5 w-5" />
-                                    {createMutation.isPending
+                                    {isSubmitting
                                         ? isEditMode
                                             ? "Updating..."
                                             : "Creating..."
@@ -1011,7 +1074,7 @@ const MassBookingFormPage = () => {
                                     variant="outline"
                                     type="button"
                                     onClick={() => navigate("/admin/mass-bookings")}
-                                    disabled={createMutation.isPending}
+                                    disabled={isSubmitting}
                                     className="w-full"
                                 >
                                     Cancel

@@ -9,11 +9,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import siteSettingService, { SiteSetting, SiteSettingType } from "@/services/siteSetting.service";
 import rbacService, { Permission, Role } from "@/services/rbac.service";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DonationAccountSettings } from "@/components/admin/settings/DonationAccountSettings";
+import { Eye, EyeOff, AlertTriangle, Save } from "lucide-react";
 
 type SectionKey = "general" | "account_payment" | "system" | "roles_permissions";
 
@@ -115,6 +117,8 @@ function groupPermissions(perms: Permission[]) {
 const AdminSettings = () => {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { isSuperAdmin } = useAuth();
+  const canManageRoles = isSuperAdmin();
   const [activeTab, setActiveTab] = useState<SectionKey>("general");
 
   const settingsQuery = useQuery({
@@ -122,21 +126,27 @@ const AdminSettings = () => {
     queryFn: () => siteSettingService.list(),
   });
 
-  // Memoize to avoid changing dependencies caused by `settingsQuery.data?.data ?? []` expression.
-  const settings: SiteSetting[] = useMemo(() => settingsQuery.data?.data ?? [], [settingsQuery.data]);
+  // Handle both flat array and grouped record from backend
+  const allSettings: SiteSetting[] = useMemo(() => {
+    const rawData = settingsQuery.data?.data;
+    if (!rawData) return [];
+    if (Array.isArray(rawData)) return rawData;
+    // Flatten grouped record
+    return Object.values(rawData).flat();
+  }, [settingsQuery.data]);
 
   // Roles & Permissions (optional / deployment-dependent)
   const rolesQuery = useQuery({
     queryKey: ["admin-rbac-roles"],
     queryFn: () => rbacService.listRoles(),
-    enabled: activeTab === "roles_permissions",
+    enabled: canManageRoles && activeTab === "roles_permissions",
     retry: false,
   });
 
   const permissionsQuery = useQuery({
     queryKey: ["admin-rbac-permissions"],
     queryFn: () => rbacService.listPermissions(),
-    enabled: activeTab === "roles_permissions",
+    enabled: canManageRoles && activeTab === "roles_permissions",
     retry: false,
   });
 
@@ -223,14 +233,22 @@ const AdminSettings = () => {
       account_payment: [],
       system: [],
     };
-    settings.forEach((s) => {
-      map[inferSection(s)].push(s);
+
+    allSettings.forEach((s) => {
+      const section = inferSection(s);
+      if (map[section]) {
+        map[section].push(s);
+      } else {
+        // Fallback for unexpected groups
+        map.general.push(s);
+      }
     });
+
     (Object.keys(map) as SectionKey[]).forEach((k) => {
       map[k].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
     });
     return map;
-  }, [settings]);
+  }, [allSettings]);
 
   const [draft, setDraft] = useState<Record<string, unknown>>({});
 
@@ -240,13 +258,24 @@ const AdminSettings = () => {
   };
 
   const setDraftValue = (key: string, value: unknown) => {
+    // Check if value is actually different from current
+    const setting = allSettings.find(s => s.key === key);
+    if (setting) {
+      const current = coerceValue(setting.type, setting.value);
+      if (current === value) {
+        const nextDraft = { ...draft };
+        delete nextDraft[key];
+        setDraft(nextDraft);
+        return;
+      }
+    }
     setDraft((prev) => ({ ...prev, [key]: value }));
   };
 
   const bulkSaveMutation = useMutation({
     mutationFn: async (keys: string[]) => {
       const payload = keys.map((key) => {
-        const setting = settings.find((s) => s.key === key);
+        const setting = allSettings.find((s) => s.key === key);
         const type = setting?.type ?? "string";
         return { key, value: stringifyValue(type, draft[key]) };
       });
@@ -267,15 +296,22 @@ const AdminSettings = () => {
     const keys = Object.keys(draft);
     const by: Record<SectionKey, string[]> = { general: [], account_payment: [], system: [] };
     for (const k of keys) {
-      const setting = settings.find((s) => s.key === k);
+      const setting = allSettings.find((s) => s.key === k);
       if (!setting) continue;
       by[inferSection(setting)].push(k);
     }
     return by;
-  }, [draft, settings]);
+  }, [draft, allSettings]);
+
+  const [visibleKeys, setVisibleKeys] = useState<Record<string, boolean>>({});
+
+  const toggleVisibility = (key: string) => {
+    setVisibleKeys((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const renderSettingInput = (s: SiteSetting) => {
     const value = getDraft(s);
+    const sensitive = isSensitive(s);
 
     if (s.type === "boolean") {
       return (
@@ -323,7 +359,23 @@ const AdminSettings = () => {
     return (
       <div className="space-y-2">
         <Label>{s.label}</Label>
-        <Input value={String(value)} onChange={(e) => setDraftValue(s.key, e.target.value)} />
+        <div className="relative">
+          <Input
+            type={sensitive && !visibleKeys[s.key] ? "password" : "text"}
+            value={String(value)}
+            onChange={(e) => setDraftValue(s.key, e.target.value)}
+            className={sensitive ? "pr-10" : ""}
+          />
+          {sensitive && (
+            <button
+              type="button"
+              onClick={() => toggleVisibility(s.key)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              {visibleKeys[s.key] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          )}
+        </div>
         {s.type === "image" && String(value) ? (
           <div className="rounded-lg border overflow-hidden">
             <img src={String(value)} alt={s.label} className="w-full h-40 object-cover" />
@@ -376,13 +428,22 @@ const AdminSettings = () => {
             )}
 
             <div className="flex flex-col sm:flex-row gap-2 justify-end">
+              {changedKeys.length > 0 && (
+                <Button variant="ghost" onClick={() => {
+                  const nextDraft = { ...draft };
+                  changedKeys.forEach(k => delete nextDraft[k]);
+                  setDraft(nextDraft);
+                }}>
+                  Discard Changes
+                </Button>
+              )}
               <Button
                 className="gap-2"
                 disabled={bulkSaveMutation.isPending || changedKeys.length === 0}
                 onClick={() => bulkSaveMutation.mutate(changedKeys)}
               >
                 <Save className="h-4 w-4" />
-                {bulkSaveMutation.isPending ? "Saving..." : changedKeys.length ? `Save (${changedKeys.length})` : "Saved"}
+                {bulkSaveMutation.isPending ? "Saving..." : changedKeys.length ? `Save Changes (${changedKeys.length})` : "Saved"}
               </Button>
             </div>
           </CardContent>
@@ -521,16 +582,42 @@ const AdminSettings = () => {
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as SectionKey)} className="space-y-6">
         <TabsList>
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="account_payment">Account & Payment</TabsTrigger>
-          <TabsTrigger value="system">System Preferences</TabsTrigger>
-          <TabsTrigger value="roles_permissions">Roles & Permissions</TabsTrigger>
+          <TabsTrigger value="general" className="relative">
+            General
+            {changedKeysBySection.general.length > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
+                {changedKeysBySection.general.length}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="account_payment" className="relative">
+            Account & Payment
+            {changedKeysBySection.account_payment.length > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
+                {changedKeysBySection.account_payment.length}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="system" className="relative">
+            System Preferences
+            {changedKeysBySection.system.length > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
+                {changedKeysBySection.system.length}
+              </span>
+            )}
+          </TabsTrigger>
+          {canManageRoles && <TabsTrigger value="roles_permissions">Roles & Permissions</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="general">{renderSection("general")}</TabsContent>
-        <TabsContent value="account_payment">{renderSection("account_payment")}</TabsContent>
+        <TabsContent value="account_payment">
+          <div className="space-y-6">
+            {renderSection("account_payment")}
+            <DonationAccountSettings />
+          </div>
+        </TabsContent>
         <TabsContent value="system">{renderSection("system")}</TabsContent>
-        <TabsContent value="roles_permissions">{renderRolesPermissions()}</TabsContent>
+        {canManageRoles && <TabsContent value="roles_permissions">{renderRolesPermissions()}</TabsContent>}
       </Tabs>
     </div>
   );

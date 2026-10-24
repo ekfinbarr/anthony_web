@@ -145,7 +145,7 @@ const AdminContact = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-      <div>
+        <div>
           <h1 className="text-3xl font-heading font-bold text-foreground">Contact Messages</h1>
           <p className="text-muted-foreground mt-1">View and respond to messages from website visitors.</p>
         </div>
@@ -192,16 +192,16 @@ const AdminContact = () => {
         </Card>
 
         <Card>
-            <CardHeader className="pb-2">
+          <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Avg Response (hrs)</CardTitle>
-            </CardHeader>
-            <CardContent>
+          </CardHeader>
+          <CardContent>
             <div className="text-2xl font-bold">
               {statsQuery.isLoading ? <Skeleton className="h-8 w-16" /> : Math.round(statsQuery.data?.data.response_time?.avg_hours ?? 0)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">Based on replied messages</p>
-            </CardContent>
-          </Card>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}
@@ -319,39 +319,43 @@ const AdminContact = () => {
           ) : (
             <>
               <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Sender</TableHead>
-              <TableHead>Subject</TableHead>
-              <TableHead>Status</TableHead>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Sender</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Subject</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead>Received</TableHead>
                       <TableHead className="w-[80px] text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {(listQuery.data?.data ?? []).map((m) => (
                       <TableRow key={m.id} className={m.status === "new" ? "bg-muted/50" : "hover:bg-muted/50"}>
-                <TableCell>
-                  <div>
+                        <TableCell>
+                          <div>
                             <div className="font-medium">{m.name}</div>
                             <div className="text-sm text-muted-foreground">{m.email}</div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                          <div className={m.status === "new" ? "font-semibold" : "font-medium"}>{m.subject || "—"}</div>
-                          <div className="text-sm text-muted-foreground truncate max-w-[420px]">{m.message}</div>
-                </TableCell>
-                <TableCell>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="capitalize text-xs px-2 py-1 rounded-full bg-muted">{m.type.replace('_', ' ')}</span>
+                        </TableCell>
+                        <TableCell>
+                          <div className={!m.is_read ? "font-semibold" : "font-medium"}>{m.subject || "—"}</div>
+                          <div className="text-sm text-muted-foreground truncate max-w-[300px]">{m.message}</div>
+                        </TableCell>
+                        <TableCell>
                           <StatusBadge
                             status={
                               m.status === "replied"
                                 ? "approved"
                                 : m.status === "read"
-                                ? "active"
-                                : m.status === "archived"
-                                ? "inactive"
-                                : "pending"
+                                  ? "active"
+                                  : m.status === "archived"
+                                    ? "inactive"
+                                    : "pending"
                             }
                             customLabel={m.status}
                           />
@@ -363,7 +367,7 @@ const AdminContact = () => {
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
-                  <DropdownMenu>
+                          <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" aria-label="Message actions">
                                 <MoreVertical className="h-4 w-4" />
@@ -379,10 +383,27 @@ const AdminContact = () => {
                                 <Eye className="mr-2 h-4 w-4" />
                                 View Details
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => markReadMutation.mutate(m.id)}>
-                                <MailOpen className="mr-2 h-4 w-4" />
-                                Mark as Read
-                              </DropdownMenuItem>
+                              {!m.is_read && (
+                                <DropdownMenuItem onClick={() => markReadMutation.mutate(m.id)}>
+                                  <MailOpen className="mr-2 h-4 w-4" />
+                                  Mark as Read
+                                </DropdownMenuItem>
+                              )}
+                              {m.status !== 'resolved' && (
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    // Using reply mutation as a proxy for resolving with a note
+                                    replyMutation.mutate({
+                                      id: m.id,
+                                      reply_message: "Marked as resolved internally.",
+                                      reply_subject: "Resolved"
+                                    });
+                                  }}
+                                >
+                                  <Check className="mr-2 h-4 w-4" />
+                                  Mark as Resolved
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuItem
                                 onClick={() => {
                                   setSelectedId(m.id);
@@ -405,13 +426,13 @@ const AdminContact = () => {
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Delete
                               </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
 
               <div className="mt-6 flex items-center justify-between">
@@ -464,10 +485,10 @@ const AdminContact = () => {
                     selectedMessage.status === "replied"
                       ? "approved"
                       : selectedMessage.status === "read"
-                      ? "active"
-                      : selectedMessage.status === "archived"
-                      ? "inactive"
-                      : "pending"
+                        ? "active"
+                        : selectedMessage.status === "archived"
+                          ? "inactive"
+                          : "pending"
                   }
                   customLabel={selectedMessage.status}
                 />
@@ -476,9 +497,9 @@ const AdminContact = () => {
               <div className="flex flex-col sm:flex-row gap-4 text-sm text-muted-foreground">
                 {selectedMessage.phone ? (
                   <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4" />
-                  {selectedMessage.phone}
-                </div>
+                    <Phone className="h-4 w-4" />
+                    {selectedMessage.phone}
+                  </div>
                 ) : null}
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
@@ -541,7 +562,7 @@ const AdminContact = () => {
               <div className="text-sm font-medium">
                 Message <span className="text-destructive">*</span>
               </div>
-              <Textarea value={replyMessage} onChange={(e) => setReplyMessage(e.target.value)} rows={8} placeholder="Write your reply..." />
+              <Textarea value={replyMessage} onChange={(e) => setReplyMessage(e.target.value)} rows={8} placeholder="Write your reply..." required aria-required />
               <div className="text-xs text-muted-foreground">{replyMessage.length} characters</div>
             </div>
           </div>
@@ -562,7 +583,7 @@ const AdminContact = () => {
                   reply_subject: replySubject.trim() || undefined,
                 });
               }}
-              disabled={replyMutation.isPending}
+              disabled={replyMutation.isPending || !replyMessage.trim()}
             >
               {replyMutation.isPending ? "Sending..." : "Send Reply"}
             </Button>

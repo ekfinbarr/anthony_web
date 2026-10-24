@@ -25,7 +25,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -39,7 +38,6 @@ import {
   ArrowLeft,
   BookOpen,
   User,
-  Calendar as CalendarIcon,
   Link as LinkIcon,
   FileText,
   Image as ImageIcon,
@@ -47,17 +45,22 @@ import {
   Clock,
   Tag,
   Layers,
-  AlertCircle
+  Upload,
+  Music,
+  Video,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import sermonService, { Sermon, CreateSermonPayload, UpdateSermonPayload } from "@/services/sermon.service";
+import sermonService, { CreateSermonPayload, UpdateSermonPayload } from "@/services/sermon.service";
 import categoryService from "@/services/category.service";
 import tagService from "@/services/tag.service";
+import attachmentService from "@/services/attachment.service";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { DatePicker } from "@/components/ui/date-picker";
 import AttachmentUploadModal from "@/components/attachments/AttachmentUploadModal";
 import { format } from "date-fns";
+
+type MediaUploadTarget = "thumbnail" | "audio" | "video" | "notes";
 
 const SermonFormPage = () => {
   const navigate = useNavigate();
@@ -94,7 +97,7 @@ const SermonFormPage = () => {
    * Draft attachment group id for new sermons
    */
   const [draftAttachmentGroupId] = useState(() => `sermon-draft-${Date.now()}`);
-  const [isImageUploadOpen, setIsImageUploadOpen] = useState(false);
+  const [mediaUploadTarget, setMediaUploadTarget] = useState<MediaUploadTarget | null>(null);
 
   // Fetch sermon if editing
   const { data: sermonData, isLoading: isLoadingSermon } = useQuery({
@@ -114,11 +117,21 @@ const SermonFormPage = () => {
     queryFn: () => tagService.list({ active: true }),
   });
 
+  const { data: seriesSuggestions = [] } = useQuery({
+    queryKey: ["sermons", "series", "form"],
+    queryFn: () => sermonService.getSeries(),
+  });
+
+  const { data: speakerSuggestions = [] } = useQuery({
+    queryKey: ["sermons", "speakers", "form"],
+    queryFn: () => sermonService.getSpeakers(),
+  });
+
   // Initialize form data
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (isEditMode && sermonData) {
-        const sermon = {...sermonData?.data}
+        const sermon = sermonData;
         setFormData({
           title: sermon.title || "",
           slug: sermon.slug || "",
@@ -135,8 +148,8 @@ const SermonFormPage = () => {
           description: sermon.description || "",
           is_featured: sermon.is_featured ?? false,
           is_published: sermon.is_published ?? true,
-          category_ids: (sermon.categories || []).map((c: any) => c.id),
-          tag_ids: (sermon.tags || []).map((t: any) => t.id),
+          category_ids: (sermon.categories || []).map((c: { id: string }) => c.id),
+          tag_ids: (sermon.tags || []).map((t: { id: string }) => t.id),
         });
         setImagePreview(sermon.thumbnail_url || null);
         setAutoGenerateSlug(false);
@@ -185,7 +198,15 @@ const SermonFormPage = () => {
 
   // Create mutation
   const createMutation = useMutation({
-    mutationFn: (data: CreateSermonPayload) => sermonService.create(data),
+    mutationFn: async (data: CreateSermonPayload) => {
+      const created = await sermonService.create(data);
+      try {
+        await attachmentService.rebind("sermon", draftAttachmentGroupId, created.id);
+      } catch {
+        // Non-blocking: URLs are already stored on the sermon
+      }
+      return created;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sermons"] });
       toast({
@@ -227,9 +248,9 @@ const SermonFormPage = () => {
     },
   });
 
-  const handleInputChange = (
-    field: keyof typeof formData,
-    value: any
+  const handleInputChange = <K extends keyof typeof formData>(
+    field: K,
+    value: (typeof formData)[K]
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -253,6 +274,15 @@ const SermonFormPage = () => {
       toast({
         title: "Validation Error",
         description: "Speaker is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.preached_date || Number.isNaN(formData.preached_date.getTime())) {
+      toast({
+        title: "Validation Error",
+        description: "Preached date is required",
         variant: "destructive",
       });
       return;
@@ -409,12 +439,18 @@ const SermonFormPage = () => {
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="speaker"
+                      list="sermon-speaker-suggestions"
                       placeholder="e.g., Fr. Anthony"
                       value={formData.speaker}
                       onChange={(e) => handleInputChange("speaker", e.target.value)}
                       className="pl-9"
                       disabled={isSubmitting}
                     />
+                    <datalist id="sermon-speaker-suggestions">
+                      {speakerSuggestions.map((s) => (
+                        <option key={s} value={s} />
+                      ))}
+                    </datalist>
                   </div>
                 </div>
                 <div className="space-y-2 flex flex-col">
@@ -433,11 +469,17 @@ const SermonFormPage = () => {
                   <Label htmlFor="series">Sermon Series</Label>
                   <Input
                     id="series"
+                    list="sermon-series-suggestions"
                     placeholder="e.g., Lenten Reflections"
                     value={formData.series}
                     onChange={(e) => handleInputChange("series", e.target.value)}
                     disabled={isSubmitting}
                   />
+                  <datalist id="sermon-series-suggestions">
+                    {seriesSuggestions.map((s) => (
+                      <option key={s} value={s} />
+                    ))}
+                  </datalist>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="scripture_reference">Scripture Reference</Label>
@@ -495,51 +537,87 @@ const SermonFormPage = () => {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="audio_url">Audio URL</Label>
-                  <div className="relative">
-                    <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="audio_url"
-                      type="url"
-                      placeholder="https://..."
-                      value={formData.audio_url}
-                      onChange={(e) => handleInputChange("audio_url", e.target.value)}
-                      className="pl-9"
+                  <Label htmlFor="audio_url">Audio URL or upload</Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Music className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="audio_url"
+                        type="url"
+                        placeholder="https://... or upload a file"
+                        value={formData.audio_url}
+                        onChange={(e) => handleInputChange("audio_url", e.target.value)}
+                        className="pl-9"
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
                       disabled={isSubmitting}
-                    />
+                      onClick={() => setMediaUploadTarget("audio")}
+                      aria-label="Upload audio"
+                    >
+                      <Upload className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="video_url">Video URL</Label>
-                  <div className="relative">
-                    <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="video_url"
-                      type="url"
-                      placeholder="https://..."
-                      value={formData.video_url}
-                      onChange={(e) => handleInputChange("video_url", e.target.value)}
-                      className="pl-9"
+                  <Label htmlFor="video_url">Video URL or upload</Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Video className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="video_url"
+                        type="url"
+                        placeholder="YouTube, Vimeo, or upload"
+                        value={formData.video_url}
+                        onChange={(e) => handleInputChange("video_url", e.target.value)}
+                        className="pl-9"
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
                       disabled={isSubmitting}
-                    />
+                      onClick={() => setMediaUploadTarget("video")}
+                      aria-label="Upload video"
+                    >
+                      <Upload className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="notes_url">External Notes/PDF URL</Label>
-                  <div className="relative">
-                    <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="notes_url"
-                      type="url"
-                      placeholder="https://..."
-                      value={formData.notes_url}
-                      onChange={(e) => handleInputChange("notes_url", e.target.value)}
-                      className="pl-9"
+                  <Label htmlFor="notes_url">Notes / PDF URL or upload</Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="notes_url"
+                        type="url"
+                        placeholder="https://... or upload PDF"
+                        value={formData.notes_url}
+                        onChange={(e) => handleInputChange("notes_url", e.target.value)}
+                        className="pl-9"
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
                       disabled={isSubmitting}
-                    />
+                      onClick={() => setMediaUploadTarget("notes")}
+                      aria-label="Upload notes"
+                    >
+                      <Upload className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -573,16 +651,28 @@ const SermonFormPage = () => {
             <CardContent>
               {imagePreview ? (
                 <div className="relative group">
-                  <img
-                    src={imagePreview}
-                    alt="Thumbnail Preview"
-                    className="w-full aspect-video object-cover rounded-lg border shadow-sm"
-                  />
+                  <button
+                    type="button"
+                    className="block w-full"
+                    onClick={() => setMediaUploadTarget("thumbnail")}
+                    disabled={isSubmitting}
+                  >
+                    <img
+                      src={imagePreview}
+                      alt="Thumbnail Preview"
+                      className="w-full aspect-video object-cover rounded-lg border shadow-sm"
+                    />
+                    <span className="absolute inset-0 flex items-center justify-center rounded-lg bg-church-charcoal/50 opacity-0 transition-opacity group-hover:opacity-100">
+                      <span className="rounded-full bg-background px-3 py-1.5 text-xs font-medium shadow">
+                        Replace image
+                      </span>
+                    </span>
+                  </button>
                   <Button
                     type="button"
                     variant="destructive"
                     size="icon"
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={removeImage}
                     disabled={isSubmitting}
                   >
@@ -590,8 +680,10 @@ const SermonFormPage = () => {
                   </Button>
                 </div>
               ) : (
-                <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-muted/50 transition-colors cursor-pointer"
-                  onClick={() => setIsImageUploadOpen(true)}>
+                <div
+                  className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-muted/50 transition-colors cursor-pointer"
+                  onClick={() => setMediaUploadTarget("thumbnail")}
+                >
                   <ImageIcon className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
                   <p className="text-xs text-muted-foreground">
                     Click to upload sermon thumbnail
@@ -615,7 +707,7 @@ const SermonFormPage = () => {
                 </Label>
                 <MultiSelect
                   label={undefined}
-                  options={(categoriesQuery.data?.data || []).map((c: any) => ({
+                  options={(categoriesQuery.data?.data || []).map((c: { id: string; label: string; slug?: string }) => ({
                     value: c.id,
                     label: c.label,
                     description: c.slug,
@@ -634,7 +726,7 @@ const SermonFormPage = () => {
                 </Label>
                 <MultiSelect
                   label={undefined}
-                  options={(tagsQuery.data?.data || []).map((t: any) => ({
+                  options={(tagsQuery.data?.data || []).map((t: { id: string; label: string; slug?: string }) => ({
                     value: t.id,
                     label: t.label,
                     description: t.slug,
@@ -706,16 +798,14 @@ const SermonFormPage = () => {
                   ? isEditMode ? "Updating..." : "Creating..."
                   : isEditMode ? "Update Sermon" : "Create Sermon"}
               </Button>
-              {!isEditMode && (
-                <Button
-                  variant="secondary"
-                  onClick={() => handleSubmit(false)}
-                  disabled={isSubmitting}
-                  className="w-full"
-                >
-                  Save as Draft
-                </Button>
-              )}
+              <Button
+                variant="secondary"
+                onClick={() => handleSubmit(false)}
+                disabled={isSubmitting}
+                className="w-full"
+              >
+                Save as Draft
+              </Button>
               <Button
                 variant="outline"
                 onClick={() => navigate("/admin/sermons")}
@@ -729,10 +819,9 @@ const SermonFormPage = () => {
         </div>
       </div>
 
-      {/* Reusable Attachment Upload Modal for Thumbnail */}
       <AttachmentUploadModal
-        open={isImageUploadOpen}
-        onOpenChange={setIsImageUploadOpen}
+        open={mediaUploadTarget === "thumbnail"}
+        onOpenChange={(open) => !open && setMediaUploadTarget(null)}
         title="Upload Sermon Thumbnail"
         description="Upload an image to represent this sermon."
         relatedType="sermon"
@@ -741,6 +830,46 @@ const SermonFormPage = () => {
         onUploaded={(url) => {
           handleInputChange("thumbnail_url", url);
           setImagePreview(url);
+          setMediaUploadTarget(null);
+        }}
+      />
+      <AttachmentUploadModal
+        open={mediaUploadTarget === "audio"}
+        onOpenChange={(open) => !open && setMediaUploadTarget(null)}
+        title="Upload Sermon Audio"
+        description="Upload an audio file (mp3, m4a, wav)."
+        relatedType="sermon"
+        relatedId={isEditMode && id ? id : draftAttachmentGroupId}
+        kinds={["audio"]}
+        onUploaded={(url) => {
+          handleInputChange("audio_url", url);
+          setMediaUploadTarget(null);
+        }}
+      />
+      <AttachmentUploadModal
+        open={mediaUploadTarget === "video"}
+        onOpenChange={(open) => !open && setMediaUploadTarget(null)}
+        title="Upload Sermon Video"
+        description="Upload a video file, or paste a YouTube/Vimeo URL in the form field instead."
+        relatedType="sermon"
+        relatedId={isEditMode && id ? id : draftAttachmentGroupId}
+        kinds={["video"]}
+        onUploaded={(url) => {
+          handleInputChange("video_url", url);
+          setMediaUploadTarget(null);
+        }}
+      />
+      <AttachmentUploadModal
+        open={mediaUploadTarget === "notes"}
+        onOpenChange={(open) => !open && setMediaUploadTarget(null)}
+        title="Upload Sermon Notes"
+        description="Upload a PDF or document for downloadable notes."
+        relatedType="sermon"
+        relatedId={isEditMode && id ? id : draftAttachmentGroupId}
+        kinds={["file"]}
+        onUploaded={(url) => {
+          handleInputChange("notes_url", url);
+          setMediaUploadTarget(null);
         }}
       />
     </div>

@@ -15,18 +15,21 @@ import { apiClient, PaginatedResponse } from '../lib/apiClient';
 export interface Leadership {
   id: string;
   name: string;
-  role: string;
-  title?: string;
+  slug: string;
+  title: string;
+  position: string;
   bio?: string;
   email?: string;
   phone?: string;
-  avatar?: string;
-  department?: string;
+  image_url?: string;
+  qualifications?: string[];
+  ministries?: string[];
   start_date?: string;
   end_date?: string;
+  sort_order: number;
   is_active: boolean;
-  is_featured: boolean;
-  welcome_message?: string;
+  show_on_website: boolean;
+  is_current: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -36,18 +39,20 @@ export interface Leadership {
  */
 export interface CreateLeadershipPayload {
   name: string;
-  role: string;
-  title?: string;
+  slug?: string;
+  title: string;
+  position: string;
   bio?: string;
   email?: string;
   phone?: string;
-  avatar?: string;
-  department?: string;
+  image_url?: string;
+  qualifications?: string[];
+  ministries?: string[];
   start_date?: string;
   end_date?: string;
+  sort_order?: number;
   is_active?: boolean;
-  is_featured?: boolean;
-  welcome_message?: string;
+  show_on_website?: boolean;
 }
 
 /**
@@ -56,15 +61,22 @@ export interface CreateLeadershipPayload {
 export type UpdateLeadershipPayload = Partial<CreateLeadershipPayload>;
 
 /**
+ * Leadership Sort Order Item
+ */
+export interface LeadershipSortOrder {
+  id: string;
+  sort_order: number;
+}
+
+/**
  * Query Parameters
  */
 export interface LeadershipQueryParams {
   page?: number;
   per_page?: number;
-  role?: string;
-  is_active?: boolean;
-  is_featured?: boolean;
   search?: string;
+  public?: boolean;
+  [key: string]: string | number | boolean | undefined;
 }
 
 /**
@@ -131,6 +143,15 @@ export const getCurrent = async (): Promise<Leadership[]> => {
   return response.data;
 };
 
+/**
+ * Update sort order for leadership members
+ * 
+ * @param orders Array of sort order items
+ */
+export const updateOrder = async (orders: LeadershipSortOrder[]): Promise<void> => {
+  await apiClient.post('leadership/order', { orders });
+};
+
 // Export all functions as default object
 const leadershipService = {
   list,
@@ -139,6 +160,7 @@ const leadershipService = {
   update,
   remove,
   getCurrent,
+  updateOrder,
 };
 
 export default leadershipService;

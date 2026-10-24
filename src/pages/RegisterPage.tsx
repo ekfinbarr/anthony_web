@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { IsoDatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -212,12 +213,11 @@ const RegisterPage = () => {
                     <Calendar className="h-4 w-4" />
                     Date of Birth *
                   </Label>
-                  <Input
+                  <IsoDatePicker
                     id="dateOfBirth"
-                    type="date"
                     value={formData.dateOfBirth}
-                    onChange={(e) => handleInputChange("dateOfBirth", e.target.value)}
-                    required
+                    onChange={(value) => handleInputChange("dateOfBirth", value)}
+                    aria-required
                   />
                 </div>
 

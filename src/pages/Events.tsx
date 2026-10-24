@@ -1,306 +1,301 @@
-import { useState } from "react";
-import { Calendar, Clock, MapPin, Users, Filter, ChevronRight, Heart } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import bannerPhoto from "@/assets/images/church_banner.jpg";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { format, startOfMonth } from "date-fns";
+import { Skeleton } from "@/components/ui/skeleton";
+import PageHeader from "@/components/layout/PageHeader";
+import SEOHead from "@/components/seo/SEOHead";
+import EventCard from "@/components/events/EventCard";
+import EventsFeatured from "@/components/events/EventsFeatured";
+import EventsComingUp from "@/components/events/EventsComingUp";
+import EventsFilters from "@/components/events/EventsFilters";
+import EventsToolbar from "@/components/events/EventsToolbar";
+import EventsCalendar from "@/components/events/EventsCalendar";
+import EventsPastArchive from "@/components/events/EventsPastArchive";
+import EventsPagination from "@/components/events/EventsPagination";
+import EventsEmptyState from "@/components/events/EventsEmptyState";
+import eventService from "@/services/event.service";
+import categoryService from "@/services/category.service";
+import { relativeDateLabel } from "@/lib/events";
+import bannerPhoto from "@/assets/images/st_anthony.webp";
+
+const PER_PAGE = 12;
 
 const Events = () => {
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const events = [
-    {
-      id: 1,
-      title: "Annual Church Conference",
-      date: "November 18, 2024",
-      time: "9:00 AM - 4:00 PM",
-      location: "Main Sanctuary",
-      category: "Conference",
-      description: "Join us for our annual conference featuring inspiring speakers, workshops, and fellowship.",
-      attendees: 250,
-      image: bannerPhoto,
-      registration: true,
-    },
-    {
-      id: 2,
-      title: "Youth Worship Night",
-      date: "November 22, 2024",
-      time: "7:00 PM - 9:30 PM",
-      location: "Youth Hall",
-      category: "Youth",
-      description: "An evening of praise, worship, and fellowship designed for our youth community.",
-      attendees: 80,
-      image: bannerPhoto,
-      registration: false,
-    },
-    {
-      id: 3,
-      title: "Community Thanksgiving Dinner",
-      date: "November 28, 2024",
-      time: "5:00 PM - 8:00 PM",
-      location: "Fellowship Hall",
-      category: "Community",
-      description: "Share a traditional Thanksgiving meal with our church family and community.",
-      attendees: 150,
-      image: bannerPhoto,
-      registration: true,
-    },
-    {
-      id: 4,
-      title: "Women's Bible Study",
-      date: "December 2, 2024",
-      time: "10:00 AM - 12:00 PM",
-      location: "Room 201",
-      category: "Bible Study",
-      description: "Deep dive into scripture with fellowship and discussion for women of all ages.",
-      attendees: 30,
-      image: bannerPhoto,
-      registration: false,
-    },
-    {
-      id: 5,
-      title: "Christmas Carol Service",
-      date: "December 15, 2024",
-      time: "6:00 PM",
-      location: "Main Sanctuary",
-      category: "Worship",
-      description: "Celebrate the season with traditional carols and the Christmas story.",
-      attendees: 400,
-      image: bannerPhoto,
-      registration: false,
-    },
-    {
-      id: 6,
-      title: "Men's Prayer Breakfast",
-      date: "December 7, 2024",
-      time: "7:00 AM - 9:00 AM",
-      location: "Fellowship Hall",
-      category: "Fellowship",
-      description: "Start your Saturday with prayer, fellowship, and a hearty breakfast.",
-      attendees: 50,
-      image: bannerPhoto,
-      registration: true,
-    },
-  ];
+  const page = Math.max(1, Number(searchParams.get("page") || "1") || 1);
+  const qParam = searchParams.get("q") || "";
+  const category = searchParams.get("category") || "";
+  const timeframe = (searchParams.get("timeframe") || "upcoming") as "upcoming" | "past";
+  const sort = searchParams.get("sort") || "soonest";
+  const view = (searchParams.get("view") || "list") as "list" | "calendar";
+  const dateParam = searchParams.get("date") || "";
+  const yearParam = searchParams.get("year") || "";
 
-  const categories = ["All", "Conference", "Youth", "Community", "Bible Study", "Worship", "Fellowship"];
+  const [searchInput, setSearchInput] = useState(() => qParam);
+  const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(new Date()));
 
-  const filteredEvents = selectedCategory === "all" 
-    ? events 
-    : events.filter(event => event.category.toLowerCase() === selectedCategory.toLowerCase());
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      const next = searchInput.trim();
+      if (next === qParam) return;
+      setSearchParams(
+        (prev) => {
+          const params = new URLSearchParams(prev);
+          if (next) params.set("q", next);
+          else params.delete("q");
+          params.delete("page");
+          return params;
+        },
+        { replace: true },
+      );
+    }, 350);
+    return () => window.clearTimeout(handle);
+  }, [searchInput, qParam, setSearchParams]);
+
+  const updateParams = useCallback(
+    (patch: Record<string, string | null>, resetPage = true) => {
+      setSearchParams((prev) => {
+        const params = new URLSearchParams(prev);
+        Object.entries(patch).forEach(([key, value]) => {
+          if (value === null || value === "") params.delete(key);
+          else params.set(key, value);
+        });
+        if (resetPage) params.delete("page");
+        return params;
+      });
+    },
+    [setSearchParams],
+  );
+
+  const hasActiveFilters = Boolean(qParam || category || dateParam || yearParam || sort !== "soonest" || timeframe !== "upcoming");
+  const showFeatured = !hasActiveFilters && page === 1 && view === "list" && timeframe === "upcoming";
+
+  const categoriesQuery = useQuery({
+    queryKey: ["event-categories"],
+    queryFn: async () => {
+      const res = await categoryService.list({ active: true });
+      const all = res.data || [];
+      // Prefer children of "events" parent; fall back to event-like slugs
+      const eventChildren = all.filter((c) => {
+        const parent = all.find((p) => p.id === c.parent_id);
+        return parent?.slug === "events";
+      });
+      if (eventChildren.length) return eventChildren;
+      return all.filter((c) =>
+        /liturgical|spiritual|sacrament|parish-community|choir|youth|charity|workshop|other-parish|events/i.test(
+          c.slug,
+        ),
+      );
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const featuredQuery = useQuery({
+    queryKey: ["events", "featured"],
+    queryFn: () => eventService.getFeatured(),
+    enabled: showFeatured,
+    staleTime: 60 * 1000,
+  });
+
+  const listQuery = useQuery({
+    queryKey: ["events", "public", page, qParam, category, timeframe, sort, dateParam, yearParam],
+    queryFn: () =>
+      eventService.getPublic({
+        page,
+        per_page: PER_PAGE,
+        search: qParam || undefined,
+        category: category || undefined,
+        timeframe,
+        sort,
+        date: dateParam || undefined,
+        year: yearParam || undefined,
+      }),
+    enabled: view === "list",
+    staleTime: 60 * 1000,
+  });
+
+  const calendarQuery = useQuery({
+    queryKey: ["events", "calendar", calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, category, qParam],
+    queryFn: () =>
+      eventService.getCalendar({
+        year: calendarMonth.getFullYear(),
+        month: calendarMonth.getMonth() + 1,
+      }),
+    enabled: view === "calendar",
+    staleTime: 60 * 1000,
+  });
+
+  const pastPreviewQuery = useQuery({
+    queryKey: ["events", "past-preview", yearParam],
+    queryFn: () =>
+      eventService.getPublic({
+        timeframe: "past",
+        per_page: 6,
+        sort: "latest",
+        year: yearParam || undefined,
+      }),
+    enabled: view === "list" && timeframe === "upcoming" && !hasActiveFilters && page === 1,
+    staleTime: 60 * 1000,
+  });
+
+  const events = listQuery.data?.data ?? [];
+  const featured = featuredQuery.data;
+  const comingUp = useMemo(() => {
+    const source = events.filter((e) => e.id !== featured?.id).slice(0, 4);
+    return source;
+  }, [events, featured?.id]);
+
+  const grouped = useMemo(() => {
+    const groups: Record<string, typeof events> = {};
+    events.forEach((event) => {
+      if (featured && event.id === featured.id && showFeatured) return;
+      const label = timeframe === "past" ? "Past" : relativeDateLabel(event) || "Upcoming";
+      if (!groups[label]) groups[label] = [];
+      groups[label].push(event);
+    });
+    return groups;
+  }, [events, featured, showFeatured, timeframe]);
+
+  const pastYears = useMemo(() => {
+    const y = new Date().getFullYear();
+    return [y, y - 1, y - 2, y - 3];
+  }, []);
+
+  const clearFilters = () => {
+    setSearchInput("");
+    setSearchParams(new URLSearchParams());
+  };
 
   return (
-    <div>
-      {/* Hero Section */}
-      <section className="relative py-24 bg-gradient-dark text-church-pearl">
-        <div className="absolute inset-0 pattern-geometric" />
-        <div className="container mx-auto px-4 relative">
-          <h1 className="text-5xl font-heading font-bold mb-4 text-center">Upcoming Events</h1>
-          <p className="text-xl text-center max-w-3xl mx-auto text-church-pearl/90">
-            Join us for worship, fellowship, and community activities
-          </p>
+    <div className="min-h-screen bg-[#faf7f2]">
+      <SEOHead
+        title="Events & Celebrations"
+        description="Discover upcoming celebrations, spiritual gatherings, and community activities at St. Anthony Catholic Church, Gbaja. Find an event, mark your calendar, and join us."
+        path="/events"
+      />
+
+      <PageHeader
+        eyebrow="Life at St. Anthony"
+        title="Gather, Celebrate & Grow in Faith"
+        description="Discover upcoming celebrations, spiritual gatherings, and community activities at St. Anthony Catholic Church, Gbaja. Find an event, mark your calendar, and join us."
+        image={{ src: bannerPhoto, alt: "St. Anthony Catholic Church, Gbaja" }}
+        tone="dark"
+        size="compact"
+      />
+
+      <div className="container mx-auto max-w-6xl px-4 py-10 sm:py-14">
+        <div className="mb-8 space-y-5">
+          <EventsFilters
+            categories={(categoriesQuery.data || []).map((c) => ({ slug: c.slug, label: c.label }))}
+            value={category || "all"}
+            onChange={(slug) => updateParams({ category: slug || null })}
+          />
+          <EventsToolbar
+            search={searchInput}
+            onSearchChange={setSearchInput}
+            sort={sort}
+            onSortChange={(v) => updateParams({ sort: v })}
+            timeframe={timeframe}
+            onTimeframeChange={(v) => updateParams({ timeframe: v, year: v === "past" ? yearParam || null : null })}
+            view={view}
+            onViewChange={(v) => updateParams({ view: v === "list" ? null : v, date: null })}
+          />
         </div>
-      </section>
 
-      {/* Calendar View Toggle */}
-      <section className="py-12 bg-background">
-        <div className="container mx-auto px-4">
-          <div className="max-w-6xl mx-auto">
-            {/* Category Filters */}
-            <div className="flex flex-wrap gap-2 justify-center mb-8">
-              {categories.map((category) => (
-                <Button
-                  key={category}
-                  variant={selectedCategory === category.toLowerCase() ? "church" : "outline"}
-                  onClick={() => setSelectedCategory(category.toLowerCase())}
-                  className="capitalize"
-                >
-                  {category}
-                </Button>
-              ))}
-            </div>
-
-            {/* Featured Event */}
-            {filteredEvents.length > 0 && (
-              <Card className="mb-12 overflow-hidden">
-                <div className="grid lg:grid-cols-2">
-                  <img 
-                    src={filteredEvents[0].image} 
-                    alt={filteredEvents[0].title}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="p-8">
-                    <Badge className="mb-4 bg-gradient-church text-church-charcoal">Featured Event</Badge>
-                    <h2 className="text-3xl font-heading font-bold mb-4">{filteredEvents[0].title}</h2>
-                    <p className="text-muted-foreground mb-6">{filteredEvents[0].description}</p>
-                    <div className="space-y-3 mb-6">
-                      <div className="flex items-center">
-                        <Calendar className="h-5 w-5 text-primary mr-3" />
-                        <span>{filteredEvents[0].date}</span>
-                      </div>
-                      <div className="flex items-center">
-                        <Clock className="h-5 w-5 text-primary mr-3" />
-                        <span>{filteredEvents[0].time}</span>
-                      </div>
-                      <div className="flex items-center">
-                        <MapPin className="h-5 w-5 text-primary mr-3" />
-                        <span>{filteredEvents[0].location}</span>
-                      </div>
-                      <div className="flex items-center">
-                        <Users className="h-5 w-5 text-primary mr-3" />
-                        <span>{filteredEvents[0].attendees} Expected Attendees</span>
-                      </div>
-                    </div>
-                    {filteredEvents[0].registration && (
-                      <Button variant="church" size="lg" className="w-full md:w-auto">
-                        Register Now
-                        <ChevronRight className="ml-2" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </Card>
+        {view === "calendar" ? (
+          <EventsCalendar
+            month={calendarMonth}
+            onMonthChange={setCalendarMonth}
+            selectedDate={dateParam || null}
+            onSelectDate={(iso) => updateParams({ date: iso })}
+            events={calendarQuery.data || []}
+            isLoading={calendarQuery.isLoading}
+          />
+        ) : (
+          <>
+            {showFeatured && featuredQuery.isLoading && (
+              <Skeleton className="mb-14 h-72 w-full" />
+            )}
+            {showFeatured && featured && <EventsFeatured event={featured} />}
+            {showFeatured && !featured && !featuredQuery.isLoading && (
+              <div className="mb-10 border border-church-gold-warm/20 bg-white px-6 py-8 text-center">
+                <p className="font-serif text-lg text-church-charcoal">No upcoming events are scheduled yet.</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Explore{" "}
+                  <Link to="/calendar" className="text-church-gold-warm underline-offset-4 hover:underline">
+                    the parish calendar
+                  </Link>{" "}
+                  or browse past celebrations below.
+                </p>
+              </div>
             )}
 
-            {/* Events Grid */}
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredEvents.slice(1).map((event) => (
-                <Card key={event.id} className="overflow-hidden hover:shadow-xl transition-shadow">
-                  <img 
-                    src={event.image} 
-                    alt={event.title}
-                    className="w-full h-48 object-cover"
-                  />
-                  <CardHeader>
-                    <div className="flex items-center justify-between mb-2">
-                      <Badge variant="secondary" className="text-xs">
-                        {event.category}
-                      </Badge>
-                      {event.registration && (
-                        <span className="text-xs text-primary font-semibold">Registration Open</span>
-                      )}
+            {showFeatured && comingUp.length > 0 && <EventsComingUp events={comingUp} />}
+
+            {listQuery.isLoading && (
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <Skeleton key={i} className="h-72 w-full" />
+                ))}
+              </div>
+            )}
+
+            {listQuery.isError && (
+              <EventsEmptyState
+                title="We couldn’t load events"
+                description="Please try again in a moment. If the problem continues, contact the parish office."
+              />
+            )}
+
+            {!listQuery.isLoading && !listQuery.isError && events.length === 0 && (
+              <EventsEmptyState showClear={hasActiveFilters} onClear={clearFilters} />
+            )}
+
+            {!listQuery.isLoading && events.length > 0 && (
+              <div className="space-y-12">
+                {Object.entries(grouped).map(([label, items]) => (
+                  <section key={label} aria-labelledby={`group-${label}`}>
+                    <h2 id={`group-${label}`} className="mb-5 font-serif text-xl font-semibold text-church-charcoal">
+                      {label}
+                    </h2>
+                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                      {items.map((event) => (
+                        <EventCard key={event.id} event={event} past={timeframe === "past"} />
+                      ))}
                     </div>
-                    <CardTitle className="text-xl">{event.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-4">{event.description}</p>
-                    <div className="space-y-2">
-                      <div className="flex items-center text-sm">
-                        <Calendar className="h-4 w-4 text-primary mr-2" />
-                        <span>{event.date}</span>
-                      </div>
-                      <div className="flex items-center text-sm">
-                        <Clock className="h-4 w-4 text-primary mr-2" />
-                        <span>{event.time}</span>
-                      </div>
-                      <div className="flex items-center text-sm">
-                        <MapPin className="h-4 w-4 text-primary mr-2" />
-                        <span>{event.location}</span>
-                      </div>
-                    </div>
-                    <Button variant="link" className="p-0 mt-4 group">
-                      Learn More
-                      <ChevronRight className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
+                  </section>
+                ))}
+              </div>
+            )}
 
-      {/* Regular Activities */}
-      <section className="py-12 bg-church-pearl">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-heading font-bold text-church-charcoal mb-4">Regular Activities</h2>
-          <p className="text-lg text-church-charcoal/80 mb-8 max-w-2xl mx-auto">
-            We have weekly gatherings and activities for all ages. Everyone is welcome!
-          </p>
-          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            <Card className="p-6 hover:shadow-lg transition-shadow">
-              <Users className="h-12 w-12 text-primary mx-auto mb-4" />
-              <h3 className="font-heading font-semibold text-lg mb-2">Sunday Masses</h3>
-              <p className="text-sm text-muted-foreground">
-                9:00 AM & 11:00 AM - Main Sanctuary
-              </p>
-            </Card>
-            {/* Confession */}
-            <Card className="p-6 hover:shadow-lg transition-shadow">
-              <MapPin className="h-12 w-12 text-primary mx-auto mb-4" />
-              <h3 className="font-heading font-semibold text-lg mb-2">Confession</h3>
-              <p className="text-sm text-muted-foreground">
-                Saturdays 4:00 PM - 5:00 PM - Reconciliation Room
-              </p>
-            </Card>
-            {/* Adoration */}
-            <Card className="p-6 hover:shadow-lg transition-shadow">
-              <Heart className="h-12 w-12 text-primary mx-auto mb-4" />
-              <h3 className="font-heading font-semibold text-lg mb-2">Eucharistic Adoration</h3>
-              <p className="text-sm text-muted-foreground">
-                Fridays 9:00 AM - 6:00 PM - Chapel
-              </p>
-            </Card>
-            {/* Bible Studies */}
-            <Card className="p-6 hover:shadow-lg transition-shadow">
-              <Clock className="h-12 w-12 text-primary mx-auto mb-4" />
-              <h3 className="font-heading font-semibold text-lg mb-2">Wednesday Bible Study</h3>
-              <p className="text-sm text-muted-foreground">
-                7:00 PM - Room 101
-              </p>
-            </Card>
-            {/* Youth Group */}
-            <Card className="p-6 hover:shadow-lg transition-shadow">
-              <MapPin className="h-12 w-12 text-primary mx-auto mb-4" />
-              <h3 className="font-heading font-semibold text-lg mb-2">Youth Group</h3>
-              <p className="text-sm text-muted-foreground">
-                Fridays 6:30 PM - Youth Hall
-              </p>
-            </Card>
-            {/* Choir Practice */}
-            <Card className="p-6 hover:shadow-lg transition-shadow">
-              <Users className="h-12 w-12 text-primary mx-auto mb-4" />
-              <h3 className="font-heading font-semibold text-lg mb-2">Choir Practice</h3>
-              <p className="text-sm text-muted-foreground">
-                Thursdays 7:00 PM - Music Room
-              </p>
-            </Card>
-          </div>
-        </div>
-      </section>
+            <EventsPagination
+              page={listQuery.data?.current_page || page}
+              lastPage={listQuery.data?.last_page || 1}
+              total={listQuery.data?.total}
+              onPageChange={(p) => updateParams({ page: String(p) }, false)}
+            />
 
-      {/* Calendar Section */}
-      <section className="py-12 bg-church-pearl">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-heading font-bold text-center mb-8">Event Calendar</h2>
-          <Card className="max-w-4xl mx-auto p-8">
-            <div className="text-center text-muted-foreground">
-              <Calendar className="h-24 w-24 mx-auto mb-4 text-primary" />
-              <p className="text-lg">Full calendar view coming soon!</p>
-              <p className="mt-2">Subscribe to our calendar to stay updated on all events.</p>
-              <Button variant="church" className="mt-6">
-                Subscribe to Calendar
-              </Button>
-            </div>
-          </Card>
-        </div>
-      </section>
+            {view === "list" && timeframe === "upcoming" && !hasActiveFilters && page === 1 && (
+              <EventsPastArchive
+                events={pastPreviewQuery.data?.data || []}
+                year={yearParam}
+                years={pastYears}
+                onYearChange={(y) => updateParams({ timeframe: "past", year: y || null, sort: "latest" })}
+              />
+            )}
+          </>
+        )}
 
-      {/* CTA Section */}
-      <section className="py-12 bg-gradient-church">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-heading font-bold text-church-charcoal mb-4">
-            Want to Host an Event?
-          </h2>
-          <p className="text-lg text-church-charcoal/80 mb-6 max-w-2xl mx-auto">
-            We welcome community events that align with our mission. Contact us to discuss your event idea.
-          </p>
-          <Button variant="secondary" size="lg">
-            Contact Event Coordinator
-          </Button>
-        </div>
-      </section>
+        <p className="mt-12 text-center text-sm text-muted-foreground">
+          Looking for Mass times and liturgical observances?{" "}
+          <Link to="/calendar" className="font-medium text-church-gold-warm underline-offset-4 hover:underline">
+            Open the parish calendar
+          </Link>
+          .
+        </p>
+      </div>
     </div>
   );
 };

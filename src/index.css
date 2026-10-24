@@ -12,17 +12,22 @@ All colors MUST be HSL.
     --background: 0 0% 100%;
     --foreground: 0 0% 13%;
     
-    /* Church Brand Colors */
+    /* Church Brand Colors — warm soft gold (#ddae5c) / deep warm (#bc8653) */
     --church-charcoal: 0 0% 13%;
-    --church-gold: 43 96% 56%;
-    --church-gold-light: 43 96% 70%;
+    --church-gold: 38 66% 61%;
+    --church-gold-light: 38 70% 72%;
+    --church-gold-warm: 29 44% 53%;
+    --church-gold-soft: 38 66% 61%;
+    /* Cream Quick Access + deep livestream brown (#6a3b1f) */
+    --church-ivory: 36 48% 94%;
+    --church-brown: 22 55% 27%;
     --church-pearl: 30 20% 98%;
     --church-stone: 30 10% 94%;
     
-    /* Primary - Gold accent */
-    --primary: 43 96% 56%;
+    /* Primary — same soft gold used on CTAs */
+    --primary: 38 66% 61%;
     --primary-foreground: 0 0% 13%;
-    --primary-glow: 43 96% 70%;
+    --primary-glow: 29 44% 53%;
     
     /* Secondary - Charcoal */
     --secondary: 0 0% 13%;
@@ -41,9 +46,9 @@ All colors MUST be HSL.
     --muted-foreground: 0 0% 40%;
     
     /* Accent */
-    --accent: 43 96% 56%;
+    --accent: 38 66% 61%;
     --accent-foreground: 0 0% 13%;
-    --accent-gold: 43 96% 56%;
+    --accent-gold: 38 66% 61%;
     
     /* Destructive */
     --destructive: 0 84% 60%;
@@ -52,29 +57,30 @@ All colors MUST be HSL.
     /* Form Elements */
     --border: 30 10% 90%;
     --input: 30 10% 90%;
-    --ring: 43 96% 56%;
+    --ring: 38 66% 61%;
     
     --radius: 0.5rem;
     
     /* Sidebar */
     --sidebar-background: 0 0% 13%;
     --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 43 96% 56%;
+    --sidebar-primary: 38 66% 61%;
     --sidebar-primary-foreground: 0 0% 13%;
     --sidebar-accent: 0 0% 20%;
     --sidebar-accent-foreground: 0 0% 98%;
     --sidebar-border: 0 0% 25%;
-    --sidebar-ring: 43 96% 56%;
+    --sidebar-ring: 38 66% 61%;
     
-    /* Gradients */
-    --gradient-church: linear-gradient(135deg, hsl(43 96% 56%), hsl(43 96% 70%));
-    --gradient-gold: linear-gradient(180deg, hsl(43 96% 56%), hsl(43 96% 45%));
+    /* Gradients — soft gold → warm gold */
+    --gradient-church: linear-gradient(135deg, hsl(38 66% 61%), hsl(29 44% 53%));
+    --gradient-gold: linear-gradient(180deg, hsl(38 66% 61%), hsl(29 44% 53%));
     --gradient-dark: linear-gradient(180deg, hsl(0 0% 13%), hsl(0 0% 8%));
     
     /* Shadows */
-    --shadow-church: 0 10px 30px -10px hsl(43 96% 56% / 0.3);
-    --shadow-glow: 0 0 40px hsl(43 96% 70% / 0.4);
+    --shadow-church: 0 10px 30px -10px hsl(38 66% 61% / 0.35);
+    --shadow-glow: 0 0 36px hsl(38 66% 61% / 0.35);
     --shadow-card: 0 4px 20px hsl(0 0% 0% / 0.08);
+    --shadow-card-soft: 0 8px 28px hsl(22 40% 20% / 0.08);
     
     /* Transitions */
     --transition-base: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -181,10 +187,219 @@ All colors MUST be HSL.
   .card-hover {
     @apply transition-all duration-300 hover:scale-[1.02] hover:shadow-lg;
   }
+
+  /* Parish home: fade and rise when a section scrolls into view. */
+  .parish-reveal {
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+
+  .parish-reveal.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  .parish-reveal[data-reveal="left"] {
+    transform: translateX(-28px);
+  }
+
+  .parish-reveal[data-reveal="right"] {
+    transform: translateX(28px);
+  }
+
+  .parish-reveal[data-reveal].is-visible {
+    transform: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .parish-reveal,
+    .parish-reveal.is-visible,
+    .parish-reveal[data-reveal],
+    .parish-reveal[data-reveal].is-visible {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+
+    .parish-home .animate-fade-in,
+    .page-header .animate-fade-in {
+      animation: none;
+    }
+
+    .parish-icon-frame[data-animate="hover"] {
+      transition: none;
+    }
+  }
+
+  /* Welcome section: framed portrait on the left, message on the right, faint cross on large screens. */
+  .voices-section {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .voices-frame {
+    position: relative;
+    isolation: isolate;
+    border-radius: 0.75rem;
+    border: 1px solid hsl(var(--church-gold) / 0.65);
+    background: hsl(var(--background));
+    padding: 0.45rem;
+    box-shadow: 0 18px 40px -18px hsl(0 0% 13% / 0.32);
+    transition: transform 0.45s ease, box-shadow 0.45s ease;
+  }
+
+  .voices-frame::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: 0.7rem -0.7rem -0.7rem 0.7rem;
+    border-radius: 0.85rem;
+    background: hsl(var(--church-gold) / 0.28);
+  }
+
+  .voices-frame:hover,
+  .voices-frame:focus-within {
+    transform: translateY(-6px);
+    box-shadow:
+      0 22px 44px -16px hsl(var(--church-gold) / 0.38),
+      0 16px 36px -18px hsl(0 0% 13% / 0.28);
+  }
+
+  .voices-portrait-image {
+    display: block;
+    border-radius: 0.5rem;
+  }
+
+  .voices-ornament {
+    display: none;
+  }
+
+  .voices-cross {
+    width: 100%;
+    height: 100%;
+  }
+
+  .voices-ornament .parish-icon :is(.pi-rose, .pi-rose-dark, .pi-ray, .pi-ray-deep, .pi-host, .pi-host-shade) {
+    fill: hsl(var(--church-gold));
+  }
+
+  @media (min-width: 1024px) {
+    .voices-ornament {
+      display: block;
+      position: absolute;
+      z-index: 0;
+      top: 50%;
+      right: -1.5rem;
+      width: min(14rem, 16vw);
+      aspect-ratio: 1;
+      transform: translateY(-50%);
+      pointer-events: none;
+      opacity: 0.14;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .voices-frame,
+    .voices-frame:hover,
+    .voices-frame:focus-within {
+      transform: none;
+      transition: none;
+    }
+  }
+
+  /* Filled parish illustrations. One gold disc; artwork is ivory and charcoal only. */
+  .parish-icon {
+    overflow: visible;
+    --pi-disc: 38 82% 52%;
+    --pi-shadow: 30 28% 26%;
+    --pi-light: 40 36% 97%;
+    --pi-light-shade: 34 12% 84%;
+    --pi-mid: 32 8% 58%;
+    --pi-ink: 30 8% 20%;
+    --pi-ink-deep: 28 10% 12%;
+  }
+
+  .parish-icon .pi-disc {
+    fill: hsl(var(--pi-disc));
+  }
+
+  .parish-icon .pi-shadow {
+    fill: hsl(var(--pi-shadow) / 0.55);
+  }
+
+  .parish-icon .pi-pearl,
+  .parish-icon .pi-host,
+  .parish-icon .pi-page,
+  .parish-icon .pi-wax,
+  .parish-icon .pi-flame-core,
+  .parish-icon .pi-ray {
+    fill: hsl(var(--pi-light));
+  }
+
+  .parish-icon .pi-pearl-shade,
+  .parish-icon .pi-host-shade,
+  .parish-icon .pi-page-shade,
+  .parish-icon .pi-wax-shade,
+  .parish-icon .pi-skin {
+    fill: hsl(var(--pi-light-shade));
+  }
+
+  .parish-icon .pi-skin-shade,
+  .parish-icon .pi-ray-deep {
+    fill: hsl(var(--pi-mid));
+  }
+
+  .parish-icon .pi-roof,
+  .parish-icon .pi-glass,
+  .parish-icon .pi-gold,
+  .parish-icon .pi-rose,
+  .parish-icon .pi-flame,
+  .parish-icon .pi-hair,
+  .parish-icon .pi-ink {
+    fill: hsl(var(--pi-ink));
+  }
+
+  .parish-icon .pi-roof-dark,
+  .parish-icon .pi-glass-dark,
+  .parish-icon .pi-gold-deep,
+  .parish-icon .pi-rose-dark {
+    fill: hsl(var(--pi-ink-deep));
+  }
+
+  .parish-icon .pi-line {
+    fill: none;
+    stroke: hsl(var(--pi-ink) / 0.55);
+    stroke-width: 1.15;
+    stroke-linecap: round;
+  }
+
+  .parish-icon-frame[data-animate="hover"] {
+    transition: transform 0.25s ease;
+  }
+
+  .group:hover .parish-icon-frame[data-animate="hover"],
+  .parish-icon-frame[data-animate="hover"]:hover {
+    transform: scale(1.06);
+  }
+
+  /* Quick Access cards: monochrome brown glyphs on a soft peach disc (matches design) */
+  .quick-access-card .parish-icon {
+    --pi-light: 22 55% 27%;
+    --pi-light-shade: 22 48% 32%;
+    --pi-mid: 22 55% 27%;
+    --pi-ink: 22 55% 27%;
+    --pi-ink-deep: 22 60% 22%;
+  }
+
+  .quick-access-card .parish-icon .pi-line {
+    stroke: hsl(var(--church-brown) / 0.7);
+  }
   
-  /* Button Variants */
+  /* Button Variants — soft gold fill, warmer hover (matches livestream CTA) */
   .btn-church {
-    @apply bg-gradient-church text-foreground font-semibold hover:shadow-lg transition-all duration-300;
+    @apply bg-church-gold-soft text-church-charcoal font-semibold shadow-md transition-all duration-300 hover:bg-church-gold-warm hover:text-white active:scale-[0.98];
   }
   
   .btn-secondary {
@@ -192,7 +407,7 @@ All colors MUST be HSL.
   }
   
   .btn-outline-gold {
-    @apply border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-300;
+    @apply border-2 border-church-gold-soft text-church-gold-warm transition-all duration-300 hover:bg-church-gold-soft hover:text-church-charcoal;
   }
 }
 

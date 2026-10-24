@@ -1,17 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import { Scale, CheckCircle, ChevronRight } from "lucide-react";
+import { Scale, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 import legalDocumentService from "@/services/legalDocument.service";
+import PageHeader from "@/components/layout/PageHeader";
 
 const TERMS_SECTIONS = [
   { id: "acceptance", title: "Acceptance of Terms" },
@@ -39,17 +31,6 @@ const TermsOfService = () => {
 
   const sections = TERMS_SECTIONS;
 
-  useEffect(() => {
-    document.title = "Terms of Service | St. Anthony Catholic Church, Gbaja";
-    
-    const metaDescription = document.querySelector('meta[name="description"]');
-    if (metaDescription) {
-      metaDescription.setAttribute(
-        "content",
-        "Read our terms of service to understand the rules and guidelines for using the St. Anthony Catholic Church, Gbaja website and services."
-      );
-    }
-  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -114,46 +95,16 @@ const TermsOfService = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Breadcrumb */}
-      <section className="bg-church-pearl border-b">
-        <div className="container mx-auto px-4 py-4">
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink asChild>
-                  <Link to="/">Home</Link>
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator>
-                <ChevronRight className="h-4 w-4" />
-              </BreadcrumbSeparator>
-              <BreadcrumbItem>
-                <BreadcrumbPage>Terms of Service</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        </div>
-      </section>
-
-      {/* Hero Section */}
-      <section className="relative py-16 bg-gradient-to-r from-primary/10 via-primary/5 to-accent/10">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center">
-            <div className="flex items-center justify-center mb-4">
-              <Scale className="h-12 w-12 text-primary" />
-            </div>
-            <h1 className="text-4xl md:text-5xl font-heading font-bold mb-4 text-church-charcoal">
-              {remoteTitle}
-            </h1>
-            <p className="text-lg text-muted-foreground mb-6">
-              Please read these terms carefully before using our website and services.
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Last updated: <span className="font-semibold">{lastUpdated}</span>
-            </p>
-          </div>
-        </div>
-      </section>
+      <PageHeader
+        tone="light"
+        title={remoteTitle}
+        description="Please read these terms carefully before using our website and services."
+        icon={<Scale className="h-8 w-8 text-church-gold" aria-hidden="true" />}
+      >
+        <p className="text-sm text-church-pearl/90">
+          Last updated: <span className="font-semibold">{lastUpdated}</span>
+        </p>
+      </PageHeader>
 
       {/* Main Content */}
       <section className="py-12">

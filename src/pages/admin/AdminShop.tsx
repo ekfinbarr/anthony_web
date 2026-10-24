@@ -1,12 +1,9 @@
 /**
  * Admin Bookshop Management Page
- * 
- * Comprehensive admin dashboard for managing bookshop inventory with:
- * - List view with search, filters, and pagination
- * - Create/Edit functionality
- * - Product details view
- * - Delete with confirmation
- * 
+ *
+ * Internal catalog tooling (API-backed). The public /bookshop page is
+ * informational only and does not list products or prices from this admin.
+ *
  * @package Lovable/src/pages/admin
  */
 
@@ -39,15 +36,15 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { 
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-  PaginationEllipsis,
-} from "@/components/ui/pagination";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Plus, 
@@ -56,18 +53,23 @@ import {
   Eye, 
   Edit, 
   Trash2, 
-  ShoppingBag,
+  CheckCircle2,
   Package,
+  XCircle,
+  Upload,
+  ShoppingBag,
   DollarSign,
-  AlertCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import DeleteConfirmModal from "@/components/admin/shared/DeleteConfirmModal";
 import { StatusBadge } from "@/components/admin/shared/StatusBadge";
 import { GenericEmptyState } from "@/components/admin/shared/GenericEmptyState";
-import adminBookshopService, { BookshopProductAdmin } from "@/services/adminBookshop.service";
+import { CsvImportDialog } from "@/components/admin/shared/CsvImportDialog";
+import adminBookshopService, {
+  BookshopProductAdmin,
+  BookshopOrderAdmin,
+} from "@/services/adminBookshop.service";
 
-// Note: These interfaces should match your backend API
 interface Product {
   slug: string;
   name: string;
@@ -77,15 +79,6 @@ interface Product {
   status: "published" | "draft";
   featured: boolean;
   show_price: boolean;
-}
-
-interface Order {
-  id: string;
-  customer_name: string;
-  items_count: number;
-  total: number;
-  status: "pending" | "processing" | "completed" | "cancelled";
-  date: string;
 }
 
 const AdminShop = () => {
@@ -102,6 +95,13 @@ const AdminShop = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("products");
+  const [orderStatusFilter, setOrderStatusFilter] = useState<string>("all");
+  const [selectedOrder, setSelectedOrder] = useState<BookshopOrderAdmin | null>(null);
+  const [orderAction, setOrderAction] = useState<"confirm" | "ready" | "complete" | "cancel" | null>(null);
+  const [orderNotes, setOrderNotes] = useState("");
+  const [cancelReason, setCancelReason] = useState("");
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   /**
    * Products (admin)
@@ -137,8 +137,47 @@ const AdminShop = () => {
     });
   }, [productsQuery.data]);
 
-  // Orders (not wired yet; kept as placeholder)
-  const orders: Order[] = [];
+  const ordersQuery = useQuery({
+    queryKey: ["admin-bookshop-orders", orderStatusFilter],
+    queryFn: () =>
+      adminBookshopService.listOrders({
+        per_page: 50,
+        status: orderStatusFilter === "all" ? undefined : orderStatusFilter,
+      }),
+    enabled: activeTab === "orders",
+  });
+
+  const orders = (ordersQuery.data?.data || []) as BookshopOrderAdmin[];
+
+  const orderActionMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedOrder || !orderAction) throw new Error("No order selected");
+      const notes = orderNotes.trim() || undefined;
+      if (orderAction === "confirm") return adminBookshopService.confirmOrder(selectedOrder.id, { admin_notes: notes });
+      if (orderAction === "ready") return adminBookshopService.readyOrder(selectedOrder.id, { admin_notes: notes });
+      if (orderAction === "complete") return adminBookshopService.completeOrder(selectedOrder.id, { admin_notes: notes });
+      if (!cancelReason.trim()) throw new Error("Cancellation reason is required");
+      return adminBookshopService.cancelOrder(selectedOrder.id, {
+        admin_notes: notes,
+        cancelled_reason: cancelReason.trim(),
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Updated", description: "Order status updated." });
+      queryClient.invalidateQueries({ queryKey: ["admin-bookshop-orders"] });
+      setOrderAction(null);
+      setSelectedOrder(null);
+      setOrderNotes("");
+      setCancelReason("");
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update order",
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleCreate = () => {
     navigate("/admin/shop/new");
@@ -188,9 +227,14 @@ const AdminShop = () => {
             Manage liturgical items, books, and gift shop inventory.
           </p>
         </div>
-        <Button onClick={handleCreate} className="gap-2">
-          <Plus className="h-4 w-4" /> New Product
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => setIsImportOpen(true)}>
+            <Upload className="h-4 w-4" /> Import
+          </Button>
+          <Button onClick={handleCreate} className="gap-2">
+            <Plus className="h-4 w-4" /> New Product
+          </Button>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -361,14 +405,33 @@ const AdminShop = () => {
         {/* Orders Tab */}
         <TabsContent value="orders" className="space-y-6">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between gap-4">
               <CardTitle>Orders</CardTitle>
+              <Select value={orderStatusFilter} onValueChange={setOrderStatusFilter}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="confirmed">Confirmed</SelectItem>
+                  <SelectItem value="ready_for_pickup">Ready for pickup</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
             </CardHeader>
             <CardContent>
-              {orders.length === 0 ? (
+              {ordersQuery.isLoading ? (
+                <div className="space-y-3">
+                  {[...Array(4)].map((_, i) => (
+                    <Skeleton key={i} className="h-12 w-full" />
+                  ))}
+                </div>
+              ) : orders.length === 0 ? (
                 <GenericEmptyState
                   title="No orders found"
-                  description="Orders will appear here"
+                  description="Orders will appear here when customers submit requests."
                   icon="shopping"
                 />
               ) : (
@@ -376,6 +439,7 @@ const AdminShop = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead>Reference</TableHead>
                         <TableHead>Customer</TableHead>
                         <TableHead>Items</TableHead>
                         <TableHead>Total</TableHead>
@@ -385,38 +449,79 @@ const AdminShop = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {orders.map((order) => (
-                        <TableRow key={order.id} className="hover:bg-muted/50">
-                          <TableCell className="font-medium">{order.customer_name}</TableCell>
-                          <TableCell>{order.items_count}</TableCell>
-                          <TableCell>{formatAmount(order.total)}</TableCell>
-                          <TableCell>{new Date(order.date).toLocaleDateString()}</TableCell>
-                          <TableCell>
-                            <StatusBadge 
-                              status={
-                                order.status === "completed" ? "active" :
-                                order.status === "cancelled" ? "cancelled" : "pending"
-                              }
-                              customLabel={order.status}
-                            />
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48">
-                                <DropdownMenuItem>
-                                  <Eye className="mr-2 h-4 w-4" />
-                                  View Details
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {orders.map((order) => {
+                        const total = Number(order.total_amount || 0);
+                        const itemsCount = order.items?.reduce((sum, item) => sum + (item.quantity || 0), 0)
+                          ?? order.items?.length
+                          ?? 0;
+                        return (
+                          <TableRow key={order.id} className="hover:bg-muted/50">
+                            <TableCell className="font-mono text-xs">{order.reference || order.id.slice(0, 8)}</TableCell>
+                            <TableCell>
+                              <div className="font-medium">{order.customer_name}</div>
+                              <div className="text-xs text-muted-foreground">{order.customer_email || "—"}</div>
+                            </TableCell>
+                            <TableCell>{itemsCount}</TableCell>
+                            <TableCell>{formatAmount(Number.isFinite(total) ? total : 0)}</TableCell>
+                            <TableCell>
+                              {order.created_at ? new Date(order.created_at).toLocaleDateString() : "—"}
+                            </TableCell>
+                            <TableCell>
+                              <StatusBadge
+                                status={
+                                  order.status === "completed"
+                                    ? "active"
+                                    : order.status === "cancelled"
+                                      ? "cancelled"
+                                      : "pending"
+                                }
+                                customLabel={order.status.replaceAll("_", " ")}
+                              />
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon">
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-52">
+                                  <DropdownMenuItem onClick={() => setSelectedOrder(order)}>
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    View Details
+                                  </DropdownMenuItem>
+                                  {order.status === "pending" ? (
+                                    <DropdownMenuItem onClick={() => { setSelectedOrder(order); setOrderAction("confirm"); }}>
+                                      <CheckCircle2 className="mr-2 h-4 w-4" /> Confirm
+                                    </DropdownMenuItem>
+                                  ) : null}
+                                  {order.status === "confirmed" ? (
+                                    <DropdownMenuItem onClick={() => { setSelectedOrder(order); setOrderAction("ready"); }}>
+                                      <Package className="mr-2 h-4 w-4" /> Mark Ready
+                                    </DropdownMenuItem>
+                                  ) : null}
+                                  {order.status === "ready_for_pickup" ? (
+                                    <DropdownMenuItem onClick={() => { setSelectedOrder(order); setOrderAction("complete"); }}>
+                                      <CheckCircle2 className="mr-2 h-4 w-4" /> Complete
+                                    </DropdownMenuItem>
+                                  ) : null}
+                                  {order.status !== "completed" && order.status !== "cancelled" ? (
+                                    <>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        className="text-destructive"
+                                        onClick={() => { setSelectedOrder(order); setOrderAction("cancel"); setCancelReason(""); }}
+                                      >
+                                        <XCircle className="mr-2 h-4 w-4" /> Cancel
+                                      </DropdownMenuItem>
+                                    </>
+                                  ) : null}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
@@ -436,6 +541,133 @@ const AdminShop = () => {
         onConfirm={() => selectedProduct && deleteMutation.mutate(selectedProduct.slug)}
         isLoading={deleteMutation.isPending}
       />
+
+      {/* Order details */}
+      <Dialog
+        open={!!selectedOrder && !orderAction}
+        onOpenChange={(open) => {
+          if (!open) setSelectedOrder(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Order {selectedOrder?.reference || ""}</DialogTitle>
+          </DialogHeader>
+          {selectedOrder ? (
+            <div className="space-y-3 text-sm">
+              <div><span className="text-muted-foreground">Customer:</span> {selectedOrder.customer_name}</div>
+              <div><span className="text-muted-foreground">Email:</span> {selectedOrder.customer_email || "—"}</div>
+              <div><span className="text-muted-foreground">Phone:</span> {selectedOrder.customer_phone || "—"}</div>
+              <div><span className="text-muted-foreground">Status:</span> {selectedOrder.status.replaceAll("_", " ")}</div>
+              <div>
+                <span className="text-muted-foreground">Total:</span>{" "}
+                {formatAmount(Number(selectedOrder.total_amount || 0))}
+              </div>
+              {selectedOrder.items?.length ? (
+                <div className="rounded-md border divide-y">
+                  {selectedOrder.items.map((item) => (
+                    <div key={item.id} className="flex justify-between p-2">
+                      <span>
+                        {item.product_title || "Item"} × {item.quantity}
+                        {item.variant ? ` (${item.variant})` : ""}
+                      </span>
+                      <span>{formatAmount(Number(item.unit_price || 0) * (item.quantity || 0))}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <CsvImportDialog
+        open={isImportOpen}
+        onOpenChange={setIsImportOpen}
+        title="Import products"
+        description="Upload a CSV of bookshop products. Categories must already exist."
+        sampleHeaders="title,category_slug,price,stock,currency,description"
+        isLoading={importing}
+        onImport={async (file) => {
+          setImporting(true);
+          try {
+            const res = await adminBookshopService.importProducts(file);
+            queryClient.invalidateQueries({ queryKey: ["admin-bookshop-products"] });
+            toast({
+              title: "Import finished",
+              description: `${res.data.imported} imported, ${res.data.failed} failed`,
+            });
+            return res.data;
+          } finally {
+            setImporting(false);
+          }
+        }}
+      />
+
+      {/* Order status action */}
+      <Dialog
+        open={!!orderAction}
+        onOpenChange={(open) => {
+          if (!open) {
+            setOrderAction(null);
+            setOrderNotes("");
+            setCancelReason("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {orderAction === "confirm" && "Confirm order"}
+              {orderAction === "ready" && "Mark ready for pickup"}
+              {orderAction === "complete" && "Complete order"}
+              {orderAction === "cancel" && "Cancel order"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="order-notes">Admin notes</Label>
+              <Textarea
+                id="order-notes"
+                value={orderNotes}
+                onChange={(e) => setOrderNotes(e.target.value)}
+                rows={3}
+                placeholder="Optional notes..."
+              />
+            </div>
+            {orderAction === "cancel" ? (
+              <div className="space-y-2">
+                <Label htmlFor="cancel-reason">
+                  Cancellation reason <span className="text-destructive">*</span>
+                </Label>
+                <Textarea
+                  id="cancel-reason"
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  rows={3}
+                  placeholder="Why is this order being cancelled?"
+                  required
+                />
+              </div>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOrderAction(null)} disabled={orderActionMutation.isPending}>
+              Back
+            </Button>
+            <Button
+              variant={orderAction === "cancel" ? "destructive" : "default"}
+              onClick={() => orderActionMutation.mutate()}
+              disabled={
+                orderActionMutation.isPending ||
+                (orderAction === "cancel" && !cancelReason.trim())
+              }
+            >
+              {orderActionMutation.isPending ? "Saving..." : "Confirm"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

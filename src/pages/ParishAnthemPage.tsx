@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Download, Play } from "lucide-react";
 import anthem from "@/assets/audio/Blessed New Year.MP3";
 import { useRef } from "react";
+import PageHeader from "@/components/layout/PageHeader";
 
 /**
  * ParishAnthemPage Component
@@ -26,17 +27,11 @@ const ParishAnthemPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header Section */}
-      <section className="py-16 bg-gradient-to-r from-primary/10 via-primary/5 to-accent/10">
-        <div className="container mx-auto px-4 text-center">
-          <h1 className="text-4xl md:text-5xl font-heading font-bold text-church-charcoal mb-4">
-            Parish Anthem
-          </h1>
-          <p className="text-lg md:text-xl text-muted-foreground">
-            St. Anthony Catholic Church, Gbaja
-          </p>
-        </div>
-      </section>
+      <PageHeader
+        tone="light"
+        title="Parish Anthem"
+        description="St. Anthony Catholic Church, Gbaja"
+      />
 
       {/* Anthem Lyrics Section */}
       <section className="py-16 bg-background">

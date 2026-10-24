@@ -12,6 +12,8 @@
 /* eslint-disable react-refresh/only-export-components */
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { apiClient } from "@/lib/apiClient";
 import { authService, BackendUser, LoginCredentials, RegisterData, PasswordResetData } from "@/services/auth.service";
 
 /**
@@ -47,29 +49,9 @@ export interface User {
 
 /**
  * Extract a human-friendly error message from unknown errors.
- * Works with both native Errors and our ApiClient error shape (Error & { data?: ... }).
  */
-const getErrorMessage = (error: unknown, fallback: string): string => {
-  if (!error) return fallback;
-
-  if (error instanceof Error && typeof error.message === "string" && error.message.trim()) {
-    return error.message;
-  }
-
-  if (typeof error === "object") {
-    const e = error as Record<string, unknown>;
-    const data = e["data"];
-    if (data && typeof data === "object") {
-      const d = data as Record<string, unknown>;
-      const message = d["message"];
-      const err = d["error"];
-      if (typeof message === "string" && message.trim()) return message;
-      if (typeof err === "string" && err.trim()) return err;
-    }
-  }
-
-  return fallback;
-};
+const getErrorMessage = (error: unknown, fallback: string): string =>
+  getApiErrorMessage(error, fallback);
 
 /**
  * User registration data interface
@@ -136,22 +118,17 @@ export const useAuth = () => {
  */
 const mapRole = (backendRole: string | undefined): UserRole => {
   if (!backendRole) return "user";
-  
-  const roleLower = backendRole.toLowerCase();
-  
-  // Check for super admin roles
-  if (roleLower.includes("super") || roleLower.includes("super_admin") || roleLower === "superadmin") {
-    return "super_admin";
-  }
-  
-  // Check for admin roles
-  if (roleLower.includes("admin") || roleLower === "administrator") {
-    return "admin";
-  }
-  
-  // Default to regular user
+
+  // Exact names only, so roles like "parish_admin_assistant" don't gain admin access
+  const roleKey = backendRole.toLowerCase().replace(/[\s-]+/g, "_");
+
+  if (roleKey === "super_admin" || roleKey === "superadmin") return "super_admin";
+  if (roleKey === "admin" || roleKey === "administrator") return "admin";
+
   return "user";
 };
+
+const ROLE_RANK: Record<UserRole, number> = { user: 0, admin: 1, super_admin: 2 };
 
 /**
  * Transform backend user to frontend user format
@@ -168,15 +145,15 @@ const transformUser = (authUser: BackendUser, token: string): User => {
   // Handle roles from Spatie permissions (could be array or string)
   // Backend may return roles as an array of objects: [{ name: "admin" }]
   // or as a simple string: "admin"
-  let roleName = "user";
-  
-  // Safely check if authUser exists and has roles
-  if (authUser && authUser.roles && Array.isArray(authUser.roles) && authUser.roles.length > 0) {
-    // Extract role name from first role object
-    roleName = authUser.roles[0]?.name || "user";
+  // A user can hold several roles (e.g. admin + super_admin); use the highest one
+  let role: UserRole = "user";
+
+  if (authUser && Array.isArray(authUser.roles) && authUser.roles.length > 0) {
+    role = authUser.roles
+      .map((r) => mapRole(r?.name))
+      .reduce<UserRole>((best, r) => (ROLE_RANK[r] > ROLE_RANK[best] ? r : best), "user");
   } else if (authUser && authUser.role) {
-    // Use direct role string if available
-    roleName = authUser.role;
+    role = mapRole(authUser.role);
   }
   
   // Ensure authUser exists before accessing properties
@@ -192,7 +169,7 @@ const transformUser = (authUser: BackendUser, token: string): User => {
     avatar: authUser.avatar,
     isVerified: authUser.isVerified ?? true,
     createdAt: authUser.created_at || new Date().toISOString(),
-    role: mapRole(roleName),
+    role,
     token, // Store token with user data for API client to access
   };
 };
@@ -391,12 +368,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     
     try {
-      // TODO: Implement API call to update user profile
-      // For now, update local state only
-      const updatedUser = { ...user, ...data };
+      await apiClient.put(`users/${user.id}/profile`, {
+        ...(data.name ? { name: data.name } : {}),
+        ...(data.email ? { email: data.email } : {}),
+        ...(data.phone !== undefined ? { phone: data.phone } : {}),
+      });
+      const currentUser = await authService.getCurrentUser();
+      const updatedUser = transformUser(currentUser, user.token ?? "");
       setUser(updatedUser);
       localStorage.setItem("church_user", JSON.stringify(updatedUser));
-      
+
       return { success: true };
     } catch (error: unknown) {
       return { success: false, error: getErrorMessage(error, "Update failed") };
