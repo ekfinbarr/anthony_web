@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, MapPin, User, Heart } from 'lucide-react';
 import marriageBansData from '@/data/marriage-bans.json';
 import PageHeader from '@/components/layout/PageHeader';
+import { site } from '@/config/site';
 
 interface MarriageBan {
   id: number;
@@ -119,8 +120,9 @@ export default function MarriageBansPage() {
               or marriage tribunal as soon as possible.
             </p>
             <p>
-              <strong>Contact:</strong> Fr. Emmanuel Okon • Phone: (234) 123 456 7899 •
-              Email: priest@stanthonygbaja.org
+              <strong>Contact:</strong> Parish Office
+              {site.telephone ? ` • Phone: ${site.telephone}` : ""}
+              {" • "}Email: {site.email}
             </p>
           </div>
         </div>

@@ -111,9 +111,9 @@ export default function ProfileSettings() {
     email: 'john.doe@email.com',
     phone: '+1 (555) 123-4567',
     dateOfBirth: '1990-01-15',
-    address: '123 Church Street',
+    address: '6, 8 Gbaja St, Surulere, Lagos 101014',
     city: 'Lagos',
-    zipCode: '12345',
+    zipCode: '101014',
     bio: 'Passionate about faith and community service. Love connecting with others through spiritual growth.',
     interests: ['prayer', 'bible study', 'community service', 'youth ministry'],
     ministries: ['youth', 'music', 'outreach']

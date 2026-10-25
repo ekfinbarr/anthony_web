@@ -8,6 +8,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import PageHeader from "@/components/layout/PageHeader";
 import RentalRequestWizard from "@/components/rentals/RentalRequestWizard";
 import facilityService, { Facility } from "@/services/facility.service";
+import { site } from "@/config/site";
 
 const faqs = [
   {
@@ -219,7 +220,7 @@ const Rentals = () => {
               </a>
             </Button>
             <Button size="lg" variant="outline" className="border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary" asChild>
-              <a href="mailto:info@stanthonygbaja.org" className="gap-2">
+              <a href={`mailto:${site.email}`} className="gap-2">
                 <Mail className="h-5 w-5" />
                 Email
               </a>

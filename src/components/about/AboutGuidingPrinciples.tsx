@@ -14,7 +14,8 @@ const principles = [
     id: "mission",
     title: "Our Mission",
     icon: CrossIcon,
-    body: "To lead people into a growing relationship with Jesus Christ through worship, discipleship, fellowship, and service.",
+    // body: "To lead people into a growing relationship with Jesus Christ through worship, discipleship, fellowship, and service.",
+    body: "To live like Christ and to serve like Christ.",
   },
 ] as const;
 

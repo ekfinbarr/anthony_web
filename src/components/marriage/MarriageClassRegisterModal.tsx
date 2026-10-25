@@ -243,7 +243,7 @@ const MarriageClassRegisterModal: React.FC<MarriageClassRegisterModalProps> = ({
                   id="phone"
                   value={formData.phone}
                   onChange={(e) => handleInputChange('phone', e.target.value)}
-                  placeholder="(555) 123-4567"
+                  placeholder="+234…"
                 />
               </div>
               <div>
@@ -298,7 +298,7 @@ const MarriageClassRegisterModal: React.FC<MarriageClassRegisterModalProps> = ({
                   id="partnerPhone"
                   value={formData.partnerPhone}
                   onChange={(e) => handleInputChange('partnerPhone', e.target.value)}
-                  placeholder="(555) 123-4567"
+                  placeholder="+234…"
                 />
               </div>
             </div>

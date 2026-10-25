@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import legalDocumentService from "@/services/legalDocument.service";
 import PageHeader from "@/components/layout/PageHeader";
+import { formatAddress, site } from "@/config/site";
 
 const TERMS_SECTIONS = [
   { id: "acceptance", title: "Acceptance of Terms" },
@@ -387,11 +388,11 @@ const TermsOfService = () => {
                     <Card className="p-6 bg-church-pearl">
                       <div className="space-y-2 text-muted-foreground">
                         <p>
-                          <strong className="text-church-charcoal">St. Anthony Catholic Church, Gbaja</strong>
+                          <strong className="text-church-charcoal">{site.name}</strong>
                         </p>
-                        <p>123 Gbaja Street, Surulere, Lagos</p>
-                        <p>Email: legal@stanthonygbaja.org</p>
-                        <p>Phone: (234) 234 567 8910</p>
+                        <p>{formatAddress(site.address)}</p>
+                        <p>Email: {site.email}</p>
+                        {site.telephone && <p>Phone: {site.telephone}</p>}
                       </div>
                     </Card>
                   </section>

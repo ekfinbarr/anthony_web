@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { chatbotService, ChatMessage, isOpenAIEnabled } from '@/services/openai';
 import { fallbackChatbotService } from '@/services/fallbackChatbot';
+import { officeContact } from '@/config/parishFacts';
 
 export interface UseChatbotReturn {
   messages: ChatMessage[];
@@ -88,7 +89,7 @@ How can I assist you today?`,
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "I apologize, but I'm having trouble responding right now. Please try again or contact our church office directly at (555) 123-4567.",
+        content: `I apologize, but I'm having trouble responding right now. Please try again or contact ${officeContact}.`,
         timestamp: new Date()
       };
 

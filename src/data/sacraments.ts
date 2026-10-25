@@ -1,3 +1,6 @@
+import { baptismSchedule } from "@/config/parish";
+import { site } from "@/config/site";
+
 export type SacramentIconKey =
   | "font"
   | "dove"
@@ -24,11 +27,16 @@ export interface Sacrament {
   contact: {
     name: string;
     email: string;
-    phone: string;
+    phone?: string;
   };
   registrationRequired: boolean;
   registrationDeadline?: string;
 }
+
+const parishContact = {
+  email: site.email,
+  phone: site.telephone,
+};
 
 export const mockSacraments: Sacrament[] = [
   {
@@ -39,8 +47,8 @@ export const mockSacraments: Sacrament[] = [
     category: "Initiation",
     iconKey: "font",
     schedule: {
-      date: "First Saturday of each month",
-      time: "10:00 AM",
+      date: baptismSchedule.date,
+      time: baptismSchedule.time,
       location: "Main Sanctuary",
     },
     requirements: [
@@ -51,8 +59,7 @@ export const mockSacraments: Sacrament[] = [
     ],
     contact: {
       name: "Very Rev. Fr. Sylvester Tolulope Oladunjoye",
-      email: "baptism@stanthonygbaja.org",
-      phone: "(234) 234 567 8910",
+      ...parishContact,
     },
     registrationRequired: true,
     registrationDeadline: "2 weeks before scheduled date",
@@ -77,8 +84,7 @@ export const mockSacraments: Sacrament[] = [
     ],
     contact: {
       name: "Very Rev. Fr. Sylvester Tolulope Oladunjoye",
-      email: "confirmation@stanthonygbaja.org",
-      phone: "(234) 234 567 8911",
+      ...parishContact,
     },
     registrationRequired: true,
     registrationDeadline: "3 months before scheduled date",
@@ -103,8 +109,7 @@ export const mockSacraments: Sacrament[] = [
     ],
     contact: {
       name: "Very Rev. Fr. Sylvester Tolulope Oladunjoye",
-      email: "eucharist@stanthonygbaja.org",
-      phone: "(234) 234 567 8910",
+      ...parishContact,
     },
     registrationRequired: true,
     registrationDeadline: "2 months before scheduled date",
@@ -124,8 +129,7 @@ export const mockSacraments: Sacrament[] = [
     requirements: ["Examination of conscience", "Sincere contrition", "Confession of sins"],
     contact: {
       name: "Parish Office",
-      email: "confession@stanthonygbaja.org",
-      phone: "(234) 234 567 8910",
+      ...parishContact,
     },
     registrationRequired: false,
   },
@@ -144,8 +148,7 @@ export const mockSacraments: Sacrament[] = [
     requirements: ["Serious illness or advanced age", "Request from individual or family"],
     contact: {
       name: "Parish Office",
-      email: "anointing@stanthonygbaja.org",
-      phone: "(234) 234 567 8910",
+      ...parishContact,
     },
     registrationRequired: true,
   },
@@ -170,8 +173,7 @@ export const mockSacraments: Sacrament[] = [
     ],
     contact: {
       name: "Very Rev. Fr. Sylvester Tolulope Oladunjoye",
-      email: "marriage@stanthonygbaja.org",
-      phone: "(234) 234 567 8912",
+      ...parishContact,
     },
     registrationRequired: true,
     registrationDeadline: "6 months before desired date",
@@ -196,8 +198,7 @@ export const mockSacraments: Sacrament[] = [
     ],
     contact: {
       name: "Diocesan Vocation Office",
-      email: "vocations@diocese.org",
-      phone: "(234) 234 567 8900",
+      ...parishContact,
     },
     registrationRequired: true,
   },

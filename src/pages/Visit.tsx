@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { motion } from 'framer-motion';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { formatAddress, mapsEmbedUrl, mapsSearchUrl, site } from "@/config/site";
-import { massTimesAnswer } from "@/config/parish";
+import { holyHour, massTimesAnswer } from "@/config/parish";
 import PageHeader from "@/components/layout/PageHeader";
 import MassScheduleList from "@/components/visit/MassScheduleList";
 
@@ -46,6 +46,9 @@ const Visit = () => {
                     </p> */}
 
                     <MassScheduleList />
+                    <p className="mx-auto mt-8 max-w-2xl text-center text-sm text-muted-foreground md:text-base">
+                        {holyHour.name}: {holyHour.details}
+                    </p>
                 </div>
             </section>
 

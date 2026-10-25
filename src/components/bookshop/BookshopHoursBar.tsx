@@ -12,15 +12,17 @@ const BookshopHoursBar = () => {
               <Clock className="h-5 w-5 shrink-0" aria-hidden="true" />
               <span className="text-sm font-medium md:text-base">{bookshopContact.hours}</span>
             </li>
-            <li>
-              <a
-                href={bookshopContact.phoneHref}
-                className="flex items-center gap-2.5 transition-opacity hover:opacity-90"
-              >
-                <Phone className="h-5 w-5 shrink-0" aria-hidden="true" />
-                <span className="text-sm font-medium md:text-base">{bookshopContact.phone}</span>
-              </a>
-            </li>
+            {bookshopContact.phoneHref && (
+              <li>
+                <a
+                  href={bookshopContact.phoneHref}
+                  className="flex items-center gap-2.5 transition-opacity hover:opacity-90"
+                >
+                  <Phone className="h-5 w-5 shrink-0" aria-hidden="true" />
+                  <span className="text-sm font-medium md:text-base">{bookshopContact.phone}</span>
+                </a>
+              </li>
+            )}
             <li className="flex items-center gap-2.5">
               <MapPin className="h-5 w-5 shrink-0" aria-hidden="true" />
               <span className="text-sm font-medium md:text-base">{bookshopContact.location}</span>

@@ -5,6 +5,7 @@ import leadershipService, { type Leadership } from "@/services/leadership.servic
 import PageHeader from "@/components/layout/PageHeader";
 import PersonSchema from "@/components/seo/schemas/PersonSchema";
 import { cn } from "@/lib/utils";
+import { parishPriestOfficeHours } from "@/config/parish";
 import priestPortrait from "@/assets/images/parish_priest.jpg";
 
 const PRIEST_NAME = "Very Rev. Fr. Sylvester Oladunjoye";
@@ -176,6 +177,25 @@ const ParishPriest = () => {
                 </div>
               </div>
             </div>
+
+            <section
+              aria-labelledby="priest-office-hours-heading"
+              className="max-w-xl rounded-lg border border-border/70 bg-background p-6 shadow-sm"
+            >
+              <h2
+                id="priest-office-hours-heading"
+                className="mb-3 font-heading text-xl font-bold text-church-charcoal"
+              >
+                {parishPriestOfficeHours.label}
+              </h2>
+              <p className="text-sm leading-relaxed text-muted-foreground md:text-[0.95rem]">
+                {parishPriestOfficeHours.lines.map((line) => (
+                  <span key={line} className="block">
+                    {line}
+                  </span>
+                ))}
+              </p>
+            </section>
 
             {/* Background */}
             <section aria-labelledby="background-education-heading" className="max-w-3xl">

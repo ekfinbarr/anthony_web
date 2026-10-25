@@ -7,6 +7,8 @@ import MarriageClassCard from '@/components/marriage/MarriageClassCard';
 import MarriageClassRegisterModal from '@/components/marriage/MarriageClassRegisterModal';
 import RegistrationHistory from '@/components/marriage/RegistrationHistory';
 import PageHeader from '@/components/layout/PageHeader';
+import { parishOfficeHours } from '@/config/parish';
+import { site } from '@/config/site';
 
 interface MarriageClass {
   id: string;
@@ -165,20 +167,22 @@ const MarriageClassRegistrationPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <h4 className="font-semibold mb-2">Parish Office</h4>
+                {site.telephone && (
+                  <p className="text-sm text-muted-foreground mb-1">
+                    📞 Phone: {site.telephone}
+                  </p>
+                )}
                 <p className="text-sm text-muted-foreground mb-1">
-                  📞 Phone: (555) 123-4567
-                </p>
-                <p className="text-sm text-muted-foreground mb-1">
-                  ✉️ Email: office@stanthonygbaja.org
+                  ✉️ Email: {site.email}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  🕒 Office Hours: Mon-Fri 9AM-5PM
+                  🕒 Office Hours: {parishOfficeHours.compact}
                 </p>
               </div>
               <div>
                 <h4 className="font-semibold mb-2">Marriage Coordinator</h4>
                 <p className="text-sm text-muted-foreground mb-1">
-                  📞 Sr. Mary Johnson: (555) 123-4568
+                  Contact via the parish office above
                 </p>
                 <p className="text-sm text-muted-foreground">
                   💒 Specializes in marriage preparation

@@ -117,12 +117,14 @@ const SacramentDetailsModal = ({
                   {sacrament.contact.email}
                 </a>
               </div>
-              <div className="flex items-start gap-2.5 text-sm">
-                <Phone className="mt-0.5 h-4 w-4 shrink-0 text-church-gold-warm" aria-hidden="true" />
-                <a href={`tel:${sacrament.contact.phone}`} className="text-primary hover:underline">
-                  {sacrament.contact.phone}
-                </a>
-              </div>
+              {sacrament.contact.phone && (
+                <div className="flex items-start gap-2.5 text-sm">
+                  <Phone className="mt-0.5 h-4 w-4 shrink-0 text-church-gold-warm" aria-hidden="true" />
+                  <a href={`tel:${sacrament.contact.phone.replace(/[^+\d]/g, "")}`} className="text-primary hover:underline">
+                    {sacrament.contact.phone}
+                  </a>
+                </div>
+              )}
             </div>
           </section>
 

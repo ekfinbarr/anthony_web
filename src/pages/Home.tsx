@@ -14,6 +14,7 @@ import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import JsonpComponent from "@/components/home/JsonpComponent";
 import CatholicDailyReadings from "@/components/home/CatholicDailyReadings";
+import { formatAddress, site } from "@/config/site";
 
 const Home = () => {
   const dap = "https://scontent-los2-1.xx.fbcdn.net/v/t39.30808-6/475925097_3233249990155896_2609915621922325122_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=cc71e4&_nc_eui2=AeHs4e6S97TLHHu3_KsYYpXLydM6fSGKwqXJ0zp9IYrCpSZ-0uCDk7j1sbGdCp7cTY5yUrQSZTon565I5hSH82Mc&_nc_ohc=4oaoaV8zGkwQ7kNvwFhqgLi&_nc_oc=AdlptfAIJThaEZDK29Ah4zRojvPQxuZ_kp6UnS5rBFRNZPJrSufg5PKGMlVtemzZTaE&_nc_zt=23&_nc_ht=scontent-los2-1.xx&_nc_gid=py2D-fEUBNUSP5Ni83CaXA&oh=00_Afi5Zo1X-TvWGXUxyrQ_BIMGFK269qiXLSsqsa2lrHIldg&oe=69155F36";
@@ -52,7 +53,7 @@ const Home = () => {
                 <MapPin className="h-12 w-12 text-primary mx-auto mb-4" />
                 <h3 className="font-heading font-semibold text-lg mb-2">Location</h3>
                 <p className="text-sm text-muted-foreground">
-                  123 Church Street<br />City, ST 12345
+                  {formatAddress(site.address)}
                 </p>
               </Card>
             </div>

@@ -118,6 +118,68 @@ export function formatTime(time: string): string {
   return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
 }
 
+/** Named parish observances with free-form schedule lines (not weekday Mass slots). */
+export interface ParishObservance {
+  name: string;
+  /** Human-readable schedule, e.g. "Sunday at 5:00 PM". */
+  details: string;
+}
+
+export const holyHour: ParishObservance = {
+  name: "Holy Hour Adoration & Benediction",
+  details: `Sunday at ${formatTime("17:00")}`,
+};
+
+export const parishForum: ParishObservance = {
+  name: "Parish Forum",
+  details: `Last Saturday of the month at ${formatTime("18:00")}`,
+};
+
+export const baptismSchedule = {
+  date: "Third Saturday of the month",
+  time: formatTime("09:00"),
+  details: `Third Saturday of the month at ${formatTime("09:00")}`,
+} as const;
+
+export interface OfficeHoursBlock {
+  label: string;
+  /** Display lines, e.g. "Monday – Friday: 9:00 AM – 5:00 PM". */
+  lines: string[];
+  /** Compact one-liner for cards / FAQ sidebars. */
+  compact: string;
+  /** Full sentence for FAQ / chatbot answers. */
+  sentence: string;
+}
+
+export const parishOfficeHours: OfficeHoursBlock = {
+  label: "Parish Office Hours",
+  lines: [
+    `Monday – Friday: ${formatTime("09:00")} – ${formatTime("17:00")}`,
+    "Saturday & Sunday: Closed",
+  ],
+  compact: `Mon–Fri: ${formatTime("09:00")} – ${formatTime("17:00")}`,
+  sentence: `Monday to Friday, ${formatTime("09:00")} to ${formatTime("17:00")}`,
+};
+
+export const parishPriestOfficeHours: OfficeHoursBlock = {
+  label: "Parish Priest's Office",
+  lines: [
+    `Tuesday & Friday: ${formatTime("10:00")} – ${formatTime("14:00")}`,
+    "Wednesday: by appointment only",
+  ],
+  compact: `Tue & Fri ${formatTime("10:00")} – ${formatTime("14:00")}; Wed by appointment`,
+  sentence: `Tuesday and Friday, ${formatTime("10:00")} to ${formatTime("14:00")}; Wednesday by appointment only`,
+};
+
+export const assistantParishPriestOfficeHours: OfficeHoursBlock = {
+  label: "Asst. Parish Priest's Office",
+  lines: [
+    `Monday, Wednesday & Thursday: ${formatTime("10:00")} – ${formatTime("14:00")}`,
+  ],
+  compact: `Mon, Wed & Thu: ${formatTime("10:00")} – ${formatTime("14:00")}`,
+  sentence: `Monday, Wednesday, and Thursday, ${formatTime("10:00")} to ${formatTime("14:00")}`,
+};
+
 /** Joins a list as "a, b & c". */
 export function joinList(items: string[]): string {
   if (items.length <= 1) return items.join("");

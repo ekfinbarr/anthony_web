@@ -3,12 +3,29 @@
  * text-only surfaces such as the chatbot. Keeps NAP and Mass times consistent.
  */
 import { formatAddress, site } from "./site";
-import { formatMassTimes, formatService, otherServices, weekdayMassSummary } from "./parish";
+import {
+  assistantParishPriestOfficeHours,
+  baptismSchedule,
+  formatMassTimes,
+  formatService,
+  holyHour,
+  otherServices,
+  parishForum,
+  parishOfficeHours,
+  parishPriestOfficeHours,
+  weekdayMassSummary,
+} from "./parish";
 
 export const scheduleLines: string[] = [
   `Sunday Mass: ${formatMassTimes("Sunday")}`,
   ...weekdayMassSummary().map((group) => `Weekday Mass (${group.days}): ${group.times}`),
   ...otherServices.map((service) => `${service.name}: ${formatService(service)}`),
+  `${holyHour.name}: ${holyHour.details}`,
+  `${parishForum.name}: ${parishForum.details}`,
+  `Baptism: ${baptismSchedule.details}`,
+  `${parishOfficeHours.label}: ${parishOfficeHours.sentence}`,
+  `${parishPriestOfficeHours.label}: ${parishPriestOfficeHours.sentence}`,
+  `${assistantParishPriestOfficeHours.label}: ${assistantParishPriestOfficeHours.sentence}`,
 ];
 
 export const addressLine = formatAddress(site.address);
@@ -22,4 +39,5 @@ export const contactLines: string[] = [
   ...(site.telephone ? [`Phone: ${site.telephone}`] : []),
   `Email: ${site.email}`,
   `Address: ${addressLine}`,
+  `Office hours: ${parishOfficeHours.sentence}`,
 ];

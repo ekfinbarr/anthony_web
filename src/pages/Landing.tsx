@@ -24,6 +24,7 @@ import Voices from "@/components/parish-home/Voices";
 import VisitStrip from "@/components/parish-home/VisitStrip";
 import sermonService from "@/services/sermon.service";
 import { formatSermonDate, sermonThumbnail } from "@/components/sermons/sermonMedia";
+import { site } from "@/config/site";
 
 // Mock data interfaces
 
@@ -186,7 +187,7 @@ const Landing = () => {
                 <MapPin className="h-12 w-12 text-primary mx-auto mb-4" />
                 <h3 className="font-heading font-semibold text-lg mb-2">Location</h3>
                 <p className="text-sm text-muted-foreground">
-                  123 Gbaja Street<br />Surulere, Lagos
+                  Gbaja, Surulere, Lagos, Nigeria
                 </p>
               </Card>
             </div>
@@ -561,7 +562,7 @@ const Landing = () => {
               <Youtube className="h-8 w-8 text-primary-foreground" />
             </a>
             <a
-              href="mailto:info@stanthonygbaja.org"
+              href={`mailto:${site.email}`}
               className="w-16 h-16 rounded-full bg-primary flex items-center justify-center hover:scale-110 transition-transform"
               aria-label="Send us an email"
             >

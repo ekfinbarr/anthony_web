@@ -27,9 +27,24 @@ export interface SiteSetting {
   updated_at: string;
 }
 
+/** Typed value for a public setting key (booleans/numbers/json already decoded). */
+export type PublicSettingValue = string | number | boolean | Record<string, unknown> | unknown[] | null;
+
+/** Public settings grouped by `group` → key → typed value. */
+export type PublicSiteSettingsGrouped = Record<string, Record<string, PublicSettingValue>>;
+
 export const list = async (params?: { group?: string }): Promise<{ data: Record<string, SiteSetting[]> | SiteSetting[] }> => {
   const res = await apiClient.get<{ data: Record<string, SiteSetting[]> | SiteSetting[] }>("settings", params);
   return res.data;
+};
+
+/**
+ * Public site settings (no auth). Used by the contact page and other public surfaces
+ * that should reflect Admin Settings.
+ */
+export const getPublic = async (): Promise<PublicSiteSettingsGrouped> => {
+  const res = await apiClient.get<{ data: PublicSiteSettingsGrouped }>("settings/public");
+  return res.data.data;
 };
 
 export const bulkUpdate = async (
@@ -51,6 +66,7 @@ export const update = async (
 
 export default {
   list,
+  getPublic,
   bulkUpdate,
   update,
 };

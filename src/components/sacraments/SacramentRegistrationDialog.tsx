@@ -166,12 +166,14 @@ const SacramentRegistrationDialog = ({
                     {sacrament.contact.email}
                   </a>
                 </p>
-                <p>
-                  <strong>Phone:</strong>{" "}
-                  <a href={`tel:${sacrament.contact.phone}`} className="text-primary hover:underline">
-                    {sacrament.contact.phone}
-                  </a>
-                </p>
+                {sacrament.contact.phone && (
+                  <p>
+                    <strong>Phone:</strong>{" "}
+                    <a href={`tel:${sacrament.contact.phone.replace(/[^+\d]/g, "")}`} className="text-primary hover:underline">
+                      {sacrament.contact.phone}
+                    </a>
+                  </p>
+                )}
               </div>
             </div>
           </div>

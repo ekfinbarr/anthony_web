@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import PageHeader from "@/components/layout/PageHeader";
+import { formatAddress, mapsEmbedUrl, site } from "@/config/site";
 
 const services = [
   { id: 1, name: "Maternity Care", category: "maternity", icon: CradleIcon, description: "Comprehensive care for expectant mothers including delivery services" },
@@ -67,18 +68,20 @@ const Clinic = () => {
                 <p className="text-sm opacity-90">9am – 12pm</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <PhoneIcon className="h-9 w-9 shrink-0" />
-              <div>
-                <p className="font-semibold">Phone</p>
-                <p className="text-sm opacity-90">+234 803 456 7890</p>
+            {site.telephone && (
+              <div className="flex items-center gap-3">
+                <PhoneIcon className="h-9 w-9 shrink-0" />
+                <div>
+                  <p className="font-semibold">Phone</p>
+                  <p className="text-sm opacity-90">{site.telephone}</p>
+                </div>
               </div>
-            </div>
+            )}
             <div className="flex items-center gap-3">
               <EnvelopeIcon className="h-9 w-9 shrink-0" />
               <div>
                 <p className="font-semibold">Email</p>
-                <p className="text-sm opacity-90">clinic@stanthonygbaja.org</p>
+                <p className="text-sm opacity-90">{site.email}</p>
               </div>
             </div>
           </div>
@@ -177,14 +180,16 @@ const Clinic = () => {
                 Call us to schedule your visit or walk in during our opening hours.
               </p>
               <div className="flex flex-wrap gap-4">
-                <Button size="lg" variant="church" asChild>
-                  <a href="tel:+2348034567890" className="gap-2">
-                    <Phone className="h-5 w-5" />
-                    Call to Book
-                  </a>
-                </Button>
+                {site.telephone && (
+                  <Button size="lg" variant="church" asChild>
+                    <a href={`tel:${site.telephone.replace(/[^+\d]/g, "")}`} className="gap-2">
+                      <Phone className="h-5 w-5" />
+                      Call to Book
+                    </a>
+                  </Button>
+                )}
                 <Button size="lg" variant="outline" asChild>
-                  <a href="mailto:clinic@stanthonygbaja.org" className="gap-2">
+                  <a href={`mailto:${site.email}`} className="gap-2">
                     <Mail className="h-5 w-5" />
                     Send Email
                   </a>
@@ -198,7 +203,7 @@ const Clinic = () => {
               </h3>
               <div className="aspect-video rounded-lg overflow-hidden bg-muted">
                 <iframe
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3963.9!2d3.35!3d6.5!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNsKwMzAnMDAuMCJOIDPCsDIxJzAwLjAiRQ!5e0!3m2!1sen!2sng!4v1234567890"
+                  src={mapsEmbedUrl(site)}
                   width="100%"
                   height="100%"
                   style={{ border: 0 }}
@@ -209,21 +214,25 @@ const Clinic = () => {
                 />
               </div>
               <p className="text-sm text-muted-foreground mt-4">
-                St. Anthony Catholic Church Premises, Gbaja, Surulere, Lagos
+                {site.name} — {formatAddress(site.address)}
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Emergency Banner */}
-      <section className="py-8 bg-destructive text-destructive-foreground">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-lg font-semibold">
-            For emergencies, please call: <a href="tel:+2348034567890" className="underline">+234 803 456 7890</a>
-          </p>
-        </div>
-      </section>
+      {site.telephone && (
+        <section className="py-8 bg-destructive text-destructive-foreground">
+          <div className="container mx-auto px-4 text-center">
+            <p className="text-lg font-semibold">
+              For emergencies, please call:{" "}
+              <a href={`tel:${site.telephone.replace(/[^+\d]/g, "")}`} className="underline">
+                {site.telephone}
+              </a>
+            </p>
+          </div>
+        </section>
+      )}
     </div>
   );
 };

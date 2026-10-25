@@ -1,6 +1,6 @@
 import { ChatMessage } from './openai';
 import { addressLine, contactLines, officeContact, scheduleLines } from '@/config/parishFacts';
-import { formatService, otherServices } from '@/config/parish';
+import { baptismSchedule, formatService, otherServices } from '@/config/parish';
 import { site } from '@/config/site';
 
 const bullet = (lines: string[]) => lines.map((line) => `• ${line}`).join('\n');
@@ -31,7 +31,7 @@ const FAQ_RESPONSES: Record<string, string> = {
   'welcome': 'Welcome to St. Anthony Catholic Church, Gbaja! We are a warm and welcoming Catholic parish. Whether you are visiting for the first time or seeking a parish home, you will find a place here.',
 
   // Sacraments
-  'baptism': `We offer Baptism preparation for infants and adults. Please contact ${officeContact} to arrange a meeting with our parish priest.`,
+  'baptism': `Baptisms are celebrated on the ${baptismSchedule.details}. We offer Baptism preparation for infants and adults. Please contact ${officeContact} to arrange a meeting with our parish priest.`,
   'confirmation': 'Confirmation preparation is available for candidates. Please contact the parish office for more information.',
   'marriage': 'We offer marriage preparation. Couples should contact our parish office at least 6 months before their planned wedding date.',
   'confession': confessions ? `Confessions are heard on ${formatService(confessions)}.` : `Please contact ${officeContact} for confession times.`,

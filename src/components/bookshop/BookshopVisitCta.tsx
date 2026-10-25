@@ -29,12 +29,14 @@ const BookshopVisitCta = () => {
             {bookshopContact.location}
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
-            <Button size="lg" variant="church" asChild>
-              <a href={bookshopContact.phoneHref} className="gap-2">
-                <Phone className="h-5 w-5" aria-hidden="true" />
-                Call {bookshopContact.phone}
-              </a>
-            </Button>
+            {bookshopContact.phoneHref && (
+              <Button size="lg" variant="church" asChild>
+                <a href={bookshopContact.phoneHref} className="gap-2">
+                  <Phone className="h-5 w-5" aria-hidden="true" />
+                  Call {bookshopContact.phone}
+                </a>
+              </Button>
+            )}
             <Button
               size="lg"
               variant="outline"

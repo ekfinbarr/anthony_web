@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, MapPin, User, CheckCircle, XCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { site } from '@/config/site';
 
 interface RegistrationRecord {
   id: string;
@@ -260,8 +261,8 @@ const RegistrationHistory: React.FC = () => {
             please contact the parish marriage coordinator.
           </p>
           <div className="text-sm">
-            <p><strong>Phone:</strong> (555) 123-4567</p>
-            <p><strong>Email:</strong> marriage@stanthonygbaja.org</p>
+            {site.telephone && <p><strong>Phone:</strong> {site.telephone}</p>}
+            <p><strong>Email:</strong> {site.email}</p>
           </div>
         </div>
       </CardContent>

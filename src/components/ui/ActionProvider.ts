@@ -1,5 +1,7 @@
 import { createChatBotMessage } from 'react-chatbot-kit';
 import { massTimesAnswer } from '@/config/parish';
+import { addressLine, contactLines } from '@/config/parishFacts';
+import { site } from '@/config/site';
 
 type ChatbotState = {
     messages: unknown[];
@@ -118,7 +120,9 @@ class ActionProvider {
     };
 
     handleLocation = () => {
-        const message = this.createChatBotMessage("St. Anthony Church is located at:\n123 Church Street\nGbaja, Nigeria\n\nWe'd love to have you visit us!");
+        const message = this.createChatBotMessage(
+            `${site.name} is located at:\n${addressLine}\n\nWe'd love to have you visit us!`
+        );
         this.setState((prev: ChatbotState) => ({
             ...prev,
             messages: [...prev.messages, message],
@@ -126,7 +130,10 @@ class ActionProvider {
     };
 
     handleContact = () => {
-        const message = this.createChatBotMessage("You can contact us:\n• Phone: (555) 123-4567\n• Email: info@stantony.org\n• Visit our Contact page for more details");
+        const lines = contactLines.map((line) => `• ${line}`).join('\n');
+        const message = this.createChatBotMessage(
+            `You can contact us:\n${lines}\n• Or visit our Contact page for more details`
+        );
         this.setState((prev: ChatbotState) => ({
             ...prev,
             messages: [...prev.messages, message],

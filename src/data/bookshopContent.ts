@@ -21,15 +21,16 @@ import {
   RosaryIcon,
   ScrollIcon,
 } from "@/components/icons/ParishIcons";
+import { formatAddress, site } from "@/config/site";
 
 export const bookshopContact = {
   hours: "7am – 5pm daily, except Saturdays",
-  phone: "+234 802 345 6789",
-  phoneHref: "tel:+2348023456789",
-  email: "bookshop@stanthonygbaja.org",
-  emailHref: "mailto:bookshop@stanthonygbaja.org",
-  location: "Church premises, Gbaja",
-} as const;
+  phone: site.telephone ?? "",
+  phoneHref: site.telephone ? `tel:${site.telephone.replace(/[^+\d]/g, "")}` : "",
+  email: site.email,
+  emailHref: `mailto:${site.email}`,
+  location: formatAddress(site.address),
+};
 
 export const bookshopCopy = {
   pageDescription:

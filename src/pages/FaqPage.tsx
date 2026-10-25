@@ -9,7 +9,13 @@ import { cn } from "@/lib/utils";
 import FAQSchema from "@/components/seo/schemas/FAQSchema";
 import PageHeader from "@/components/layout/PageHeader";
 import { formatAddress, site } from "@/config/site";
-import { formatService, massTimesAnswer, otherServices } from "@/config/parish";
+import {
+  baptismSchedule,
+  formatService,
+  massTimesAnswer,
+  otherServices,
+  parishOfficeHours,
+} from "@/config/parish";
 
 const confessions = otherServices.find((service) => service.name === "Confessions");
 const phoneSentence = site.telephone ? ` or by phone on ${site.telephone}` : "";
@@ -34,7 +40,7 @@ const FaqPage = () => {
           : []),
         {
           question: "Where is the Parish Office located?",
-          answer: `The Parish Office is located at the main church building, ${site.name}, ${formatAddress(site.address)}. Office hours are Monday to Friday, 9:00 AM to 5:00 PM.`
+          answer: `The Parish Office is located at the main church building, ${site.name}, ${formatAddress(site.address)}. Office hours are ${parishOfficeHours.sentence}.`
         },
         {
           question: "How can I contact the Parish Office?",
@@ -47,7 +53,7 @@ const FaqPage = () => {
       questions: [
         {
           question: "How do I register for Baptism?",
-          answer: "To register for Baptism, please contact the Parish Office at least 2 weeks in advance. Parents must attend a Baptism preparation class. Required documents include birth certificate and godparent certificates."
+          answer: `Baptisms are celebrated on the ${baptismSchedule.details}. To register, please contact the Parish Office at least 2 weeks in advance. Parents must attend a Baptism preparation class. Required documents include birth certificate and godparent certificates.`
         },
         {
           question: "What are the requirements for Confirmation?",
@@ -192,7 +198,7 @@ const FaqPage = () => {
               <Card className="p-6 text-center">
                 <Clock className="h-8 w-8 text-primary mx-auto mb-4" />
                 <h3 className="font-semibold mb-2">Office Hours</h3>
-                <p className="text-sm text-muted-foreground">Mon-Fri: 9AM-5PM</p>
+                <p className="text-sm text-muted-foreground">{parishOfficeHours.compact}</p>
               </Card>
 
               {site.social.whatsapp && (

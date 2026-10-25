@@ -7,6 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useChatbot } from '@/hooks/useChatbot';
 import { motion, AnimatePresence } from 'framer-motion';
+import { site } from '@/config/site';
 
 const Chatbot: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -256,7 +257,8 @@ const Chatbot: React.FC = () => {
                     </Button>
                   </form>
                   <p className="text-xs text-muted-foreground mt-2">
-                    {usingFallback ? 'Basic FAQ mode' : 'Powered by AI'} • For urgent matters, call (555) 123-4567
+                    {usingFallback ? 'Basic FAQ mode' : 'Powered by AI'}
+                    {site.telephone ? ` • For urgent matters, call ${site.telephone}` : ` • For urgent matters, email ${site.email}`}
                   </p>
                 </div>
               </CardContent>

@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import {
   BellIcon,
+  CommunityIcon,
   ConfessionalIcon,
   LampIcon,
   MonstranceIcon,
@@ -8,7 +9,14 @@ import {
   YouthIcon,
 } from "@/components/icons/ParishIcons";
 import type { ParishIconProps } from "@/components/icons/ParishIcon";
-import { formatMassTimes, formatService, formatTime, otherServices } from "@/config/parish";
+import {
+  formatMassTimes,
+  formatService,
+  formatTime,
+  holyHour,
+  otherServices,
+  parishForum,
+} from "@/config/parish";
 
 export type RegularActivity = {
   title: string;
@@ -34,25 +42,30 @@ export const regularActivities: RegularActivity[] = [
     icon: ConfessionalIcon,
   },
   {
-    title: "Eucharistic Adoration",
-    details: "Fridays 9:00 AM – 6:00 PM — Chapel",
+    title: holyHour.name,
+    details: holyHour.details,
     icon: MonstranceIcon,
+  },
+  {
+    title: parishForum.name,
+    details: parishForum.details,
+    icon: CommunityIcon,
   },
   {
     title: doctrinal?.name ?? "Faith & Doctrinal Class",
     details: doctrinal
-      ? `${formatService(doctrinal)} — Parish Centre`
-      : `Thursdays ${formatTime("19:00")} — Parish Centre`,
+      ? `${formatService(doctrinal)} — Online`
+      : `Thursdays ${formatTime("19:00")} — Online`,
     icon: LampIcon,
   },
-  {
-    title: "Youth Group",
-    details: "Fridays 6:30 PM — Youth Hall",
-    icon: YouthIcon,
-  },
+  // {
+  //   title: "Youth Group",
+  //   details: "Fridays 6:30 PM — Youth Hall",
+  //   icon: YouthIcon,
+  // },
   {
     title: "Choir Practice",
-    details: "Thursdays 7:00 PM — Music Room",
+    details: "Tuesdays, Thursdays, & Saturdays 7:00 PM — Music Room",
     icon: MusicIcon,
   },
 ];
