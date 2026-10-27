@@ -32,7 +32,8 @@ import {
   Image as ImageIcon,
   X,
   FileText,
-  AlertCircle
+  AlertCircle,
+  Send
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -41,13 +42,16 @@ import AttachmentUploadModal from "@/components/attachments/AttachmentUploadModa
 import { MultiSelect } from "@/components/ui/multi-select";
 import categoryService from "@/services/category.service";
 import tagService from "@/services/tag.service";
+import { approvalRequestFrom, useApprovalMode } from "@/hooks/useApprovalMode";
 
+import { IsoDateTimePicker } from "@/components/ui/date-picker";
 const PostFormPage = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const approval = useApprovalMode("post");
   const isEditMode = !!id;
 
   const [formData, setFormData] = useState({
@@ -192,8 +196,9 @@ const PostFormPage = () => {
   // Create mutation
   const createMutation = useMutation({
     mutationFn: (data: CreatePostPayload) => postService.create(data),
-    onSuccess: () => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ["posts"] });
+      if (handleHeldForApproval(response)) return;
       toast({
         title: "Success",
         description: "Post created successfully",
@@ -214,9 +219,10 @@ const PostFormPage = () => {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdatePostPayload }) =>
       postService.update(id, data),
-    onSuccess: () => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ["posts"] });
       queryClient.invalidateQueries({ queryKey: ["post", id] });
+      if (handleHeldForApproval(response)) return;
       toast({
         title: "Success",
         description: "Post updated successfully",
@@ -232,6 +238,19 @@ const PostFormPage = () => {
       setIsSubmitting(false);
     },
   });
+
+  /** A save that tried to publish (or asked for review) may be routed into an approval workflow. */
+  function handleHeldForApproval(response: unknown): boolean {
+    const request = approvalRequestFrom(response);
+    if (!request) return false;
+    queryClient.invalidateQueries({ queryKey: ["approvals-overview"] });
+    toast({
+      title: "Submitted for approval",
+      description: "The post stays unpublished until its review is complete.",
+    });
+    navigate(`/admin/approvals/requests/${request.id}`);
+    return true;
+  }
 
   const handleInputChange = (
     field: keyof typeof formData,
@@ -249,7 +268,7 @@ const PostFormPage = () => {
     setFormData((prev) => ({ ...prev, video: "" }));
   };
 
-  const handleSubmit = (saveAsDraft: boolean = false) => {
+  const handleSubmit = (saveAsDraft: boolean = false, submitForReview: boolean = false) => {
     if (!formData.title.trim()) {
       toast({
         title: "Validation Error",
@@ -270,7 +289,7 @@ const PostFormPage = () => {
 
     setIsSubmitting(true);
 
-    const published = saveAsDraft ? false : formData.published;
+    const published = saveAsDraft || submitForReview ? false : formData.published;
     const payload: CreatePostPayload | UpdatePostPayload = {
       title: formData.title.trim(),
       slug: formData.slug.trim() || undefined,
@@ -298,6 +317,7 @@ const PostFormPage = () => {
       // Taxonomy
       category_ids: formData.category_ids,
       tag_ids: formData.tag_ids,
+      ...(submitForReview ? { submit_for_review: true } : {}),
     };
 
     if (isEditMode && id) {
@@ -735,12 +755,12 @@ const PostFormPage = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="published_at">Publish date &amp; time</Label>
-                <Input
+                <IsoDateTimePicker
                   id="published_at"
-                  type="datetime-local"
                   value={formData.published_at}
-                  onChange={(e) => handleInputChange("published_at", e.target.value)}
+                  onChange={(value) => handleInputChange("published_at", value)}
                   disabled={isSubmitting}
+                  datePlaceholder="Publish immediately"
                 />
                 <p className="text-xs text-muted-foreground">
                   Future dates stay hidden until that time. Leave blank to publish immediately when status is Published.
@@ -799,6 +819,22 @@ const PostFormPage = () => {
                     ? "Update Post"
                     : "Create Post"}
               </Button>
+              {approval.enabled && (
+                <Button
+                  variant="secondary"
+                  onClick={() => handleSubmit(false, true)}
+                  disabled={isSubmitting}
+                  className="w-full"
+                >
+                  <Send className="mr-2 h-4 w-4" />
+                  Submit for Review
+                </Button>
+              )}
+              {approval.required && (
+                <p className="text-xs text-muted-foreground">
+                  Posts need approval before they go live; publishing sends them for review.
+                </p>
+              )}
               <Button
                 variant="secondary"
                 onClick={() => handleSubmit(true)}

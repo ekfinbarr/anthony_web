@@ -3,7 +3,7 @@
  * Main hook for managing dashboard state, data fetching, and real-time updates
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   DashboardData,
@@ -43,19 +43,6 @@ export function useDashboardData(config: DashboardConfig = {}) {
 
   const queryClient = useQueryClient();
   const { personalizationMetrics, updateEngagement } = usePersonalization();
-
-  // Main dashboard state
-  const [dashboardState, setDashboardState] = useState<DashboardState>({
-    user: null,
-    contentFeed: [],
-    upcomingEvents: [],
-    spiritualGrowth: null,
-    communityConnections: [],
-    recommendations: [],
-    isLoading: true,
-    error: null,
-    lastUpdated: new Date()
-  });
 
   /**
    * Fetch dashboard data - uses mock data for demo
@@ -156,7 +143,8 @@ export function useDashboardData(config: DashboardConfig = {}) {
     data,
     isLoading,
     error,
-    refetch
+    refetch,
+    dataUpdatedAt
   } = useQuery({
     queryKey: ['dashboardData'],
     queryFn: fetchDashboardData,
@@ -167,35 +155,19 @@ export function useDashboardData(config: DashboardConfig = {}) {
   });
 
   /**
-   * Update dashboard state when data changes
+   * Dashboard state, derived from the query (no mirrored copy to keep in sync)
    */
-  useEffect(() => {
-    if (data) {
-      setDashboardState(prev => ({
-        ...prev,
-        user: data.user,
-        contentFeed: data.contentFeed,
-        upcomingEvents: data.upcomingEvents,
-        spiritualGrowth: data.spiritualGrowth,
-        communityConnections: data.communityConnections,
-        recommendations: data.recommendations,
-        isLoading: false,
-        error: null,
-        lastUpdated: new Date()
-      }));
-    }
-  }, [data]);
-
-  /**
-   * Handle loading and error states
-   */
-  useEffect(() => {
-    setDashboardState(prev => ({
-      ...prev,
-      isLoading,
-      error: error?.message || null
-    }));
-  }, [isLoading, error]);
+  const dashboardState: DashboardState = useMemo(() => ({
+    user: data?.user ?? null,
+    contentFeed: data?.contentFeed ?? [],
+    upcomingEvents: data?.upcomingEvents ?? [],
+    spiritualGrowth: data?.spiritualGrowth ?? null,
+    communityConnections: data?.communityConnections ?? [],
+    recommendations: data?.recommendations ?? [],
+    isLoading,
+    error: error?.message || null,
+    lastUpdated: dataUpdatedAt ? new Date(dataUpdatedAt) : new Date(),
+  }), [data, isLoading, error, dataUpdatedAt]);
 
   /**
    * Content engagement mutation

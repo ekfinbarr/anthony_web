@@ -38,6 +38,24 @@ export interface MassBooking {
   guest_phone?: string | null;
   created_at: string;
   updated_at: string;
+  // Also returned by MassBookingResource
+  order_id?: string | null;
+  proposed_booking_date?: string | null;
+  intention_category?: string | null;
+  intention_categories?: string[] | null;
+  intention_labels?: string[];
+  beneficiary_type?: string | null;
+  beneficiary_name?: string | null;
+  user?: { id: string; name: string; email: string } | null;
+  approved_by?: string | null;
+  approved_at?: string | null;
+  rejected_reason?: string | null;
+  cancelled_reason?: string | null;
+  payment_status?: string;
+  payment_method?: string | null;
+  payment_evidence?: string | null;
+  payment_transaction_id?: string | null;
+  payment_reference?: string | null;
 }
 
 /**

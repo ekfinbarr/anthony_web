@@ -28,9 +28,16 @@ import contactMessageService, {
   ContactMessageType,
 } from "@/services/contactMessage.service";
 
+import { BulkActionBar, SelectAllCheckbox, SelectRowCheckbox } from "@/components/admin/data/BulkActionBar";
+import { ExportMenu } from "@/components/admin/data/ExportMenu";
+import { fetchAllPages } from "@/components/admin/data/fetchAllPages";
+import { rowId, useBulkSelection } from "@/components/admin/data/useBulkSelection";
+import type { ExportColumn } from "@/lib/export/tableExport";
+import { InsightsPanel } from "@/components/admin/data/InsightsPanel";
 const AdminContact = () => {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const selection = useBulkSelection<ContactMessage>(rowId);
 
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearch = useDebouncedValue(searchInput, 350);
@@ -142,13 +149,30 @@ const AdminContact = () => {
   const from = listQuery.data?.from ?? 0;
   const to = listQuery.data?.to ?? 0;
 
+  const exportColumns: ExportColumn<ContactMessage>[] = [
+    { header: "Received", value: (m) => m.created_at, type: "datetime" },
+    { header: "Name", value: (m) => m.name },
+    { header: "Email", value: (m) => m.email },
+    { header: "Phone", value: (m) => m.phone ?? "" },
+    { header: "Type", value: (m) => m.type },
+    { header: "Subject", value: (m) => m.subject ?? "", width: 30 },
+    { header: "Message", value: (m) => m.message, width: 60 },
+    { header: "Status", value: (m) => m.status },
+    { header: "Replied", value: (m) => m.replied_at ?? null, type: "datetime" },
+  ];
+  const fetchAllRows = () => fetchAllPages<ContactMessage>((page, per_page) => contactMessageService.list({ ...queryParams, page, per_page }) as never);
+
   return (
     <div className="space-y-6 animate-fade-in">
+      <BulkActionBar resource="contact_messages" selection={selection} describe={(m) => (m.subject || m.name)} noun={["message", "messages"]} onComplete={() => qc.invalidateQueries({ queryKey: ["admin-contact-messages"] })}>
+        <ExportMenu variant="bar" title="Contact messages" filename="contact-messages" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
+      </BulkActionBar>
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-heading font-bold text-foreground">Contact Messages</h1>
           <p className="text-muted-foreground mt-1">View and respond to messages from website visitors.</p>
         </div>
+        <ExportMenu title="Contact messages" filename="contact-messages" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
       </div>
 
       {/* Stats */}
@@ -203,6 +227,8 @@ const AdminContact = () => {
           </CardContent>
         </Card>
       </div>
+
+      <InsightsPanel module="contact_messages" />
 
       {/* Filters */}
       <Card>
@@ -322,6 +348,7 @@ const AdminContact = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10"><SelectAllCheckbox selection={selection} rows={listQuery.data?.data ?? []} /></TableHead>
                       <TableHead>Sender</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Subject</TableHead>
@@ -332,7 +359,8 @@ const AdminContact = () => {
                   </TableHeader>
                   <TableBody>
                     {(listQuery.data?.data ?? []).map((m) => (
-                      <TableRow key={m.id} className={m.status === "new" ? "bg-muted/50" : "hover:bg-muted/50"}>
+                      <TableRow key={m.id} className={m.status === "new" ? "bg-muted/50" : "hover:bg-muted/50"} data-state={selection.isSelected(m) ? "selected" : undefined}>
+                        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}><SelectRowCheckbox selection={selection} row={m} label={`Select ${(m.subject || m.name)}`} /></TableCell>
                         <TableCell>
                           <div>
                             <div className="font-medium">{m.name}</div>

@@ -25,7 +25,7 @@ import {
   UserCircle,
   Video
 } from "lucide-react";
-import { LucideIcon } from "lucide-react";
+import { FolderPlus, LucideIcon } from "lucide-react";
 
 export type EmptyStateIcon = 
   | "file" 
@@ -42,7 +42,8 @@ export type EmptyStateIcon =
   | "shopping"
   | "activity"
   | "user"
-  | "video";
+  | "video"
+  | "folder-plus";
 
 interface GenericEmptyStateProps {
   title: string;
@@ -69,6 +70,7 @@ const iconMap: Record<EmptyStateIcon, LucideIcon> = {
   activity: Activity,
   user: UserCircle,
   video: Video,
+  "folder-plus": FolderPlus,
 };
 
 export function GenericEmptyState({

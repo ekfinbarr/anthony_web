@@ -60,6 +60,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import AttachmentUploadModal from "@/components/attachments/AttachmentUploadModal";
 import { format } from "date-fns";
 
+import SubmitForReviewButton from "@/components/admin/shared/SubmitForReviewButton";
 type MediaUploadTarget = "thumbnail" | "audio" | "video" | "notes";
 
 const SermonFormPage = () => {
@@ -806,6 +807,7 @@ const SermonFormPage = () => {
               >
                 Save as Draft
               </Button>
+              <SubmitForReviewButton contentType="sermon" contentId={id} className="w-full" />
               <Button
                 variant="outline"
                 onClick={() => navigate("/admin/sermons")}

@@ -27,6 +27,17 @@ export interface Donation {
   created_at: string;
   updated_at: string;
   user_id?: string;
+  // Returned by DonationResource; optional because older payloads omit them.
+  currency?: string;
+  type_formatted?: string;
+  status_formatted?: string;
+  donor_name?: string;
+  donor_email?: string;
+  donor_phone?: string;
+  is_anonymous?: boolean;
+  dedication?: string;
+  memorial_for?: string;
+  donation_date?: string;
 }
 
 export interface DonationResourceCollection<T> {

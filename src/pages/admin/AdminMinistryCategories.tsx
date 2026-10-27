@@ -41,9 +41,15 @@ import DeleteConfirmModal from "@/components/admin/shared/DeleteConfirmModal";
 import { AdminPagination } from "@/components/admin/shared/AdminPagination";
 import { GenericEmptyState } from "@/components/admin/shared/GenericEmptyState";
 
+import { BulkActionBar, SelectAllCheckbox, SelectRowCheckbox } from "@/components/admin/data/BulkActionBar";
+import { ExportMenu } from "@/components/admin/data/ExportMenu";
+import { fetchAllPages } from "@/components/admin/data/fetchAllPages";
+import { rowId, useBulkSelection } from "@/components/admin/data/useBulkSelection";
+import type { ExportColumn } from "@/lib/export/tableExport";
 const AdminMinistryCategories = () => {
     const { toast } = useToast();
     const queryClient = useQueryClient();
+  const selection = useBulkSelection<MinistryCategory>(rowId);
     const [page, setPage] = useState(1);
     const [searchQuery, setSearchQuery] = useState("");
 
@@ -155,16 +161,31 @@ const AdminMinistryCategories = () => {
     const categories = data?.data || [];
     const totalPages = data?.last_page || 1;
 
+  const exportColumns: ExportColumn<MinistryCategory>[] = [
+    { header: "Name", value: (c) => c.name, width: 30 },
+    { header: "Slug", value: (c) => c.slug },
+    { header: "Description", value: (c) => c.description ?? "", width: 50 },
+    { header: "Active", value: (c) => !!c.is_active },
+    { header: "Order", value: (c) => c.sort_order ?? null, type: "number" },
+  ];
+  const fetchAllRows = () => fetchAllPages<MinistryCategory>((page, per_page) => ministryCategoryService.list({ page, per_page, search: searchQuery || undefined }) as never);
+
     return (
         <div className="space-y-6 animate-fade-in p-6 pb-20">
+      <BulkActionBar resource="ministry_categories" selection={selection} describe={(category) => category.name} noun={["category", "categories"]} onComplete={() => queryClient.invalidateQueries({ queryKey: ["ministry-categories"] })}>
+        <ExportMenu variant="bar" title="Ministry categories" filename="ministry-categories" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
+      </BulkActionBar>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-heading font-bold text-foreground">Ministry Categories</h1>
                     <p className="text-muted-foreground">Manage categories for ministries and groups.</p>
                 </div>
-                <Button onClick={openCreateDialog}>
+                <div className="flex flex-wrap items-center gap-2">
+          <ExportMenu title="Ministry categories" filename="ministry-categories" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
+          <Button onClick={openCreateDialog}>
                     <Plus className="mr-2 h-4 w-4" /> Add Category
                 </Button>
+        </div>
             </div>
 
             <Card>
@@ -196,6 +217,7 @@ const AdminMinistryCategories = () => {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
+                      <TableHead className="w-10"><SelectAllCheckbox selection={selection} rows={categories} /></TableHead>
                                         <TableHead>Name</TableHead>
                                         <TableHead>Slug</TableHead>
                                         <TableHead>Status</TableHead>
@@ -204,7 +226,8 @@ const AdminMinistryCategories = () => {
                                 </TableHeader>
                                 <TableBody>
                                     {categories.map((category) => (
-                                        <TableRow key={category.id}>
+                                        <TableRow key={category.id} data-state={selection.isSelected(category) ? "selected" : undefined}>
+                        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}><SelectRowCheckbox selection={selection} row={category} label={`Select ${category.name}`} /></TableCell>
                                             <TableCell className="font-medium">
                                                 {category.name}
                                                 {category.description && (

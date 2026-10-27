@@ -238,11 +238,16 @@ class ApiClient {
   /**
    * GET request
    */
-  async get<T = unknown>(endpoint: string, params?: Record<string, string | number | boolean | null | undefined>): Promise<ApiResponse<T>> {
+  /**
+   * `params` accepts any plain object (typed query-param interfaces included —
+   * TypeScript never treats an `interface` as assignable to an index signature).
+   * null/undefined values are omitted; other values are stringified.
+   */
+  async get<T = unknown>(endpoint: string, params?: object): Promise<ApiResponse<T>> {
     let url = endpoint;
     if (params) {
       const searchParams = new URLSearchParams();
-      Object.entries(params).forEach(([key, value]) => {
+      Object.entries(params as Record<string, unknown>).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
           searchParams.append(key, String(value));
         }

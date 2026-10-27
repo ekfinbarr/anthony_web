@@ -155,7 +155,7 @@ export class SpiritualMetricsCalculator {
   /**
    * Calculate streak for a specific activity type
    */
-  calculateStreak(activities: SpiritualActivity[], type: SpiritualActivity['type']): SpiritualStreak {
+  calculateStreak(activities: SpiritualActivity[], type: SpiritualStreak['type']): SpiritualStreak {
     const typeActivities = activities
       .filter(a => a.type === type && a.verified)
       .sort((a, b) => b.date.getTime() - a.date.getTime());
@@ -235,7 +235,7 @@ export class SpiritualMetricsCalculator {
    * Calculate all streaks for a user
    */
   calculateAllStreaks(activities: SpiritualActivity[]): SpiritualStreak[] {
-    const types: SpiritualActivity['type'][] = ['prayer', 'reading', 'service', 'attendance'];
+    const types: SpiritualStreak['type'][] = ['prayer', 'reading', 'service', 'attendance'];
     return types.map(type => this.calculateStreak(activities, type));
   }
 

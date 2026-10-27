@@ -112,7 +112,7 @@ export class ChurchChatbotService {
       this.messages.push(userChatMessage);
 
       // Prepare messages for OpenAI (exclude system message from conversation display)
-      const conversationMessages = this.messages.map(msg => ({
+      const conversationMessages: OpenAI.Chat.ChatCompletionMessageParam[] = this.messages.map(msg => ({
         role: msg.role,
         content: msg.content
       }));
@@ -122,8 +122,7 @@ export class ChurchChatbotService {
       // Call OpenAI API
       const completion = await openai.chat.completions.create({
         model: "gpt-4",
-        // The OpenAI SDK expects a typed message array; we avoid `any` to satisfy lint.
-        messages: conversationMessages as unknown as Array<{ role: string; content: string }>,
+        messages: conversationMessages,
         max_tokens: 500,
         temperature: 0.7,
         presence_penalty: 0.1,

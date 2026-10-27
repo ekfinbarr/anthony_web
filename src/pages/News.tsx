@@ -89,7 +89,7 @@ const News = () => {
     queryFn: () => categoryService.list({ active: true }),
   });
 
-  const news = listQuery.data?.data ?? [];
+  const news = useMemo(() => listQuery.data?.data ?? [], [listQuery.data]);
   const lastPage = listQuery.data?.meta?.last_page ?? 1;
   const total = listQuery.data?.meta?.total ?? 0;
   const featured = featuredQuery.data ?? null;

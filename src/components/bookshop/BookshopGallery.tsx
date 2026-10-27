@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Carousel,
   CarouselContent,
@@ -10,37 +10,15 @@ import {
 import { bookshopSlides } from "@/data/bookshopContent";
 import { cn } from "@/lib/utils";
 
+import { useCarouselValue } from "@/hooks/useCarouselValue";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 const AUTOPLAY_MS = 4500;
 
 const BookshopGallery = () => {
   const [api, setApi] = useState<CarouselApi>();
-  const [current, setCurrent] = useState(0);
+  const current = useCarouselValue(api, (carousel) => carousel.selectedScrollSnap(), 0);
   const [paused, setPaused] = useState(false);
-  const [reduceMotion, setReduceMotion] = useState(false);
-
-  const onSelect = useCallback((carousel: CarouselApi) => {
-    if (!carousel) return;
-    setCurrent(carousel.selectedScrollSnap());
-  }, []);
-
-  useEffect(() => {
-    if (!api) return;
-    onSelect(api);
-    api.on("select", onSelect);
-    api.on("reInit", onSelect);
-    return () => {
-      api.off("select", onSelect);
-      api.off("reInit", onSelect);
-    };
-  }, [api, onSelect]);
-
-  useEffect(() => {
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const update = () => setReduceMotion(media.matches);
-    update();
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
-  }, []);
+  const reduceMotion = usePrefersReducedMotion();
 
   useEffect(() => {
     if (!api || paused || reduceMotion) return;

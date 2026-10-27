@@ -44,6 +44,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import massScheduleService, { MassSchedule, CreateMassSchedulePayload, UpdateMassSchedulePayload } from "@/services/massSchedule.service";
 
+import SubmitForReviewButton from "@/components/admin/shared/SubmitForReviewButton";
+import { IsoTimePicker } from "@/components/ui/time-picker";
 const ScheduleFormPage = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -78,7 +80,7 @@ const ScheduleFormPage = () => {
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (isEditMode && schedule) {
-        const scheduleData = { ...(schedule as MassSchedule)?.data || {} };
+        const scheduleData: Partial<MassSchedule> = { ...schedule };
         setFormData({
           title: scheduleData.title || "",
           day_of_week: schedule.day_of_week || "",
@@ -357,22 +359,24 @@ const ScheduleFormPage = () => {
                   <Label htmlFor="start_time">
                     Start Time <span className="text-destructive">*</span>
                   </Label>
-                  <Input
+                  <IsoTimePicker
                     id="start_time"
-                    type="time"
                     value={formData.start_time}
-                    onChange={(e) => handleInputChange("start_time", e.target.value)}
+                    onChange={(value) => handleInputChange("start_time", value)}
                     disabled={isSubmitting}
+                    minuteInterval={5}
+                    placeholder="Select start time"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="end_time">End Time</Label>
-                  <Input
+                  <IsoTimePicker
                     id="end_time"
-                    type="time"
                     value={formData.end_time}
-                    onChange={(e) => handleInputChange("end_time", e.target.value)}
+                    onChange={(value) => handleInputChange("end_time", value)}
                     disabled={isSubmitting}
+                    minuteInterval={5}
+                    placeholder="Select end time (optional)"
                   />
                 </div>
               </div>
@@ -496,6 +500,7 @@ const ScheduleFormPage = () => {
                     ? "Update Schedule"
                     : "Create Schedule"}
               </Button>
+              <SubmitForReviewButton contentType="mass_schedule" contentId={id} className="w-full" />
               <Button
                 variant="outline"
                 onClick={() => navigate("/admin/schedules")}

@@ -15,6 +15,11 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { TimePicker } from "@/components/ui/time-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+import { BulkActionBar, SelectAllCheckbox, SelectRowCheckbox } from "@/components/admin/data/BulkActionBar";
+import { ExportMenu } from "@/components/admin/data/ExportMenu";
+import { fetchAllPages } from "@/components/admin/data/fetchAllPages";
+import { rowId, useBulkSelection } from "@/components/admin/data/useBulkSelection";
+import type { ExportColumn } from "@/lib/export/tableExport";
 /**
  * Admin Calendar Management
  *
@@ -28,6 +33,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 export default function AdminCalendar() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const selection = useBulkSelection<CalendarEvent>(rowId);
 
   const now = new Date();
   const [year] = useState(now.getFullYear());
@@ -98,14 +104,32 @@ export default function AdminCalendar() {
     },
   });
 
+  const exportColumns: ExportColumn<CalendarEvent>[] = [
+    { header: "Title", value: (e) => e.title, width: 34 },
+    { header: "Starts", value: (e) => e.start_datetime, type: "datetime" },
+    { header: "Ends", value: (e) => e.end_datetime ?? null, type: "datetime" },
+    { header: "All day", value: (e) => !!e.is_all_day },
+    { header: "Type", value: (e) => e.type ?? "" },
+    { header: "Category", value: (e) => e.category ?? "" },
+    { header: "Rank", value: (e) => e.liturgical_rank ?? "" },
+    { header: "Location", value: (e) => e.location ?? "" },
+    { header: "Published", value: (e) => !!e.is_published },
+  ];
+  const fetchAllRows = () => fetchAllPages<CalendarEvent>((page, per_page) => calendarService.getMonth(year, month) as never);
+
   return (
     <div className="space-y-6 animate-fade-in">
+      <BulkActionBar resource="calendar_events" selection={selection} describe={(e) => e.title} noun={["entry", "entries"]} onComplete={() => qc.invalidateQueries({ queryKey: ["admin-calendar-month"] })}>
+        <ExportMenu variant="bar" title="Parish calendar" filename="calendar" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
+      </BulkActionBar>
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-heading font-bold text-foreground">Calendar</h1>
           <p className="text-muted-foreground mt-1">Manage parish celebrations and liturgical observances.</p>
         </div>
 
+        <div className="flex flex-wrap items-center gap-2">
+          <ExportMenu title="Parish calendar" filename="calendar" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
@@ -262,6 +286,7 @@ export default function AdminCalendar() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <Card>
@@ -280,6 +305,7 @@ export default function AdminCalendar() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                      <TableHead className="w-10"><SelectAllCheckbox selection={selection} rows={events} /></TableHead>
                     <TableHead>Title</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Category</TableHead>
@@ -288,7 +314,8 @@ export default function AdminCalendar() {
                 </TableHeader>
                 <TableBody>
                   {events.map((e: CalendarEvent) => (
-                    <TableRow key={e.id}>
+                    <TableRow key={e.id} data-state={selection.isSelected(e) ? "selected" : undefined}>
+                        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}><SelectRowCheckbox selection={selection} row={e} label={`Select ${e.title}`} /></TableCell>
                       <TableCell className="font-medium">{e.title}</TableCell>
                       <TableCell>{new Date(e.start_datetime).toLocaleString()}</TableCell>
                       <TableCell className="capitalize">{e.category || "parish"}</TableCell>

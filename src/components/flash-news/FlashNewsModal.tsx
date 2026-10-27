@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
@@ -52,10 +52,12 @@ const FlashNewsModal = () => {
     retry: false,
   });
 
-  useEffect(() => {
-    if (!data || isFlashNewsDismissed(data.id)) return;
-    setOpen(true);
-  }, [data]);
+  // Open once for each new announcement the visitor hasn't dismissed (adjusted during render).
+  const [seenId, setSeenId] = useState<string | number | null>(null);
+  if (data && data.id !== seenId) {
+    setSeenId(data.id);
+    if (!isFlashNewsDismissed(data.id)) setOpen(true);
+  }
 
   const rememberDismissal = () => {
     if (data) dismissFlashNews(data.id);

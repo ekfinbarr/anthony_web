@@ -95,6 +95,8 @@ export interface CreatePostPayload {
   /** Selected taxonomy (UUIDs). */
   category_ids?: string[];
   tag_ids?: string[];
+  /** Route this save into the approval workflow instead of publishing. */
+  submit_for_review?: boolean;
 }
 
 /**

@@ -4,6 +4,7 @@ import { Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { TimePicker } from "@/components/ui/time-picker";
 import {
   Popover,
   PopoverContent,
@@ -78,6 +79,12 @@ export interface DatePickerProps {
    */
   dateFormat?: string;
 
+  /**
+   * Show month and year dropdowns, for dates far from today such as a birth date.
+   * Needs minDate and maxDate to bound the year list.
+   */
+  yearDropdown?: boolean;
+
   id?: string;
   "aria-invalid"?: boolean;
   "aria-describedby"?: string;
@@ -100,6 +107,7 @@ export const DatePicker = React.forwardRef<HTMLButtonElement, DatePickerProps>(f
   minDate,
   maxDate,
   dateFormat = "PPP",
+  yearDropdown = false,
   id,
   "aria-invalid": ariaInvalid,
   "aria-describedby": ariaDescribedBy,
@@ -171,7 +179,16 @@ export const DatePicker = React.forwardRef<HTMLButtonElement, DatePickerProps>(f
           selected={isValidDate ? date : undefined}
           onSelect={onDateChange}
           disabled={isDateDisabled}
-          initialFocus
+          autoFocus
+          {...(yearDropdown && isValidMinDate && isValidMaxDate
+            ? {
+                captionLayout: "dropdown" as const,
+                startMonth: minDate,
+                endMonth: maxDate,
+                defaultMonth: isValidDate ? date : maxDate,
+                hideNavigation: false,
+              }
+            : {})}
         />
       </PopoverContent>
     </Popover>
@@ -186,6 +203,7 @@ function parseIsoDate(value?: string): Date | undefined {
 
 export interface IsoDatePickerProps {
   value?: string;
+  yearDropdown?: boolean;
   onChange: (value: string) => void;
   min?: string;
   max?: string;
@@ -220,3 +238,63 @@ export const IsoDatePicker = React.forwardRef<HTMLButtonElement, IsoDatePickerPr
   );
 });
 
+export interface IsoDateTimePickerProps {
+  /** Local date-time as "yyyy-MM-ddTHH:mm" (the format datetime-local inputs used). */
+  value?: string;
+  onChange: (value: string) => void;
+  /** Time applied when a date is picked before a time. */
+  defaultTime?: string;
+  datePlaceholder?: string;
+  timePlaceholder?: string;
+  disabled?: boolean;
+  className?: string;
+  id?: string;
+  minuteInterval?: number;
+}
+
+/** Date + time picker pair for forms that store a local "yyyy-MM-ddTHH:mm" string. */
+export function IsoDateTimePicker({
+  value,
+  onChange,
+  defaultTime = "09:00",
+  datePlaceholder = "Pick a date",
+  timePlaceholder = "Time",
+  disabled,
+  className,
+  id,
+  minuteInterval = 5,
+}: IsoDateTimePickerProps) {
+  const match = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/.exec(value ?? "");
+  const datePart = match?.[1] ?? "";
+  const timePart = match?.[2] ?? "";
+
+  // Memoised so TimePicker's sync effect doesn't reset an in-progress selection each render.
+  const time = React.useMemo(() => {
+    if (!timePart) return undefined;
+    const [h, m] = timePart.split(":").map(Number);
+    return { hours: h, minutes: m };
+  }, [timePart]);
+
+  return (
+    <div className={cn("grid gap-2 sm:grid-cols-[1fr_9rem]", className)}>
+      <IsoDatePicker
+        id={id}
+        value={datePart}
+        placeholder={datePlaceholder}
+        disabled={disabled}
+        onChange={(date) => onChange(date ? `${date}T${timePart || defaultTime}` : "")}
+      />
+      <TimePicker
+        time={time}
+        placeholder={timePlaceholder}
+        disabled={disabled || !datePart}
+        format="24h"
+        minuteInterval={minuteInterval}
+        onTimeChange={(t) => {
+          if (!t || !datePart) return;
+          onChange(`${datePart}T${String(t.hours).padStart(2, "0")}:${String(t.minutes).padStart(2, "0")}`);
+        }}
+      />
+    </div>
+  );
+}

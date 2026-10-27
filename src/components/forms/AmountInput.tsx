@@ -1,41 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
-
-const SYMBOLS: Record<string, string> = { NGN: "₦", USD: "$", EUR: "€", GBP: "£" };
-
-export function parseAmount(raw: string): number | null {
-  const cleaned = raw.replace(/,/g, "").replace(/[^\d.]/g, "");
-  if (!cleaned || cleaned === ".") return null;
-  const value = Number(cleaned);
-  return Number.isFinite(value) ? value : null;
-}
-
-/** Thousands separators while the visitor is still typing. A trailing dot is kept. */
-export function formatAmountTyping(raw: string): string {
-  const cleaned = raw.replace(/,/g, "").replace(/[^\d.]/g, "");
-  if (!cleaned) return "";
-  const dot = cleaned.indexOf(".");
-  const whole = dot === -1 ? cleaned : cleaned.slice(0, dot);
-  const fraction = dot === -1 ? "" : cleaned.slice(dot + 1).replace(/\./g, "").slice(0, 2);
-  const normalized = whole.replace(/^0+(?=\d)/, "");
-  const grouped = (normalized || (dot === -1 ? "" : "0")).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  if (dot === -1) return grouped;
-  return `${grouped || "0"}.${fraction}`;
-}
-
-export function formatAmountNumber(value: number): string {
-  return new Intl.NumberFormat("en-NG", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
-export function formatAmount(value: number | null | undefined, currency = "NGN"): string {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) return "";
-  const formatted = formatAmountNumber(Number(value));
-  const symbol = SYMBOLS[currency];
-  return symbol ? `${symbol}${formatted}` : `${currency} ${formatted}`;
-}
+import { SYMBOLS, formatAmountNumber, formatAmountTyping, parseAmount } from "@/lib/amount";
 
 export interface AmountInputProps {
   value: number | null;
@@ -70,10 +35,13 @@ export function AmountInput({
   const [raw, setRaw] = useState(value === null ? "" : formatAmountNumber(value));
   const symbol = SYMBOLS[currency] ?? currency;
 
-  useEffect(() => {
-    if (focused) return;
-    setRaw(value === null || Number.isNaN(value) ? "" : formatAmountNumber(value));
-  }, [value, focused]);
+  // Re-format from `value` when it changes or the field loses focus (adjusted during
+  // render, not in an effect). While focused, the visitor's typing is left alone.
+  const [synced, setSynced] = useState({ value, focused });
+  if (synced.value !== value || synced.focused !== focused) {
+    setSynced({ value, focused });
+    if (!focused) setRaw(value === null || Number.isNaN(value) ? "" : formatAmountNumber(value));
+  }
 
   return (
     <div

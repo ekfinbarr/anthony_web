@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +48,7 @@ import { TimePicker } from "@/components/ui/time-picker";
 import AttachmentUploadModal from "@/components/attachments/AttachmentUploadModal";
 import { ExternalLink } from "lucide-react";
 
+import SubmitForReviewButton from "@/components/admin/shared/SubmitForReviewButton";
 const EventFormPage = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -55,6 +56,10 @@ const EventFormPage = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const isEditMode = !!id;
+  // "Create from calendar" passes ?date=YYYY-MM-DD&time=HH:mm to prefill the schedule.
+  const [searchParams] = useSearchParams();
+  const prefillDate = searchParams.get("date");
+  const prefillTime = searchParams.get("time");
   const [draftAttachmentGroupId] = useState(() => `event-draft-${Date.now()}`);
 
   // Shared open states for the reusable upload modal.
@@ -156,15 +161,19 @@ const EventFormPage = () => {
           setImagePreview(null);
         }
       } else if (!isEditMode) {
+        const date = prefillDate && /^\d{4}-\d{2}-\d{2}$/.test(prefillDate) ? new Date(`${prefillDate}T12:00:00`) : undefined;
+        const timeMatch = prefillTime ? /^(\d{1,2}):(\d{2})$/.exec(prefillTime) : null;
+        const start = timeMatch ? { hours: Number(timeMatch[1]), minutes: Number(timeMatch[2]) } : undefined;
+        const end = start ? { hours: Math.min(start.hours + 1, 23), minutes: start.hours >= 23 ? 59 : start.minutes } : undefined;
         setFormData({
           name: "",
           slug: "",
           description: "",
           summary: "",
-          start_date: undefined,
-          start_time: undefined,
+          start_date: date,
+          start_time: start,
           end_date: undefined,
-          end_time: undefined,
+          end_time: end,
           is_all_day: false,
           location: "",
           venue_address: "",
@@ -184,7 +193,7 @@ const EventFormPage = () => {
     }, 0);
 
     return () => clearTimeout(timeoutId);
-  }, [event, isEditMode]);
+  }, [event, isEditMode, prefillDate, prefillTime]);
 
   // Create mutation
   const createMutation = useMutation({
@@ -858,6 +867,7 @@ const EventFormPage = () => {
                   Export RSVPs (CSV)
                 </Button>
               )}
+              <SubmitForReviewButton contentType="event" contentId={id} className="w-full" />
               <Button
                 variant="outline"
                 onClick={() => navigate("/admin/events")}

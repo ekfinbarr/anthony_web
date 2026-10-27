@@ -70,7 +70,14 @@ import adminBookshopService, {
   BookshopOrderAdmin,
 } from "@/services/adminBookshop.service";
 
+import { BulkActionBar, SelectAllCheckbox, SelectRowCheckbox } from "@/components/admin/data/BulkActionBar";
+import { ExportMenu } from "@/components/admin/data/ExportMenu";
+import { fetchAllPages } from "@/components/admin/data/fetchAllPages";
+import { rowId, useBulkSelection } from "@/components/admin/data/useBulkSelection";
+import type { ExportColumn } from "@/lib/export/tableExport";
+import { InsightsPanel } from "@/components/admin/data/InsightsPanel";
 interface Product {
+  id: string;
   slug: string;
   name: string;
   category: string;
@@ -85,6 +92,8 @@ const AdminShop = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const orderSelection = useBulkSelection<BookshopOrderAdmin>(rowId);
+  const productSelection = useBulkSelection<Product>(rowId);
 
   // State management
   const [searchQuery, setSearchQuery] = useState("");
@@ -125,6 +134,7 @@ const AdminShop = () => {
             : p.price;
 
       return {
+        id: String(p.id),
         slug: p.slug,
         name: p.title,
         category: p.category?.name || "—",
@@ -217,6 +227,27 @@ const AdminShop = () => {
     return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount);
   };
 
+  const productColumns: ExportColumn<Product>[] = [
+    { header: "Product", value: (p) => p.name, width: 32 },
+    { header: "Category", value: (p) => p.category },
+    { header: "Price", value: (p) => p.price, type: "money" },
+    { header: "Stock", value: (p) => p.stock, type: "number", total: true },
+    { header: "Status", value: (p) => p.status },
+    { header: "Featured", value: (p) => p.featured },
+  ];
+  const fetchAllProducts = () => fetchAllPages<Product>((page, per_page) => Promise.resolve(products) as never);
+
+  const orderColumns: ExportColumn<BookshopOrderAdmin>[] = [
+    { header: "Reference", value: (o) => o.reference },
+    { header: "Customer", value: (o) => o.customer_name },
+    { header: "Email", value: (o) => o.customer_email ?? "" },
+    { header: "Phone", value: (o) => o.customer_phone ?? "" },
+    { header: "Items", value: (o) => (o.items ?? []).map((i) => `${i.quantity}× ${i.product_title}`).join("; "), width: 40 },
+    { header: "Status", value: (o) => o.status },
+    { header: "Total", value: (o) => Number(o.total_amount), type: "money", total: true },
+  ];
+  const fetchAllOrders = () => fetchAllPages<BookshopOrderAdmin>((page, per_page) => adminBookshopService.listOrders({ page, per_page, status: orderStatusFilter === "all" ? undefined : orderStatusFilter }) as never);
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -245,6 +276,12 @@ const AdminShop = () => {
 
         {/* Products Tab */}
         <TabsContent value="products" className="space-y-6">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <ExportMenu title="Bookshop products" filename="bookshop-products" columns={productColumns} fetchAll={fetchAllProducts} selected={productSelection.rows} currency="NGN" />
+          </div>
+      <BulkActionBar resource="bookshop_products" selection={productSelection} describe={(product) => product.name} noun={["product", "products"]} onComplete={() => queryClient.invalidateQueries({ queryKey: ["admin-bookshop-products"] })}>
+        <ExportMenu variant="bar" title="Bookshop products" filename="bookshop-products" columns={productColumns} fetchAll={fetchAllProducts} selected={productSelection.rows} currency="NGN" />
+      </BulkActionBar>
           {/* Filters */}
           <Card>
             <CardContent className="p-4">
@@ -318,6 +355,7 @@ const AdminShop = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                      <TableHead className="w-10"><SelectAllCheckbox selection={productSelection} rows={products} /></TableHead>
                         <TableHead>Product</TableHead>
                         <TableHead>Category</TableHead>
                         <TableHead>Price</TableHead>
@@ -338,7 +376,8 @@ const AdminShop = () => {
                           return matchesSearch && matchesStatus;
                         })
                         .map((product) => (
-                        <TableRow key={product.slug} className="hover:bg-muted/50">
+                        <TableRow key={product.slug} className="hover:bg-muted/50" data-state={productSelection.isSelected(product) ? "selected" : undefined}>
+                        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}><SelectRowCheckbox selection={productSelection} row={product} label={`Select ${product.name}`} /></TableCell>
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-2">
                               <ShoppingBag className="h-4 w-4 text-muted-foreground" />
@@ -404,6 +443,13 @@ const AdminShop = () => {
 
         {/* Orders Tab */}
         <TabsContent value="orders" className="space-y-6">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <ExportMenu title="Bookshop orders" filename="bookshop-orders" columns={orderColumns} fetchAll={fetchAllOrders} selected={orderSelection.rows} currency="NGN" />
+          </div>
+          <InsightsPanel module="bookshop_orders" />
+      <BulkActionBar resource="bookshop_orders" selection={orderSelection} describe={(order) => `${order.reference} · ${order.customer_name}`} noun={["order", "orders"]} onComplete={() => queryClient.invalidateQueries({ queryKey: ["admin-bookshop-orders"] })}>
+        <ExportMenu variant="bar" title="Bookshop orders" filename="bookshop-orders" columns={orderColumns} fetchAll={fetchAllOrders} selected={orderSelection.rows} currency="NGN" />
+      </BulkActionBar>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-4">
               <CardTitle>Orders</CardTitle>
@@ -439,6 +485,7 @@ const AdminShop = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                      <TableHead className="w-10"><SelectAllCheckbox selection={orderSelection} rows={orders} /></TableHead>
                         <TableHead>Reference</TableHead>
                         <TableHead>Customer</TableHead>
                         <TableHead>Items</TableHead>
@@ -455,7 +502,8 @@ const AdminShop = () => {
                           ?? order.items?.length
                           ?? 0;
                         return (
-                          <TableRow key={order.id} className="hover:bg-muted/50">
+                          <TableRow key={order.id} className="hover:bg-muted/50" data-state={orderSelection.isSelected(order) ? "selected" : undefined}>
+                        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}><SelectRowCheckbox selection={orderSelection} row={order} label={`Select ${`${order.reference} · ${order.customer_name}`}`} /></TableCell>
                             <TableCell className="font-mono text-xs">{order.reference || order.id.slice(0, 8)}</TableCell>
                             <TableCell>
                               <div className="font-medium">{order.customer_name}</div>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 
 type RevealFrom = "up" | "left" | "right";
 
@@ -19,44 +20,28 @@ const Reveal = ({
   delay?: number;
 }) => {
   const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
+  const [revealed, setRevealed] = useState(false);
+  const reduceMotion = usePrefersReducedMotion();
+  const visible = revealed || reduceMotion;
 
   useEffect(() => {
     const node = ref.current;
-    if (!node) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setVisible(true);
-      return;
-    }
+    if (!node || reduceMotion || revealed) return;
 
-    let frame = 0;
-    const revealIfNear = () => {
-      const rect = node.getBoundingClientRect();
-      const near = rect.top < window.innerHeight * 0.92 && rect.bottom > 0;
-      if (near) setVisible(true);
-      return near;
-    };
-
-    if (revealIfNear()) return;
-
-    const onScroll = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        if (revealIfNear()) {
-          window.removeEventListener("scroll", onScroll);
-          window.removeEventListener("resize", onScroll);
+    // Reveal once the block is within the bottom 8% of the viewport (or above it).
+    // The observer also reports blocks that are already on screen when it starts.
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setRevealed(true);
+          observer.disconnect();
         }
-      });
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-    };
-  }, []);
+      },
+      { rootMargin: "0px 0px -8% 0px" }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [reduceMotion, revealed]);
 
   const style: CSSProperties | undefined = delay > 0 ? { transitionDelay: `${delay}ms` } : undefined;
 

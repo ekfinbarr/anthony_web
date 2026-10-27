@@ -69,11 +69,16 @@ import {
 import userService, { User, UserQueryParams } from "@/services/user.service";
 import { StatusBadge } from "@/components/admin/shared/StatusBadge";
 import { GenericEmptyState } from "@/components/admin/shared/GenericEmptyState";
-import { downloadAuthenticatedFile } from "@/lib/downloadCsv";
 import { useToast } from "@/hooks/use-toast";
 
+import { BulkActionBar, SelectAllCheckbox, SelectRowCheckbox } from "@/components/admin/data/BulkActionBar";
+import { ExportMenu } from "@/components/admin/data/ExportMenu";
+import { fetchAllPages } from "@/components/admin/data/fetchAllPages";
+import { rowId, useBulkSelection } from "@/components/admin/data/useBulkSelection";
+import type { ExportColumn } from "@/lib/export/tableExport";
 const AdminMembership = () => {
   const queryClient = useQueryClient();
+  const selection = useBulkSelection<User>(rowId);
   const { toast } = useToast();
 
   // State management
@@ -146,8 +151,21 @@ const AdminMembership = () => {
   const from = (membersData && 'from' in membersData) ? membersData.from : 0;
   const to = (membersData && 'to' in membersData) ? membersData.to : 0;
 
+  const exportColumns: ExportColumn<User>[] = [
+    { header: "Name", value: (u) => u.name, width: 26 },
+    { header: "Email", value: (u) => u.email, width: 30 },
+    { header: "Phone", value: (u) => u.phone ?? "" },
+    { header: "Address", value: (u) => u.address ?? "", width: 36 },
+    { header: "Roles", value: (u) => (u.roles ?? []).map((r) => (typeof r === "string" ? r : r.name)).join(", ") },
+    { header: "Joined", value: (u) => u.created_at, type: "date" },
+  ];
+  const fetchAllRows = () => fetchAllPages<User>((page, per_page) => userService.list({ ...queryParams, page, per_page }) as never);
+
   return (
     <div className="space-y-6 animate-fade-in">
+      <BulkActionBar resource="users" selection={selection} describe={(member) => member.name} noun={["member", "members"]} onComplete={() => queryClient.invalidateQueries({ queryKey: ["users"] })}>
+        <ExportMenu variant="bar" title="Parish members" filename="members" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
+      </BulkActionBar>
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -156,26 +174,7 @@ const AdminMembership = () => {
             Manage parishioner records and membership information.
           </p>
         </div>
-        <Button
-          variant="outline"
-          className="gap-2"
-          onClick={async () => {
-            try {
-              await downloadAuthenticatedFile("users/export", "members.csv", {
-                role: roleFilter !== "all" ? roleFilter : undefined,
-                search: searchQuery || undefined,
-              });
-            } catch (e) {
-              toast({
-                title: "Export failed",
-                description: e instanceof Error ? e.message : "Could not export members",
-                variant: "destructive",
-              });
-            }
-          }}
-        >
-          <Download className="h-4 w-4" /> Export
-        </Button>
+        <ExportMenu title="Parish members" filename="members" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
       </div>
 
       {/* Filters */}
@@ -289,6 +288,7 @@ const AdminMembership = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10"><SelectAllCheckbox selection={selection} rows={members} /></TableHead>
                       <TableHead>Member</TableHead>
                       <TableHead>Contact</TableHead>
                       <TableHead>Location</TableHead>
@@ -299,7 +299,8 @@ const AdminMembership = () => {
                   </TableHeader>
                   <TableBody>
                     {members.map((member) => (
-                      <TableRow key={member.id} className="hover:bg-muted/50">
+                      <TableRow key={member.id} className="hover:bg-muted/50" data-state={selection.isSelected(member) ? "selected" : undefined}>
+                        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}><SelectRowCheckbox selection={selection} row={member} label={`Select ${member.name}`} /></TableCell>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar className="h-10 w-10">

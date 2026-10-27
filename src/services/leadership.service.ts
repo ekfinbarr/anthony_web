@@ -97,8 +97,9 @@ export const list = async (params?: LeadershipQueryParams): Promise<PaginatedRes
  * @returns Leadership details
  */
 export const getById = async (id: string): Promise<Leadership> => {
-  const response = await apiClient.get<Leadership>(`leadership/${id}`);
-  return response.data;
+  // The API wraps single records as { data: record }.
+  const response = await apiClient.get<{ data: Leadership }>(`leadership/${id}`);
+  return response.data.data;
 };
 
 /**

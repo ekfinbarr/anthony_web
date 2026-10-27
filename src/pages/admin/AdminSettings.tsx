@@ -232,6 +232,7 @@ const AdminSettings = () => {
       general: [],
       account_payment: [],
       system: [],
+      roles_permissions: [], // managed in its own tab; holds no site settings
     };
 
     allSettings.forEach((s) => {
@@ -294,7 +295,7 @@ const AdminSettings = () => {
 
   const changedKeysBySection = useMemo(() => {
     const keys = Object.keys(draft);
-    const by: Record<SectionKey, string[]> = { general: [], account_payment: [], system: [] };
+    const by: Record<SectionKey, string[]> = { general: [], account_payment: [], system: [], roles_permissions: [] };
     for (const k of keys) {
       const setting = allSettings.find((s) => s.key === k);
       if (!setting) continue;

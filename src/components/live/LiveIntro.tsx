@@ -25,13 +25,13 @@ const LiveIntro = ({ state, current }: LiveIntroProps) => {
       <p className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-church-gold-warm">
         St. Anthony, Gbaja
       </p>
-      <h1 className="mt-3 font-serif text-[clamp(2rem,5vw,3.25rem)] font-bold leading-tight tracking-tight text-church-charcoal">
+      {/* <h1 className="mt-3 font-serif text-[clamp(2rem,5vw,3.25rem)] font-bold leading-tight tracking-tight text-church-charcoal">
         Live Mass &amp; Worship
-      </h1>
-      <p className="mx-auto mt-3 max-w-2xl text-base leading-relaxed text-church-charcoal/75 sm:text-lg">
+      </h1> */}
+      {/* <p className="mx-auto mt-3 max-w-2xl text-base leading-relaxed text-church-charcoal/75 sm:text-lg">
         Join the parish family for Mass and celebrations from anywhere. Watch live when we are
         streaming, or revisit recent recordings below.
-      </p>
+      </p> */}
 
       <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
         <span

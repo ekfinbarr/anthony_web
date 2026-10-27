@@ -68,9 +68,9 @@ const SacramentFormPage = () => {
   // Initialize form data
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (isEditMode && sacrament?.data) {
+      if (isEditMode && sacrament) {
 
-        const sacramentData = sacrament.data;
+        const sacramentData = sacrament;
         setFormData({
           name: sacramentData.name || "",
           description: sacramentData.description || "",

@@ -22,6 +22,15 @@ interface ApiResponse<T = unknown> {
   errors?: Record<string, string[]>;
 }
 
+/** Laravel paginator payload returned by the waiting-list admin endpoint. */
+interface SubscriberPage {
+  data: EmailSubscription[];
+  current_page: number;
+  last_page: number;
+  per_page?: number;
+  total?: number;
+}
+
 interface EmailProvider {
   subscribe(email: string, additionalData?: Record<string, unknown>): Promise<void>;
   unsubscribe(email: string): Promise<void>;
@@ -121,9 +130,9 @@ class LocalStorageEmailProvider implements EmailProvider {
     const newSubscription: EmailSubscription = {
       id: Date.now(),
       email,
-      name: additionalData.name,
-      phone: additionalData.phone,
-      source: additionalData.source || 'coming_soon',
+      name: typeof additionalData.name === 'string' ? additionalData.name : undefined,
+      phone: typeof additionalData.phone === 'string' ? additionalData.phone : undefined,
+      source: typeof additionalData.source === 'string' && additionalData.source ? additionalData.source : 'coming_soon',
       status: 'active',
       subscribed_at: new Date().toISOString(),
       metadata: {
@@ -196,7 +205,7 @@ class AdminEmailService {
     search?: string;
     sort_by?: string;
     sort_direction?: string;
-  } = {}): Promise<ApiResponse> {
+  } = {}): Promise<ApiResponse<SubscriberPage>> {
     const queryParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined) {
@@ -212,7 +221,7 @@ class AdminEmailService {
     return response.json();
   }
 
-  async getStats(): Promise<ApiResponse> {
+  async getStats<T = unknown>(): Promise<ApiResponse<T>> {
     const response = await fetch(`${this.baseUrl}/waitinglist/stats`, {
       method: 'GET',
       headers: this.getAuthHeaders(),
@@ -406,5 +415,5 @@ class EmailServiceClass {
 export const EmailService = new EmailServiceClass();
 
 // Export types and classes for use in other files
-export type { EmailProvider, EmailSubscription, ApiResponse };
+export type { EmailProvider, EmailSubscription, ApiResponse, SubscriberPage };
 export { AdminEmailService, LaravelApiProvider, LocalStorageEmailProvider };

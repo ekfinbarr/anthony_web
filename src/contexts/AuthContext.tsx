@@ -44,6 +44,10 @@ export interface User {
   isVerified: boolean;
   createdAt: string;
   role: UserRole;
+  /** Raw Spatie role names (e.g. "editor", "priest") */
+  roles?: string[];
+  /** Effective Spatie permission names */
+  permissions?: string[];
   token?: string; // Authentication token stored with user data
 }
 
@@ -78,6 +82,7 @@ interface AuthContextType {
   forgotPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   resetPassword: (token: string, password: string, email: string) => Promise<{ success: boolean; error?: string }>;
   hasRole: (role: UserRole) => boolean;
+  hasPermission: (...permissions: string[]) => boolean;
   isAdmin: () => boolean;
   isSuperAdmin: () => boolean;
   refreshUser: () => Promise<void>;
@@ -170,6 +175,8 @@ const transformUser = (authUser: BackendUser, token: string): User => {
     isVerified: authUser.isVerified ?? true,
     createdAt: authUser.created_at || new Date().toISOString(),
     role,
+    roles: Array.isArray(authUser.roles) ? authUser.roles.map((r) => r?.name).filter(Boolean) : [],
+    permissions: Array.isArray(authUser.permission_names) ? authUser.permission_names : [],
     token, // Store token with user data for API client to access
   };
 };
@@ -476,6 +483,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
    */
   const isSuperAdmin = () => user?.role === "super_admin";
 
+  /**
+   * Check if user holds any of the given Spatie permissions
+   * (super admins pass every check, mirroring the backend Gate::before)
+   */
+  const hasPermission = (...permissions: string[]) =>
+    user?.role === "super_admin" || permissions.some((p) => user?.permissions?.includes(p) ?? false);
+
   return (
     <AuthContext.Provider
       value={{
@@ -488,6 +502,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         forgotPassword,
         resetPassword,
         hasRole,
+        hasPermission,
         isAdmin,
         isSuperAdmin,
         refreshUser,

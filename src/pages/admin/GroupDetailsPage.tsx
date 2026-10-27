@@ -68,6 +68,11 @@ import { StatusBadge } from "@/components/admin/shared/StatusBadge";
 import { GenericEmptyState } from "@/components/admin/shared/GenericEmptyState";
 import { AdminPagination } from "@/components/admin/shared/AdminPagination";
 
+import { BulkActionBar, SelectAllCheckbox, SelectRowCheckbox } from "@/components/admin/data/BulkActionBar";
+import { ExportMenu } from "@/components/admin/data/ExportMenu";
+import { fetchAllPages } from "@/components/admin/data/fetchAllPages";
+import { rowId, useBulkSelection } from "@/components/admin/data/useBulkSelection";
+import type { ExportColumn } from "@/lib/export/tableExport";
 type MinistryDetails = Ministry & {
   category?: { id?: string; name?: string } | null;
   leader?: { id?: string; name?: string } | null;
@@ -91,6 +96,7 @@ const GroupDetailsPage = () => {
     const navigate = useNavigate();
     const { toast } = useToast();
     const queryClient = useQueryClient();
+  const selection = useBulkSelection<MinistryMemberRow>(rowId);
 
     const [activeTab, setActiveTab] = useState("overview");
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -316,6 +322,14 @@ const GroupDetailsPage = () => {
       return name.includes(q) || email.includes(q);
     });
 
+  const exportColumns: ExportColumn<MinistryMemberRow>[] = [
+    { header: "Name", value: (m) => m.user?.name || [m.user?.first_name, m.user?.last_name].filter(Boolean).join(" ") || m.name || "" },
+    { header: "Email", value: (m) => m.user?.email || m.email || "" },
+    { header: "Status", value: (m) => m.status ?? "" },
+    { header: "Joined", value: (m) => m.joined_at ?? m.created_at ?? null, type: "date" },
+  ];
+  const fetchAllRows = () => fetchAllPages<MinistryMemberRow>((page, per_page) => ministryUserService.getByMinistry(id!, { page, per_page, status: memberStatusFilter === "all" ? undefined : memberStatusFilter }) as never);
+
     return (
         <div className="space-y-6 animate-fade-in p-6 pb-20">
             {/* Header */}
@@ -491,6 +505,12 @@ const GroupDetailsPage = () => {
                 </TabsContent>
 
                 <TabsContent value="members" className="space-y-6">
+                    <div className="flex justify-end">
+                        <ExportMenu title="Group members" filename="group-members" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
+                    </div>
+      <BulkActionBar resource="memberships" selection={selection} describe={(member) => (member.user?.name || member.name || "Member")} noun={["member", "members"]} onComplete={() => queryClient.invalidateQueries({ queryKey: ["ministry-members"] })}>
+        <ExportMenu variant="bar" title="Group members" filename="group-members" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
+      </BulkActionBar>
                     <Card>
                         <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div>
@@ -574,6 +594,7 @@ const GroupDetailsPage = () => {
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
+                      <TableHead className="w-10"><SelectAllCheckbox selection={selection} rows={members} /></TableHead>
                                                 <TableHead>User</TableHead>
                                                 <TableHead>Status</TableHead>
                                                 <TableHead>Joined</TableHead>
@@ -582,7 +603,8 @@ const GroupDetailsPage = () => {
                                         </TableHeader>
                                         <TableBody>
                                             {members.map((member) => (
-                                                <TableRow key={member.id}>
+                                                <TableRow key={member.id} data-state={selection.isSelected(member) ? "selected" : undefined}>
+                        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}><SelectRowCheckbox selection={selection} row={member} label={`Select ${(member.user?.name || member.name || "Member")}`} /></TableCell>
                                                     <TableCell>
                                                         <div className="flex items-center gap-3">
                                                             <Avatar className="h-9 w-9">

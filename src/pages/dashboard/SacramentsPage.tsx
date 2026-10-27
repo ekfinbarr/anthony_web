@@ -11,6 +11,7 @@ import { Plus, Calendar, Clock, QrCode, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { QRCodeSVG } from "qrcode.react";
 
+import { IsoTimePicker } from "@/components/ui/time-picker";
 const mockBookings = [
   { id: 1, sacrament: "Baptism", date: "2024-02-15", time: "10:00 AM", status: "confirmed", qrCode: "SAC-BAP-001" },
   { id: 2, sacrament: "First Communion", date: "2024-05-12", time: "9:00 AM", status: "pending", qrCode: "SAC-COM-002" },
@@ -21,6 +22,7 @@ const sacraments = ["Baptism", "Confirmation", "First Communion", "Reconciliatio
 const SacramentsPage = () => {
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [preferredDate, setPreferredDate] = useState("");
+  const [preferredTime, setPreferredTime] = useState("");
   const [selectedBooking, setSelectedBooking] = useState<typeof mockBookings[0] | null>(null);
   const { toast } = useToast();
 
@@ -53,7 +55,7 @@ const SacramentsPage = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2"><Label htmlFor="preferred-date">Preferred Date</Label><IsoDatePicker id="preferred-date" value={preferredDate} onChange={setPreferredDate} /></div>
-                <div className="space-y-2"><Label>Preferred Time</Label><Input type="time" /></div>
+                <div className="space-y-2"><Label htmlFor="preferred-time">Preferred Time</Label><IsoTimePicker id="preferred-time" value={preferredTime} onChange={setPreferredTime} minuteInterval={15} /></div>
               </div>
               <div className="space-y-2"><Label>Phone</Label><Input placeholder="Your phone number" /></div>
               <div className="flex justify-end gap-2">

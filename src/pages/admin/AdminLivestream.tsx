@@ -80,10 +80,16 @@ import { StatusBadge } from "@/components/admin/shared/StatusBadge";
 import { GenericEmptyState } from "@/components/admin/shared/GenericEmptyState";
 import { formatInLagos } from "@/lib/liveTimezone";
 
+import { BulkActionBar, SelectAllCheckbox, SelectRowCheckbox } from "@/components/admin/data/BulkActionBar";
+import { ExportMenu } from "@/components/admin/data/ExportMenu";
+import { fetchAllPages } from "@/components/admin/data/fetchAllPages";
+import { rowId, useBulkSelection } from "@/components/admin/data/useBulkSelection";
+import type { ExportColumn } from "@/lib/export/tableExport";
 const AdminLivestream = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const selection = useBulkSelection<Livestream>(rowId);
 
   // State management
   const [searchQuery, setSearchQuery] = useState("");
@@ -289,8 +295,21 @@ const AdminLivestream = () => {
   const from = (streamsData && 'from' in streamsData) ? streamsData.from : 0;
   const to = (streamsData && 'to' in streamsData) ? streamsData.to : 0;
 
+  const exportColumns: ExportColumn<Livestream>[] = [
+    { header: "Title", value: (s) => s.title, width: 36 },
+    { header: "Platform", value: (s) => s.platform },
+    { header: "Scheduled", value: (s) => s.scheduled_start_time ?? null, type: "datetime" },
+    { header: "Status", value: (s) => (s.is_live ? "Live" : s.status) },
+    { header: "Published", value: (s) => !!s.is_published },
+    { header: "Recording", value: (s) => s.recorded_url ?? "" },
+  ];
+  const fetchAllRows = () => fetchAllPages<Livestream>((page, per_page) => livestreamService.list({ ...queryParams, page, per_page }) as never);
+
   return (
     <div className="space-y-6 animate-fade-in">
+      <BulkActionBar resource="livestreams" selection={selection} describe={(stream) => stream.title} noun={["stream", "streams"]} onComplete={() => queryClient.invalidateQueries({ queryKey: ["livestreams"] })}>
+        <ExportMenu variant="bar" title="Livestreams" filename="livestreams" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
+      </BulkActionBar>
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -299,9 +318,12 @@ const AdminLivestream = () => {
             Manage live streams for Masses and events.
           </p>
         </div>
-        <Button onClick={handleCreate} className="gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <ExportMenu title="Livestreams" filename="livestreams" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
+          <Button onClick={handleCreate} className="gap-2">
           <Plus className="h-4 w-4" /> New Stream
         </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -408,6 +430,7 @@ const AdminLivestream = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10"><SelectAllCheckbox selection={selection} rows={streams} /></TableHead>
                       <TableHead>Title</TableHead>
                       <TableHead>Platform</TableHead>
                       <TableHead>Video ID</TableHead>
@@ -418,7 +441,8 @@ const AdminLivestream = () => {
                   </TableHeader>
                   <TableBody>
                     {streams.map((stream) => (
-                      <TableRow key={stream.id} className="hover:bg-muted/50">
+                      <TableRow key={stream.id} className="hover:bg-muted/50" data-state={selection.isSelected(stream) ? "selected" : undefined}>
+                        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}><SelectRowCheckbox selection={selection} row={stream} label={`Select ${stream.title}`} /></TableCell>
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
                             <Radio className="h-4 w-4 text-muted-foreground" />

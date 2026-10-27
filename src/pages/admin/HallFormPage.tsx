@@ -43,6 +43,7 @@ import { uploadAndGetUrl } from "@/services/attachment.service";
 import AttachmentUploadModal from "@/components/attachments/AttachmentUploadModal";
 import MoneyInput, { MoneyCurrency } from "@/components/forms/MoneyInput";
 
+import { IsoTimePicker } from "@/components/ui/time-picker";
 type PendingImage = { file: File; previewUrl: string };
 
 const MAX_IMAGES = 12;
@@ -423,11 +424,11 @@ export default function HallFormPage() {
                     </div>
                     <div className="space-y-2">
                       <Label>Start</Label>
-                      <Input type="time" value={blockStart} onChange={(e) => setBlockStart(e.target.value)} />
+                      <IsoTimePicker value={blockStart} onChange={setBlockStart} minuteInterval={15} placeholder="Start time" />
                     </div>
                     <div className="space-y-2">
                       <Label>End</Label>
-                      <Input type="time" value={blockEnd} onChange={(e) => setBlockEnd(e.target.value)} />
+                      <IsoTimePicker value={blockEnd} onChange={setBlockEnd} minuteInterval={15} placeholder="End time" />
                     </div>
                     <div className="space-y-2 sm:col-span-2">
                       <Label>Fixed price (NGN)</Label>

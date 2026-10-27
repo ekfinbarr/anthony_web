@@ -16,6 +16,7 @@ import {
   MoreVertical,
   Plus,
   Search,
+  Send,
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -50,8 +51,18 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useApprovalMode } from "@/hooks/useApprovalMode";
+import { BulkActionBar, SelectAllCheckbox, SelectRowCheckbox } from "@/components/admin/data/BulkActionBar";
+import { ExportMenu } from "@/components/admin/data/ExportMenu";
+import { fetchAllPages } from "@/components/admin/data/fetchAllPages";
+import { rowId, useBulkSelection } from "@/components/admin/data/useBulkSelection";
+import type { ExportColumn } from "@/lib/export/tableExport";
+import { cn } from "@/lib/utils";
+import { submitForReview } from "@/services/approval.service";
+import { useNavigate } from "react-router-dom";
 import DeleteConfirmModal from "@/components/admin/shared/DeleteConfirmModal";
 import { GenericEmptyState } from "@/components/admin/shared/GenericEmptyState";
+import { IsoDatePicker } from "@/components/ui/date-picker";
 import bulletinService, {
   type Bulletin,
   type BulletinAdminPayload,
@@ -69,6 +80,7 @@ const emptyForm = {
 const AdminBulletins = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const selection = useBulkSelection<Bulletin>(rowId);
 
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearch = useDebouncedValue(searchInput, 350);
@@ -139,6 +151,19 @@ const AdminBulletins = () => {
         description: err.message || "Please check the form and try again.",
         variant: "destructive",
       });
+    },
+  });
+
+  const approval = useApprovalMode("bulletin");
+  const navigate = useNavigate();
+  const reviewMutation = useMutation({
+    mutationFn: (item: Bulletin) => submitForReview("bulletin", item.id),
+    onSuccess: (res) => {
+      toast({ title: "Submitted for approval", description: "It stays unpublished until review is complete." });
+      navigate(`/admin/approvals/requests/${res.data.id}`);
+    },
+    onError: (err: Error) => {
+      toast({ title: "Could not submit", description: err.message, variant: "destructive" });
     },
   });
 
@@ -258,8 +283,30 @@ const AdminBulletins = () => {
   const total = listQuery.data?.total ?? 0;
   const stats = statsQuery.data;
 
+  const exportColumns: ExportColumn<Bulletin>[] = [
+    { header: "Sunday", value: (b) => b.bulletin_date, type: "date" },
+    { header: "Title", value: (b) => b.title, width: 36 },
+    { header: "Format", value: (b) => b.file_format ?? "" },
+    { header: "Size", value: (b) => b.file_size_formatted ?? "" },
+    { header: "Published", value: (b) => !!b.is_published },
+    { header: "Featured", value: (b) => !!b.is_featured },
+    { header: "Downloads", value: (b) => b.download_count ?? 0, type: "number", total: true },
+    { header: "Uploaded by", value: (b) => b.creator?.name ?? "" },
+  ];
+  const fetchAllRows = () =>
+    fetchAllPages<Bulletin>((pageNumber, per_page) => bulletinService.adminList({ ...listParams, page: pageNumber, per_page }) as never);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
+      <BulkActionBar
+        resource="bulletins"
+        selection={selection}
+        describe={(b) => b.title}
+        noun={["bulletin", "bulletins"]}
+        onComplete={invalidate}
+      >
+        <ExportMenu variant="bar" title="Sunday bulletins" filename="bulletins" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
+      </BulkActionBar>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-heading text-2xl font-bold text-church-charcoal">Sunday Bulletins</h1>
@@ -267,10 +314,13 @@ const AdminBulletins = () => {
             Upload and publish weekly parish bulletins for the public archive.
           </p>
         </div>
-        <Button variant="church" onClick={openCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          New bulletin
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <ExportMenu title="Sunday bulletins" filename="bulletins" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
+          <Button variant="church" onClick={openCreate}>
+            <Plus className="mr-2 h-4 w-4" />
+            New bulletin
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -357,12 +407,21 @@ const AdminBulletins = () => {
 
           {!listQuery.isLoading && items.length > 0 && (
             <div className="space-y-3">
+              <label className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
+                <SelectAllCheckbox selection={selection} rows={items} /> Select all on this page
+              </label>
               {items.map((item) => (
                 <div
                   key={item.id}
-                  className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
+                  className={cn(
+                    "surface-glow flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between",
+                    selection.isSelected(item) && "border-church-gold-warm bg-church-gold/[0.06]"
+                  )}
                 >
                   <div className="flex min-w-0 items-start gap-3">
+                    <span className="pt-1">
+                      <SelectRowCheckbox selection={selection} row={item} label={`Select ${item.title}`} />
+                    </span>
                     <div className="hidden h-16 w-12 shrink-0 overflow-hidden rounded border bg-muted sm:block">
                       {item.cover_url ? (
                         <img src={item.cover_url} alt="" className="h-full w-full object-cover" />
@@ -407,6 +466,12 @@ const AdminBulletins = () => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {approval.enabled && !item.is_published && (
+                          <DropdownMenuItem onClick={() => reviewMutation.mutate(item)}>
+                            <Send className="mr-2 h-4 w-4" />
+                            Submit for review
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem onClick={() => toggleMutation.mutate(item)}>
                           {item.is_published ? (
                             <>
@@ -510,12 +575,12 @@ const AdminBulletins = () => {
               <Label htmlFor="bulletin-date">
                 Sunday publication date <span className="text-destructive">*</span>
               </Label>
-              <Input
+              <IsoDatePicker
                 id="bulletin-date"
-                type="date"
                 value={form.bulletin_date}
-                onChange={(e) => setForm((f) => ({ ...f, bulletin_date: e.target.value }))}
-                required
+                onChange={(value) => setForm((f) => ({ ...f, bulletin_date: value }))}
+                placeholder="Pick the Sunday"
+                aria-required
               />
             </div>
 

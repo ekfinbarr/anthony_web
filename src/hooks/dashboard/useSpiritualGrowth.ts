@@ -54,6 +54,34 @@ interface GoalInput {
 /**
  * Spiritual growth tracking hook
  */
+/** Reads a user's spiritual growth from storage, or starts a fresh record. */
+function loadGrowth(userId: string): { growth: SpiritualGrowth | null; error: string | null } {
+  try {
+    // In a real app, this would be an API call
+    const stored = storageUtils.loadDashboardData();
+    const growthData = stored.spiritualGrowth;
+    if (growthData && growthData.userId === userId) {
+      return { growth: growthData, error: null };
+    }
+    return {
+      growth: {
+        userId,
+        currentLevel: 0,
+        totalPoints: 0,
+        streaks: spiritualMetricsCalculator.calculateAllStreaks([]),
+        goals: [],
+        achievements: [],
+        activities: [],
+        progressHistory: [],
+      },
+      error: null,
+    };
+  } catch (err) {
+    console.error('Load growth data error:', err);
+    return { growth: null, error: 'Failed to load spiritual growth data' };
+  }
+}
+
 export function useSpiritualGrowth(
   userId: string,
   config: SpiritualGrowthConfig = {}
@@ -68,47 +96,30 @@ export function useSpiritualGrowth(
   const queryClient = useQueryClient();
 
   // State
-  const [spiritualGrowth, setSpiritualGrowth] = useState<SpiritualGrowth | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Stored growth data is read synchronously, so there is no loading phase.
+  const [initial] = useState(() => loadGrowth(userId));
+  const [loadedUserId, setLoadedUserId] = useState(userId);
+  const [spiritualGrowth, setSpiritualGrowth] = useState<SpiritualGrowth | null>(initial.growth);
+  const isLoading = false;
   const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(initial.error);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
+  // A different user: load their data during render (no effect round-trip).
+  if (loadedUserId !== userId) {
+    const next = loadGrowth(userId);
+    setLoadedUserId(userId);
+    setSpiritualGrowth(next.growth);
+    setError(next.error);
+  }
+
   /**
-   * Load spiritual growth data
+   * Reload spiritual growth data from storage (exposed as refreshData)
    */
-  const loadGrowthData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      
-      // In a real app, this would be an API call
-      const stored = storageUtils.loadDashboardData();
-      const growthData = stored.spiritualGrowth;
-      
-      if (growthData && growthData.userId === userId) {
-        setSpiritualGrowth(growthData);
-      } else {
-        // Initialize new spiritual growth data
-        const initialGrowth: SpiritualGrowth = {
-          userId,
-          currentLevel: 0,
-          totalPoints: 0,
-          streaks: spiritualMetricsCalculator.calculateAllStreaks([]),
-          goals: [],
-          achievements: [],
-          activities: [],
-          progressHistory: []
-        };
-        setSpiritualGrowth(initialGrowth);
-      }
-      
-      setError(null);
-    } catch (err) {
-      setError('Failed to load spiritual growth data');
-      console.error('Load growth data error:', err);
-    } finally {
-      setIsLoading(false);
-    }
+  const loadGrowthData = useCallback(() => {
+    const next = loadGrowth(userId);
+    setSpiritualGrowth(next.growth);
+    setError(next.error);
   }, [userId]);
 
   /**
@@ -145,12 +156,6 @@ export function useSpiritualGrowth(
     }
   }, [queryClient]);
 
-  /**
-   * Initialize on mount
-   */
-  useEffect(() => {
-    loadGrowthData();
-  }, [loadGrowthData]);
 
   /**
    * Auto-save when data changes

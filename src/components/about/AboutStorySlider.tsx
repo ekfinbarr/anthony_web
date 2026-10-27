@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import dap from "@/assets/images/about/monstrance.jpg";
 import churchHero from "@/assets/images/about/drone_spec.mp4";
 import churchBanner from "@/assets/images/about/altar.png";
@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/carousel";
 import { cn } from "@/lib/utils";
 
+import { useCarouselValue } from "@/hooks/useCarouselValue";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 type StorySlide =
   | { type: "image"; src: string; alt: string }
   | { type: "video"; src: string; alt: string };
@@ -83,33 +85,9 @@ const StoryVideo = ({ src, alt, active }: { src: string; alt: string; active: bo
 
 const AboutStorySlider = () => {
   const [api, setApi] = useState<CarouselApi>();
-  const [current, setCurrent] = useState(0);
+  const current = useCarouselValue(api, (carousel) => carousel.selectedScrollSnap(), 0);
   const [paused, setPaused] = useState(false);
-  const [reduceMotion, setReduceMotion] = useState(false);
-
-  const onSelect = useCallback((carousel: CarouselApi) => {
-    if (!carousel) return;
-    setCurrent(carousel.selectedScrollSnap());
-  }, []);
-
-  useEffect(() => {
-    if (!api) return;
-    onSelect(api);
-    api.on("select", onSelect);
-    api.on("reInit", onSelect);
-    return () => {
-      api.off("select", onSelect);
-      api.off("reInit", onSelect);
-    };
-  }, [api, onSelect]);
-
-  useEffect(() => {
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const update = () => setReduceMotion(media.matches);
-    update();
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
-  }, []);
+  const reduceMotion = usePrefersReducedMotion();
 
   useEffect(() => {
     if (!api || paused || reduceMotion) return;

@@ -129,7 +129,7 @@ const Gallery = () => {
     placeholderData: (prev) => prev,
   });
 
-  const albums: GalleryAlbum[] = albumsQuery.data?.data ?? [];
+  const albums: GalleryAlbum[] = useMemo(() => albumsQuery.data?.data ?? [], [albumsQuery.data]);
   const mediaItems: GalleryAlbumItem[] = mediaQuery.data?.data ?? [];
   const featured = featuredQuery.data ?? null;
   const activeQuery = showCollections ? albumsQuery : mediaQuery;

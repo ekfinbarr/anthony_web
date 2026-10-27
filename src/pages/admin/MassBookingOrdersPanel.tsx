@@ -10,6 +10,13 @@ import { apiClient } from "@/lib/apiClient";
 import AmountInput from "@/components/forms/AmountInput";
 import { formatMoney } from "@/services/payment.service";
 import type { BookingOrder } from "@/services/massBookingOrder.service";
+import { BulkActionBar, SelectAllCheckbox, SelectRowCheckbox } from "@/components/admin/data/BulkActionBar";
+import { ExportMenu } from "@/components/admin/data/ExportMenu";
+import { fetchAllPages } from "@/components/admin/data/fetchAllPages";
+import { InsightsPanel } from "@/components/admin/data/InsightsPanel";
+import { rowId, useBulkSelection } from "@/components/admin/data/useBulkSelection";
+import type { ExportColumn } from "@/lib/export/tableExport";
+import { cn } from "@/lib/utils";
 
 type Rules = {
   offering: { minimum: number; maximum: number | null };
@@ -24,6 +31,7 @@ type Rules = {
 
 const MassBookingOrdersPanel = () => {
   const qc = useQueryClient();
+  const selection = useBulkSelection<BookingOrder>(rowId);
   const [search, setSearch] = useState("");
   const [draftMinOffering, setDraftMinOffering] = useState<number | null | undefined>(undefined);
   const [draftMaxOffering, setDraftMaxOffering] = useState<number | null | undefined>(undefined);
@@ -79,19 +87,73 @@ const MassBookingOrdersPanel = () => {
 
   const order = detail.data;
 
+  const exportColumns: ExportColumn<BookingOrder>[] = [
+    { header: "Reference", value: (o) => o.reference },
+    { header: "Booked", value: (o) => o.created_at ?? null, type: "datetime" },
+    { header: "Contact", value: (o) => o.contact?.name ?? "" },
+    { header: "Email", value: (o) => o.contact?.email ?? "" },
+    { header: "Phone", value: (o) => o.contact?.phone ?? "" },
+    { header: "Intentions", value: (o) => o.intentions?.length ?? 0, type: "number", total: true },
+    {
+      header: "Masses",
+      value: (o) =>
+        (o.intentions ?? []).map((i) => `${i.booking_date} ${i.mass_schedule?.title ?? ""}`.trim()).join("; "),
+      width: 40,
+    },
+    { header: "Status", value: (o) => o.status },
+    { header: "Payment", value: (o) => o.payment_status },
+    { header: "Method", value: (o) => o.payment_method },
+    { header: "Receipt", value: (o) => o.receipt_number ?? "" },
+    { header: "Amount", value: (o) => Number(o.amount), type: "money", total: true },
+  ];
+  const fetchAllRows = () =>
+    fetchAllPages<BookingOrder>(async (page, per_page) =>
+      (await apiClient.get<{ data: BookingOrder[]; meta?: { last_page?: number } }>(
+        `mass-booking-orders?search=${encodeURIComponent(search)}&page=${page}&per_page=${per_page}`
+      )).data
+    );
+  const rows = list.data ?? [];
+
   return (
     <div className="space-y-6">
+      <BulkActionBar
+        resource="mass_booking_orders"
+        selection={selection}
+        describe={(o) => `${o.reference} · ${o.contact?.name ?? ""}`}
+        noun={["booking", "bookings"]}
+        onComplete={() => qc.invalidateQueries({ queryKey: ["mass-booking-orders"] })}
+      >
+        <ExportMenu variant="bar" title="Mass bookings" filename="mass-bookings" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} currency="NGN" />
+      </BulkActionBar>
+      <InsightsPanel module="mass_bookings" title="Mass booking insights" />
       {message && <p role="status" className="text-sm">{message}</p>}
       <Card>
         <CardContent className="space-y-3 p-4">
-          <Label htmlFor="order-search">Search bookings</Label>
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <Label htmlFor="order-search">Search bookings</Label>
+            <ExportMenu title="Mass bookings" filename="mass-bookings" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} currency="NGN" size="sm" />
+          </div>
           <Input id="order-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name, phone, or reference" />
+          {rows.length > 0 && (
+            <label className="flex items-center gap-2 px-1 pt-1 text-xs text-muted-foreground">
+              <SelectAllCheckbox selection={selection} rows={rows} /> Select all shown
+            </label>
+          )}
           <ul className="divide-y">
-            {(list.data ?? []).map((item) => (
-              <li key={item.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
+            {rows.map((item) => (
+              <li
+                key={item.id}
+                className={cn(
+                  "flex flex-col gap-2 rounded-md px-1 py-3 transition-[background-color,box-shadow] duration-200 hover:bg-church-gold/[0.06] hover:shadow-[inset_3px_0_0_hsl(var(--church-gold-warm))] sm:flex-row sm:items-center sm:justify-between",
+                  selection.isSelected(item) && "bg-church-gold/[0.10] shadow-[inset_3px_0_0_hsl(var(--church-gold-warm))]"
+                )}
+              >
+                <div className="flex items-start gap-3">
+                  <span className="pt-1"><SelectRowCheckbox selection={selection} row={item} label={`Select ${item.reference}`} /></span>
+                  <div>
                   <p className="font-medium">{item.reference}</p>
                   <p className="text-sm text-muted-foreground">{item.contact?.name} · {item.status.replaceAll("_", " ")} · {item.payment_status.replaceAll("_", " ")}</p>
+                  </div>
                 </div>
                 <Button type="button" variant="outline" className="min-h-11" onClick={() => { setSelected(item.id); setMessage(""); }}>Review</Button>
               </li>

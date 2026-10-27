@@ -66,7 +66,7 @@ export interface CreateEventPayload {
   summary?: string;
   start_date: string;
   start_time?: string;
-  end_date?: string;
+  end_date?: string | null;
   end_time?: string;
   is_all_day?: boolean;
   location?: string;
@@ -236,6 +236,12 @@ export const getCalendar = async (params: {
   return response.data?.data ?? [];
 };
 
+/** Staff calendar: every event in the range, drafts included (max 62 days). */
+export const getAdminCalendar = async (params: { from: string; to: string }): Promise<Event[]> => {
+  const response = await apiClient.get<{ data: Event[] }>('admin/events/calendar', params);
+  return response.data?.data ?? [];
+};
+
 export const registerGuest = async (
   slug: string,
   payload: GuestRegistrationPayload,
@@ -277,6 +283,7 @@ export const exportRsvpsUrl = (id: string): string => {
 
 const eventService = {
   list,
+  getAdminCalendar,
   getById,
   create,
   update,

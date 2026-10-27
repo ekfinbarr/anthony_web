@@ -7,7 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Settings,
+  Settings as SettingsIcon,
   Palette,
   Monitor,
   Moon,
@@ -431,7 +431,7 @@ export default function Settings() {
               </Button>
               <div>
                 <h1 className="text-2xl font-bold flex items-center gap-2">
-                  <Settings className="h-6 w-6" />
+                  <SettingsIcon className="h-6 w-6" />
                   Settings
                 </h1>
                 <p className="text-muted-foreground">

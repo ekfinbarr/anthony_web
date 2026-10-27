@@ -33,6 +33,13 @@ import tagService from "@/services/tag.service";
 import attachmentService from "@/services/attachment.service";
 import galleryAlbumService, { GalleryAlbum } from "@/services/galleryAlbum.service";
 
+import { IsoDatePicker } from "@/components/ui/date-picker";
+import { BulkActionBar, SelectRowCheckbox } from "@/components/admin/data/BulkActionBar";
+import { ExportMenu } from "@/components/admin/data/ExportMenu";
+import { fetchAllPages } from "@/components/admin/data/fetchAllPages";
+import { rowId, useBulkSelection } from "@/components/admin/data/useBulkSelection";
+import type { ExportColumn } from "@/lib/export/tableExport";
+import { cn } from "@/lib/utils";
 type AlbumDraft = {
   id?: string;
   title: string;
@@ -71,6 +78,7 @@ function toOptions(items: { id: string; label: string; slug?: string; color?: st
 export default function AdminGalleryAlbums() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const selection = useBulkSelection<GalleryAlbum>(rowId);
 
   const [search, setSearch] = useState("");
   const [albumDialogOpen, setAlbumDialogOpen] = useState(false);
@@ -175,18 +183,42 @@ export default function AdminGalleryAlbums() {
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  const exportColumns: ExportColumn<GalleryAlbum>[] = [
+    { header: "Album", value: (a) => a.title, width: 34 },
+    { header: "Event date", value: (a) => a.event_date ?? null, type: "date" },
+    { header: "Venue", value: (a) => a.venue ?? "" },
+    { header: "Photos", value: (a) => a.photo_count ?? 0, type: "number", total: true },
+    { header: "Videos", value: (a) => a.video_count ?? 0, type: "number", total: true },
+    { header: "Published", value: (a) => !!a.is_published },
+    { header: "Featured", value: (a) => !!a.is_featured },
+  ];
+  const fetchAllRows = () =>
+    fetchAllPages<GalleryAlbum>((page, per_page) => galleryAlbumService.listAdminAlbums({ search, page, per_page }) as never);
+
   return (
     <div className="space-y-6">
+      <BulkActionBar
+        resource="gallery_albums"
+        selection={selection}
+        describe={(a) => a.title}
+        noun={["album", "albums"]}
+        onComplete={() => queryClient.invalidateQueries({ queryKey: ["gallery-albums", "admin"] })}
+      >
+        <ExportMenu variant="bar" title="Gallery albums" filename="gallery-albums" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
+      </BulkActionBar>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-heading font-bold text-church-charcoal">Gallery Albums</h2>
           <p className="text-sm text-muted-foreground">Create and organize albums (cover + items) for the public Gallery.</p>
         </div>
 
-        <Button onClick={openCreate} className="gap-2">
-          <Plus className="h-4 w-4" />
-          New Album
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <ExportMenu title="Gallery albums" filename="gallery-albums" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
+          <Button onClick={openCreate} className="gap-2">
+            <Plus className="h-4 w-4" />
+            New Album
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -218,7 +250,16 @@ export default function AdminGalleryAlbums() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {albums.map((a) => (
-            <Card key={a.id} className="overflow-hidden">
+            <Card
+              key={a.id}
+              className={cn(
+                "surface-glow relative overflow-hidden",
+                selection.isSelected(a) && "border-church-gold-warm ring-1 ring-church-gold/40"
+              )}
+            >
+              <div className="absolute left-3 top-3 z-10 rounded-md bg-background/90 p-1.5 shadow-sm backdrop-blur">
+                <SelectRowCheckbox selection={selection} row={a} label={`Select ${a.title}`} />
+              </div>
               {a.cover_url ? (
                 <img className="h-40 w-full object-cover" src={a.cover_url} alt={a.title} loading="lazy" />
               ) : (
@@ -297,19 +338,19 @@ export default function AdminGalleryAlbums() {
 
             <div className="space-y-2">
               <Label>Event date</Label>
-              <Input
-                type="date"
+              <IsoDatePicker
                 value={draft.event_date}
-                onChange={(e) => setDraft((p) => ({ ...p, event_date: e.target.value }))}
+                onChange={(value) => setDraft((p) => ({ ...p, event_date: value }))}
               />
             </div>
 
             <div className="space-y-2">
               <Label>End date (optional)</Label>
-              <Input
-                type="date"
+              <IsoDatePicker
                 value={draft.event_end_date}
-                onChange={(e) => setDraft((p) => ({ ...p, event_end_date: e.target.value }))}
+                min={draft.event_date || undefined}
+                onChange={(value) => setDraft((p) => ({ ...p, event_end_date: value }))}
+                placeholder="Same day"
               />
             </div>
 

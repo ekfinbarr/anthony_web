@@ -7,7 +7,7 @@ const Registration = () => {
       <PageHeader
         eyebrow="Join Our Parish"
         title="Parish Registration"
-        description="Become a registered member of St. Anthony Catholic Church, Gbaja"
+        description="New to Gbaja, returning to the Church or exploring the faith, there is a place for you at St. Anthony Catholic Church."
       />
       <section className="py-12">
         <div className="container mx-auto px-4">

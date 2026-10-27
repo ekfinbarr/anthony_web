@@ -42,6 +42,11 @@ import clinicService, { ClinicService, UpsertClinicServicePayload, ClinicAppoint
 import { ClinicOperatingHours } from "@/components/admin/clinic/ClinicOperatingHours";
 import AmountInput from "@/components/forms/AmountInput";
 
+import { BulkActionBar, SelectAllCheckbox, SelectRowCheckbox } from "@/components/admin/data/BulkActionBar";
+import { ExportMenu } from "@/components/admin/data/ExportMenu";
+import { fetchAllPages } from "@/components/admin/data/fetchAllPages";
+import { rowId, useBulkSelection } from "@/components/admin/data/useBulkSelection";
+import type { ExportColumn } from "@/lib/export/tableExport";
 const PREDEFINED_CATEGORIES = [
   "General Consultation",
   "Specialist Consultation",
@@ -74,6 +79,8 @@ function formatOperating(operating: string, body: string) {
 const AdminClinic = () => {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const appointmentSelection = useBulkSelection<ClinicAppointment>(rowId);
+  const serviceSelection = useBulkSelection<ClinicService>(rowId);
 
   const [activeTab, setActiveTab] = useState<"services" | "appointments">("services");
 
@@ -284,6 +291,26 @@ const AdminClinic = () => {
   const totalServicesPages = getLastPage(servicesQuery.data);
   const totalApptPages = getLastPage(appointmentsQuery.data);
 
+  const serviceColumns: ExportColumn<ClinicService>[] = [
+    { header: "Service", value: (s) => s.name, width: 30 },
+    { header: "Category", value: (s) => s.category ?? "" },
+    { header: "Price", value: (s) => (s.price != null ? Number(s.price) : null), type: "money" },
+    { header: "Active", value: (s) => !!s.is_active },
+  ];
+  const fetchAllServices = () => fetchAllPages<ClinicService>((page, per_page) => clinicService.adminListServices({ ...servicesQueryParams, page, per_page }) as never);
+
+  const appointmentColumns: ExportColumn<ClinicAppointment>[] = [
+    { header: "Patient", value: (a) => a.patient_name, width: 26 },
+    { header: "Email", value: (a) => a.patient_email ?? "" },
+    { header: "Phone", value: (a) => a.patient_phone ?? "" },
+    { header: "Service", value: (a) => a.clinic_service?.name ?? "" },
+    { header: "Preferred date", value: (a) => a.preferred_date, type: "date" },
+    { header: "Preferred time", value: (a) => a.preferred_time ?? "" },
+    { header: "Status", value: (a) => a.status },
+    { header: "Requested", value: (a) => a.created_at, type: "datetime" },
+  ];
+  const fetchAllAppointments = () => fetchAllPages<ClinicAppointment>((page, per_page) => clinicService.adminListAppointments({ ...appointmentsQueryParams, page, per_page }) as never);
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -307,6 +334,12 @@ const AdminClinic = () => {
         </TabsList>
 
         <TabsContent value="services" className="space-y-6">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <ExportMenu title="Clinic services" filename="clinic-services" columns={serviceColumns} fetchAll={fetchAllServices} selected={serviceSelection.rows} currency="NGN" />
+          </div>
+      <BulkActionBar resource="clinic_services" selection={serviceSelection} describe={(s) => s.name} noun={["service", "services"]} onComplete={() => qc.invalidateQueries({ queryKey: ["admin-clinic-services"] })}>
+        <ExportMenu variant="bar" title="Clinic services" filename="clinic-services" columns={serviceColumns} fetchAll={fetchAllServices} selected={serviceSelection.rows} currency="NGN" />
+      </BulkActionBar>
           <Card>
             <CardContent className="p-4">
               <div className="flex flex-col md:flex-row gap-4">
@@ -387,6 +420,7 @@ const AdminClinic = () => {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                      <TableHead className="w-10"><SelectAllCheckbox selection={serviceSelection} rows={services} /></TableHead>
                           <TableHead>Service</TableHead>
                           <TableHead>Category</TableHead>
                           <TableHead>Price</TableHead>
@@ -396,7 +430,8 @@ const AdminClinic = () => {
                       </TableHeader>
                       <TableBody>
                         {services.map((s) => (
-                          <TableRow key={s.id} className="hover:bg-muted/50">
+                          <TableRow key={s.id} className="hover:bg-muted/50" data-state={serviceSelection.isSelected(s) ? "selected" : undefined}>
+                        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}><SelectRowCheckbox selection={serviceSelection} row={s} label={`Select ${s.name}`} /></TableCell>
                             <TableCell className="font-medium">
                               <div className="flex items-center gap-2">
                                 <Stethoscope className="h-4 w-4 text-muted-foreground" />
@@ -462,6 +497,12 @@ const AdminClinic = () => {
         </TabsContent>
 
         <TabsContent value="appointments" className="space-y-6">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <ExportMenu title="Clinic appointments" filename="clinic-appointments" columns={appointmentColumns} fetchAll={fetchAllAppointments} selected={appointmentSelection.rows} />
+          </div>
+      <BulkActionBar resource="clinic_appointments" selection={appointmentSelection} describe={(a) => `${a.patient_name} · ${a.preferred_date}`} noun={["appointment", "appointments"]} onComplete={() => qc.invalidateQueries({ queryKey: ["admin-clinic-appointments"] })}>
+        <ExportMenu variant="bar" title="Clinic appointments" filename="clinic-appointments" columns={appointmentColumns} fetchAll={fetchAllAppointments} selected={appointmentSelection.rows} />
+      </BulkActionBar>
           <Card>
             <CardContent className="p-4">
               <div className="flex flex-col md:flex-row gap-4">
@@ -530,6 +571,7 @@ const AdminClinic = () => {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                      <TableHead className="w-10"><SelectAllCheckbox selection={appointmentSelection} rows={appointments} /></TableHead>
                           <TableHead>Patient</TableHead>
                           <TableHead>Service</TableHead>
                           <TableHead>Date & Time</TableHead>
@@ -539,7 +581,8 @@ const AdminClinic = () => {
                       </TableHeader>
                       <TableBody>
                         {appointments.map((a) => (
-                          <TableRow key={a.id} className="hover:bg-muted/50">
+                          <TableRow key={a.id} className="hover:bg-muted/50" data-state={appointmentSelection.isSelected(a) ? "selected" : undefined}>
+                        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}><SelectRowCheckbox selection={appointmentSelection} row={a} label={`Select ${`${a.patient_name} · ${a.preferred_date}`}`} /></TableCell>
                             <TableCell className="font-medium">
                               <div>
                                 <div className="font-medium">{a.patient_name}</div>

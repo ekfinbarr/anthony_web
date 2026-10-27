@@ -69,10 +69,16 @@ import DeleteConfirmModal from "@/components/admin/shared/DeleteConfirmModal";
 import { StatusBadge } from "@/components/admin/shared/StatusBadge";
 import { GenericEmptyState } from "@/components/admin/shared/GenericEmptyState";
 
+import { BulkActionBar, SelectAllCheckbox, SelectRowCheckbox } from "@/components/admin/data/BulkActionBar";
+import { ExportMenu } from "@/components/admin/data/ExportMenu";
+import { fetchAllPages } from "@/components/admin/data/fetchAllPages";
+import { rowId, useBulkSelection } from "@/components/admin/data/useBulkSelection";
+import type { ExportColumn } from "@/lib/export/tableExport";
 const AdminLeadership = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const selection = useBulkSelection<Leadership>(rowId);
 
   // State management
   const [searchQuery, setSearchQuery] = useState("");
@@ -205,8 +211,23 @@ const AdminLeadership = () => {
   const from = paginated?.from ?? 0;
   const to = paginated?.to ?? 0;
 
+  const exportColumns: ExportColumn<Leadership>[] = [
+    { header: "Name", value: (l) => l.name, width: 28 },
+    { header: "Title", value: (l) => l.title ?? "" },
+    { header: "Position", value: (l) => l.position ?? "" },
+    { header: "Email", value: (l) => l.email ?? "" },
+    { header: "Phone", value: (l) => l.phone ?? "" },
+    { header: "Since", value: (l) => l.start_date ?? null, type: "date" },
+    { header: "Active", value: (l) => !!l.is_active },
+    { header: "On website", value: (l) => !!l.show_on_website },
+  ];
+  const fetchAllRows = () => fetchAllPages<Leadership>((page, per_page) => leadershipService.list({ ...queryParams, page, per_page }) as never);
+
   return (
     <div className="space-y-6 animate-fade-in">
+      <BulkActionBar resource="leadership" selection={selection} describe={(leader) => leader.name} noun={["leader", "leaders"]} onComplete={() => queryClient.invalidateQueries({ queryKey: ["leadership"] })}>
+        <ExportMenu variant="bar" title="Parish leadership" filename="leadership" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
+      </BulkActionBar>
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -215,9 +236,12 @@ const AdminLeadership = () => {
             Manage parish priests, clergy, and leadership profiles.
           </p>
         </div>
-        <Button onClick={handleCreate} className="gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <ExportMenu title="Parish leadership" filename="leadership" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
+          <Button onClick={handleCreate} className="gap-2">
           <Plus className="h-4 w-4" /> Add Leader
         </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -306,6 +330,7 @@ const AdminLeadership = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10"><SelectAllCheckbox selection={selection} rows={leaders} /></TableHead>
                       <TableHead className="w-[80px]">Order</TableHead>
                       <TableHead>Leader</TableHead>
                       <TableHead>Title & Position</TableHead>
@@ -317,7 +342,8 @@ const AdminLeadership = () => {
                   </TableHeader>
                   <TableBody>
                     {leaders.map((leader, index) => (
-                      <TableRow key={leader.id} className="hover:bg-muted/50">
+                      <TableRow key={leader.id} className="hover:bg-muted/50" data-state={selection.isSelected(leader) ? "selected" : undefined}>
+                        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}><SelectRowCheckbox selection={selection} row={leader} label={`Select ${leader.name}`} /></TableCell>
                         <TableCell>
                           <div className="flex flex-col items-center gap-1">
                             <Button

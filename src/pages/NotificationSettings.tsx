@@ -690,7 +690,7 @@ export default function NotificationSettings() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <Select value={filter} onValueChange={setFilter}>
+                        <Select value={filter} onValueChange={(value) => setFilter(value as typeof filter)}>
                           <SelectTrigger className="w-48">
                             <Filter className="h-4 w-4 mr-2" />
                             <SelectValue />

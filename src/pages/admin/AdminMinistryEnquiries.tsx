@@ -39,9 +39,15 @@ import { StatusBadge } from "@/components/admin/shared/StatusBadge";
 import DeleteConfirmModal from "@/components/admin/shared/DeleteConfirmModal";
 import { GenericEmptyState } from "@/components/admin/shared/GenericEmptyState";
 
+import { BulkActionBar, SelectAllCheckbox, SelectRowCheckbox } from "@/components/admin/data/BulkActionBar";
+import { ExportMenu } from "@/components/admin/data/ExportMenu";
+import { fetchAllPages } from "@/components/admin/data/fetchAllPages";
+import { rowId, useBulkSelection } from "@/components/admin/data/useBulkSelection";
+import type { ExportColumn } from "@/lib/export/tableExport";
 const AdminMinistryEnquiries = () => {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const selection = useBulkSelection<MinistryEnquiry>(rowId);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<EnquiryStatus | "all">("all");
   const [page, setPage] = useState(1);
@@ -98,13 +104,30 @@ const AdminMinistryEnquiries = () => {
     }
   };
 
+  const exportColumns: ExportColumn<MinistryEnquiry>[] = [
+    { header: "Name", value: (e) => e.full_name, width: 26 },
+    { header: "Email", value: (e) => e.email ?? "" },
+    { header: "Phone", value: (e) => e.phone ?? "" },
+    { header: "Ministry", value: (e) => e.ministry?.name ?? "" },
+    { header: "Message", value: (e) => e.message ?? "", width: 50 },
+    { header: "Status", value: (e) => e.status },
+    { header: "Received", value: (e) => e.created_at, type: "datetime" },
+  ];
+  const fetchAllRows = () => fetchAllPages<MinistryEnquiry>((page, per_page) => ministryEnquiryService.list({ ...params, page, per_page }) as never);
+
   return (
     <div className="space-y-6 animate-fade-in">
+      <BulkActionBar resource="ministry_enquiries" selection={selection} describe={(row) => row.full_name} noun={["enquiry", "enquiries"]} onComplete={() => qc.invalidateQueries({ queryKey: ["ministry-enquiries"] })}>
+        <ExportMenu variant="bar" title="Ministry enquiries" filename="ministry-enquiries" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
+      </BulkActionBar>
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div>
         <h1 className="text-3xl font-heading font-bold">Ministry enquiries</h1>
         <p className="mt-1 text-muted-foreground">
           Guest expressions of interest from Serve Others. These are not membership confirmations.
         </p>
+      </div>
+        <ExportMenu title="Ministry enquiries" filename="ministry-enquiries" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
       </div>
 
       <Card>
@@ -170,6 +193,7 @@ const AdminMinistryEnquiries = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10"><SelectAllCheckbox selection={selection} rows={enquiries} /></TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Ministry</TableHead>
                       <TableHead>Email</TableHead>
@@ -180,7 +204,8 @@ const AdminMinistryEnquiries = () => {
                   </TableHeader>
                   <TableBody>
                     {enquiries.map((row) => (
-                      <TableRow key={row.id}>
+                      <TableRow key={row.id} data-state={selection.isSelected(row) ? "selected" : undefined}>
+                        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}><SelectRowCheckbox selection={selection} row={row} label={`Select ${row.full_name}`} /></TableCell>
                         <TableCell className="font-medium">{row.full_name}</TableCell>
                         <TableCell>{row.ministry?.name || "—"}</TableCell>
                         <TableCell>{row.email}</TableCell>

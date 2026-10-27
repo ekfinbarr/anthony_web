@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { Sacrament } from "@/data/sacraments";
-import { getSacramentIcon } from "./sacramentIcons";
+import { SacramentIcon } from "./SacramentIcon";
 
 type SacramentDetailsModalProps = {
   sacrament: Sacrament | null;
@@ -26,14 +26,12 @@ const SacramentDetailsModal = ({
 }: SacramentDetailsModalProps) => {
   if (!sacrament) return null;
 
-  const Icon = getSacramentIcon(sacrament.iconKey);
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader className="space-y-4 text-left sm:text-left">
           <div className="flex items-start gap-4">
-            <Icon size="lg" className="shrink-0 [&_.parish-icon]:[--pi-disc:38_45%_72%]" />
+            <SacramentIcon iconKey={sacrament.iconKey} size="lg" className="shrink-0 [&_.parish-icon]:[--pi-disc:38_45%_72%]" />
             <div className="min-w-0 space-y-2">
               <DialogTitle className="font-heading text-2xl text-church-charcoal">
                 {sacrament.name}

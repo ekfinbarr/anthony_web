@@ -364,7 +364,7 @@ export const storageUtils = {
       const stored = localStorage.getItem('dashboardData');
       if (stored) {
         const parsed = JSON.parse(stored, storageUtils.dateReviver);
-        const converted = storageUtils.ensureDatesAreConverted(parsed);
+        const converted = storageUtils.ensureDatesAreConverted(parsed) as Partial<DashboardData>;
         
         // Validate that critical date fields are proper Date objects
         if (converted.spiritualGrowth?.streaks) {

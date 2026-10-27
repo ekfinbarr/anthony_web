@@ -58,22 +58,24 @@ import {
   Users,
   UserCheck,
   AlertCircle,
-  Download,
-  FileText,
-  FileSpreadsheet
 } from "lucide-react";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import { useToast } from "@/hooks/use-toast";
 import ministryService, { Ministry, MinistryQueryParams, CreateMinistryPayload, UpdateMinistryPayload } from "@/services/ministry.service";
 import DeleteConfirmModal from "@/components/admin/shared/DeleteConfirmModal";
 import { StatusBadge } from "@/components/admin/shared/StatusBadge";
 import { GenericEmptyState } from "@/components/admin/shared/GenericEmptyState";
 
+import { BulkActionBar, SelectAllCheckbox, SelectRowCheckbox } from "@/components/admin/data/BulkActionBar";
+import { ExportMenu } from "@/components/admin/data/ExportMenu";
+import { fetchAllPages } from "@/components/admin/data/fetchAllPages";
+import { rowId, useBulkSelection } from "@/components/admin/data/useBulkSelection";
+import type { ExportColumn } from "@/lib/export/tableExport";
+import { InsightsPanel } from "@/components/admin/data/InsightsPanel";
 const AdminGroups = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const selection = useBulkSelection<Ministry>(rowId);
 
   // State management
   const [searchQuery, setSearchQuery] = useState("");
@@ -151,93 +153,6 @@ const AdminGroups = () => {
     },
   });
 
-  // Export Functions
-  const fetchAllForExport = async () => {
-    // Fetch all records based on current filters but without pagination limit (use high limit)
-    const exportParams = { ...queryParams, per_page: 10000, page: 1 };
-    const response = await ministryService.list(exportParams);
-    return response.data || [];
-  };
-
-  const handleExportCSV = async () => {
-    try {
-      toast({ title: "Exporting", description: "Preparing CSV export..." });
-      const data = await fetchAllForExport();
-
-      if (!data.length) {
-        toast({ title: "Warning", description: "No data to export", variant: "destructive" });
-        return;
-      }
-
-      const headers = ["Name", "Category", "Status", "Members Accepting", "Leader", "Email", "Phone", "Meeting Location"];
-      const csvContent = [
-        headers.join(","),
-        ...data.map(group => [
-          `"${group.name.replace(/"/g, '""')}"`,
-          `"${group.category?.name || "Uncategorized"}"`,
-          group.is_active ? "Active" : "Inactive",
-          group.accepting_members ? "Yes" : "No",
-          `"${group.leader?.name || ""}"`,
-          group.contact_email || "",
-          group.contact_phone || "",
-          `"${(group.meeting_location || "").replace(/"/g, '""')}"`
-        ].join(","))
-      ].join("\n");
-
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const link = document.createElement("a");
-      const url = URL.createObjectURL(blob);
-      link.setAttribute("href", url);
-      link.setAttribute("download", `ministries_export_${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (err) {
-      toast({ title: "Error", description: "Failed to export CSV", variant: "destructive" });
-    }
-  };
-
-  const handleExportPDF = async () => {
-    try {
-      toast({ title: "Exporting", description: "Preparing PDF export..." });
-      const data = await fetchAllForExport();
-
-      if (!data.length) {
-        toast({ title: "Warning", description: "No data to export", variant: "destructive" });
-        return;
-      }
-
-      const doc = new jsPDF();
-
-      doc.setFontSize(18);
-      doc.text("Parish Ministries & Groups", 14, 22);
-
-      doc.setFontSize(10);
-      doc.text(`Exported on ${new Date().toLocaleDateString()}`, 14, 30);
-
-      const tableData = data.map(group => [
-        group.name,
-        group.category?.name || "Uncategorized",
-        group.is_active ? "Active" : "Inactive",
-        group.accepting_members ? "Yes" : "No",
-        group.leader?.name || "-"
-      ]);
-
-      autoTable(doc, {
-        head: [['Name', 'Category', 'Status', 'Accepting', 'Leader']],
-        body: tableData,
-        startY: 40,
-        styles: { fontSize: 9 },
-        headStyles: { fillColor: [66, 66, 66] }
-      });
-
-      doc.save(`ministries_export_${new Date().toISOString().split('T')[0]}.pdf`);
-    } catch (err) {
-      console.error(err);
-      toast({ title: "Error", description: "Failed to export PDF", variant: "destructive" });
-    }
-  };
-
   const handleView = (group: Ministry) => {
     setSelectedGroup(group);
     navigate(`/admin/groups/${group.id}`);
@@ -268,8 +183,33 @@ const AdminGroups = () => {
   const from = (groupsData && 'from' in groupsData) ? groupsData.from : 0;
   const to = (groupsData && 'to' in groupsData) ? groupsData.to : 0;
 
+  const exportColumns: ExportColumn<Ministry>[] = [
+    { header: "Name", value: (g) => g.name, width: 32 },
+    { header: "Type", value: (g) => g.kind ?? "" },
+    { header: "Category", value: (g) => g.category?.name ?? "" },
+    { header: "Leader", value: (g) => g.leader?.name ?? g.contact_name ?? "" },
+    { header: "Email", value: (g) => g.contact_email ?? "" },
+    { header: "Phone", value: (g) => g.contact_phone ?? "" },
+    {
+      header: "Meets",
+      value: (g) => {
+        const m = g.meeting_schedule as unknown;
+        if (!m) return "";
+        if (typeof m === "string") return m;
+        if (Array.isArray(m)) return m.join(", ");
+        return Object.values(m as Record<string, unknown>).filter(Boolean).join(", ");
+      },
+    },
+    { header: "Active", value: (g) => !!g.is_active },
+    { header: "Open to members", value: (g) => !!g.accepting_members },
+  ];
+  const fetchAllRows = () => fetchAllPages<Ministry>((page, per_page) => ministryService.listAdmin({ ...queryParams, page, per_page }) as never);
+
   return (
     <div className="space-y-6 animate-fade-in">
+      <BulkActionBar resource="ministries" selection={selection} describe={(group) => group.name} noun={["group", "groups"]} onComplete={() => queryClient.invalidateQueries({ queryKey: ["ministries"] })}>
+        <ExportMenu variant="bar" title="Ministries & groups" filename="ministries" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
+      </BulkActionBar>
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -280,26 +220,14 @@ const AdminGroups = () => {
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="gap-2">
-              <Download className="h-4 w-4" /> Export
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={handleExportCSV}>
-              <FileSpreadsheet className="mr-2 h-4 w-4" /> Export CSV
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleExportPDF}>
-              <FileText className="mr-2 h-4 w-4" /> Export PDF
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <ExportMenu title="Ministries & groups" filename="ministries" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
         <Button onClick={handleCreate} className="gap-2">
           <Plus className="h-4 w-4" /> New Group
         </Button>
       </div>
       {/* </div> */}
+
+      <InsightsPanel module="memberships" />
 
       {/* Filters */}
       <Card>
@@ -426,6 +354,7 @@ const AdminGroups = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10"><SelectAllCheckbox selection={selection} rows={groups} /></TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Summary</TableHead>
@@ -436,7 +365,8 @@ const AdminGroups = () => {
                   </TableHeader>
                   <TableBody>
                     {groups.map((group) => (
-                      <TableRow key={group.id} className="hover:bg-muted/50">
+                      <TableRow key={group.id} className="hover:bg-muted/50" data-state={selection.isSelected(group) ? "selected" : undefined}>
+                        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}><SelectRowCheckbox selection={selection} row={group} label={`Select ${group.name}`} /></TableCell>
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
                             <Users className="h-4 w-4 text-muted-foreground" />

@@ -17,9 +17,16 @@ import { AdminPagination } from "@/components/admin/shared/AdminPagination";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import donationService, { Donation, DonationGateway, DonationType } from "@/services/donation.service";
 
+import { BulkActionBar, SelectAllCheckbox, SelectRowCheckbox } from "@/components/admin/data/BulkActionBar";
+import { ExportMenu } from "@/components/admin/data/ExportMenu";
+import { fetchAllPages } from "@/components/admin/data/fetchAllPages";
+import { rowId, useBulkSelection } from "@/components/admin/data/useBulkSelection";
+import type { ExportColumn } from "@/lib/export/tableExport";
+import { InsightsPanel } from "@/components/admin/data/InsightsPanel";
 const AdminDonations = () => {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const selection = useBulkSelection<Donation>(rowId);
 
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearch = useDebouncedValue(searchInput, 350);
@@ -105,19 +112,40 @@ const AdminDonations = () => {
 
   const averageAmount = donations.length ? totalAmount / donations.length : 0;
 
+  const exportColumns: ExportColumn<Donation>[] = [
+    { header: "Date", value: (d) => d.donation_date ?? d.created_at, type: "date" },
+    { header: "Reference", value: (d) => d.reference },
+    { header: "Donor", value: (d) => (d.is_anonymous ? "Anonymous" : d.donor_name ?? "") },
+    { header: "Email", value: (d) => (d.is_anonymous ? "" : d.donor_email ?? "") },
+    { header: "Fund", value: (d) => d.type_formatted ?? d.type },
+    { header: "Method", value: (d) => d.payment_gateway },
+    { header: "Status", value: (d) => d.status_formatted ?? d.status },
+    { header: "Dedication", value: (d) => (d.memorial_for ? `In memory of ${d.memorial_for}` : d.dedication ?? "") },
+    { header: "Amount", value: (d) => Number(d.amount), type: "money", total: true },
+  ];
+  const fetchAllRows = () => fetchAllPages<Donation>((page, per_page) => donationService.report({ ...reportParams, page, per_page }).then((r) => r.donations as never));
+
   return (
     <div className="space-y-6 animate-fade-in">
+      <BulkActionBar resource="donations" selection={selection} describe={(d) => d.reference} noun={["donation", "donations"]} onComplete={() => qc.invalidateQueries({ queryKey: ["admin-donations-report"] })}>
+        <ExportMenu variant="bar" title="Donations" filename="donations" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} currency="NGN" />
+      </BulkActionBar>
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-heading font-bold text-foreground">Donations Management</h1>
           <p className="text-muted-foreground mt-1">Review donation reports and create donations (admin account only).</p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <ExportMenu title="Donations" filename="donations" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} currency="NGN" />
+          <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
           <Plus className="h-4 w-4" /> Add Donation
         </Button>
+        </div>
       </div>
 
       {/* Stats */}
+      <InsightsPanel module="donations" />
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -234,6 +262,7 @@ const AdminDonations = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10"><SelectAllCheckbox selection={selection} rows={donations} /></TableHead>
                       <TableHead>Reference</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Amount</TableHead>
@@ -245,7 +274,8 @@ const AdminDonations = () => {
                   </TableHeader>
                   <TableBody>
                     {donations.map((d) => (
-                      <TableRow key={d.id} className="hover:bg-muted/50">
+                      <TableRow key={d.id} className="hover:bg-muted/50" data-state={selection.isSelected(d) ? "selected" : undefined}>
+                        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}><SelectRowCheckbox selection={selection} row={d} label={`Select ${d.reference}`} /></TableCell>
                         <TableCell className="font-medium">{d.reference}</TableCell>
                         <TableCell>{d.type}</TableCell>
                         <TableCell className="font-medium">{formatAmount(d.amount)}</TableCell>

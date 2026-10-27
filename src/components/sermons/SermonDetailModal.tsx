@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   BookOpen,
@@ -50,12 +50,13 @@ const SermonDetailModal = ({ slug, open, onOpenChange, preview }: SermonDetailMo
 
   const display = sermon ?? preview ?? null;
 
-  useEffect(() => {
-    if (!display) return;
-    if (display.video_url) setMode("video");
-    else if (display.audio_url) setMode("audio");
-    else setMode("notes");
-  }, [display?.id, display?.video_url, display?.audio_url]);
+  // Choose the best available media whenever a different sermon (or its media) loads.
+  const mediaKey = display ? `${display.id}|${display.video_url ?? ""}|${display.audio_url ?? ""}` : null;
+  const [modeFor, setModeFor] = useState<string | null>(null);
+  if (display && mediaKey !== modeFor) {
+    setModeFor(mediaKey);
+    setMode(display.video_url ? "video" : display.audio_url ? "audio" : "notes");
+  }
 
   const thumb = display ? sermonThumbnail(display) : undefined;
   const date = display ? formatSermonDate(display.preached_date || display.date) : "";

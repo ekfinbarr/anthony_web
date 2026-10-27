@@ -349,7 +349,8 @@ export default function ContentFeed({
     return new Set(
       recommendations
         .filter(rec => rec.type === 'content')
-        .map(rec => rec.data?.id)
+        // Recommendation data is untyped; content recommendations carry an `id`.
+        .map(rec => (rec.data as { id?: string } | null)?.id)
         .filter(Boolean)
     );
   }, [recommendations]);

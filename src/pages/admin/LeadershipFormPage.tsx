@@ -7,7 +7,7 @@
  * @package Lovable/src/pages/admin
  */
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -50,6 +50,7 @@ import leadershipService, {
 } from "@/services/leadership.service";
 import AttachmentUploadModal from "@/components/attachments/AttachmentUploadModal";
 
+import SubmitForReviewButton from "@/components/admin/shared/SubmitForReviewButton";
 const LeadershipFormPage = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -87,58 +88,29 @@ const LeadershipFormPage = () => {
     enabled: isEditMode && !!id,
   });
 
-  // Initialize form data
-  useEffect(() => {
-    if (isEditMode && leaderData) {
-      const leader = {...leaderData?.data }
-      setFormData({
-        name: leader.name || "",
-        slug: leader.slug || "",
-        title: leader.title || "",
-        position: leader.position || "",
-        bio: leader.bio || "",
-        email: leader.email || "",
-        phone: leader.phone || "",
-        image_url: leader.image_url || "",
-        qualifications: leader.qualifications || [],
-        ministries: leader.ministries || [],
-        start_date: leader.start_date ? new Date(leader.start_date).toISOString().split('T')[0] : "",
-        end_date: leader.end_date ? new Date(leader.end_date).toISOString().split('T')[0] : "",
-        sort_order: leader.sort_order || 0,
-        is_active: leader.is_active ?? true,
-        show_on_website: leader.show_on_website ?? true,
-      });
-    } else if (!isEditMode) {
-      setFormData({
-        name: "",
-        slug: "",
-        title: "",
-        position: "",
-        bio: "",
-        email: "",
-        phone: "",
-        image_url: "",
-        qualifications: [],
-        ministries: [],
-        start_date: "",
-        end_date: "",
-        sort_order: 0,
-        is_active: true,
-        show_on_website: true,
-      });
-    }
-  }, [leaderData, isEditMode]);
-
-  // Automatic slug generation
-  useEffect(() => {
-    if (!isEditMode && formData.name) {
-      const generatedSlug = formData.name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)/g, "");
-      setFormData((prev) => ({ ...prev, slug: generatedSlug }));
-    }
-  }, [formData.name, isEditMode]);
+  // Populate the form once per loaded record (adjusted during render, not in an effect).
+  // New-member mode keeps the blank initial state above.
+  const [loadedLeader, setLoadedLeader] = useState<typeof leaderData | null>(null);
+  if (isEditMode && leaderData && leaderData !== loadedLeader) {
+    setLoadedLeader(leaderData);
+    setFormData({
+      name: leaderData.name || "",
+      slug: leaderData.slug || "",
+      title: leaderData.title || "",
+      position: leaderData.position || "",
+      bio: leaderData.bio || "",
+      email: leaderData.email || "",
+      phone: leaderData.phone || "",
+      image_url: leaderData.image_url || "",
+      qualifications: leaderData.qualifications || [],
+      ministries: leaderData.ministries || [],
+      start_date: leaderData.start_date ? new Date(leaderData.start_date).toISOString().split('T')[0] : "",
+      end_date: leaderData.end_date ? new Date(leaderData.end_date).toISOString().split('T')[0] : "",
+      sort_order: leaderData.sort_order || 0,
+      is_active: leaderData.is_active ?? true,
+      show_on_website: leaderData.show_on_website ?? true,
+    });
+  }
 
   // Create mutation
   const createMutation = useMutation({
@@ -188,7 +160,14 @@ const LeadershipFormPage = () => {
     field: K,
     value: (typeof formData)[K]
   ) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      const next = { ...prev, [field]: value };
+      // New members get a slug generated from their name as it is typed.
+      if (field === "name" && !isEditMode && typeof value === "string" && value) {
+        next.slug = value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+      }
+      return next;
+    });
   };
 
   const handleAddQualification = () => {
@@ -711,6 +690,7 @@ const LeadershipFormPage = () => {
                     ? "Update Leader"
                     : "Create Leader"}
               </Button>
+              <SubmitForReviewButton contentType="leadership" contentId={id} className="w-full" />
               <Button
                 variant="outline"
                 onClick={() => navigate("/admin/leadership")}

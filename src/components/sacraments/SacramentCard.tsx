@@ -2,7 +2,7 @@ import { ChevronRight } from "lucide-react";
 import Reveal from "@/components/parish-home/Reveal";
 import { cn } from "@/lib/utils";
 import type { Sacrament } from "@/data/sacraments";
-import { getSacramentIcon } from "./sacramentIcons";
+import { SacramentIcon } from "./SacramentIcon";
 
 type SacramentCardProps = {
   sacrament: Sacrament;
@@ -11,8 +11,6 @@ type SacramentCardProps = {
 };
 
 const SacramentCard = ({ sacrament, index, onOpen }: SacramentCardProps) => {
-  const Icon = getSacramentIcon(sacrament.iconKey);
-
   return (
     <Reveal delay={index * 60} className="h-full">
       <button
@@ -29,7 +27,7 @@ const SacramentCard = ({ sacrament, index, onOpen }: SacramentCardProps) => {
         )}
       >
         <div className="shrink-0">
-          <Icon size="md" className="[&_.parish-icon]:[--pi-disc:38_45%_72%]" />
+          <SacramentIcon iconKey={sacrament.iconKey} size="md" className="[&_.parish-icon]:[--pi-disc:38_45%_72%]" />
         </div>
 
         <div className="min-w-0 flex-1">

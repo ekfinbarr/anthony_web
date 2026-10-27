@@ -169,9 +169,8 @@ const Donations = () => {
           <Card className="max-w-3xl mx-auto animate-fade-in">
             <CardHeader>
               <CardTitle className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-full ${selectedCategory.color} flex items-center justify-center`}>
-                  <selectedCategory.icon className="h-5 w-5 text-white" />
-                </div>
+                {/* Parish icons draw their own gold disc. */}
+                <selectedCategory.icon size="sm" />
                 {selectedCategory.name}
               </CardTitle>
               <CardDescription>{selectedCategory.description}</CardDescription>

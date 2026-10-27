@@ -107,7 +107,7 @@ export function DonationAccountSettings() {
         queryFn: () => donationAccountService.listAll(),
     });
 
-    const accounts = accountsData?.data ?? [];
+    const accounts = useMemo(() => accountsData?.data ?? [], [accountsData]);
     console.log('Accounts: ', accounts);
 
     /**

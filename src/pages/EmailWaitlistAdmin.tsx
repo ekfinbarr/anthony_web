@@ -1,14 +1,21 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AdminEmailService, type EmailSubscription, type ApiResponse } from "@/services/emailService";
+import { AdminEmailService, type EmailSubscription } from "@/services/emailService";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Download, Trash2, RefreshCw, Search, Filter } from "lucide-react";
+import { Users, Trash2, RefreshCw, Search, Filter } from "lucide-react";
 
+import { BulkActionBar, SelectAllCheckbox, SelectRowCheckbox } from "@/components/admin/data/BulkActionBar";
+import { ExportMenu } from "@/components/admin/data/ExportMenu";
+import { fetchAllPages } from "@/components/admin/data/fetchAllPages";
+import { rowId, useBulkSelection } from "@/components/admin/data/useBulkSelection";
+import type { ExportColumn } from "@/lib/export/tableExport";
 interface WaitlistStats {
   total_subscribers: number;
   active_subscribers: number;
@@ -24,74 +31,74 @@ interface WaitlistStats {
 }
 
 const EmailWaitlistAdmin = () => {
-  const [subscribers, setSubscribers] = useState<EmailSubscription[]>([]);
-  const [stats, setStats] = useState<WaitlistStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const selection = useBulkSelection<EmailSubscription>(rowId);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  // Keep a stable service instance so hooks can safely depend on it.
-  const adminService = useMemo(() => new AdminEmailService(), []);
+  // Authenticate with the signed-in admin's token (the page previously read an
+  // `auth_token` key that nothing ever stored, so every request was anonymous).
+  const token = user?.token;
+  const adminService = useMemo(() => {
+    const service = new AdminEmailService();
+    if (token) service.setAuthToken(token);
+    return service;
+  }, [token]);
 
-  // Set auth token if available (you would get this from your auth system)
-  useEffect(() => {
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      adminService.setAuthToken(token);
-    }
-  }, [adminService]);
-
-  const loadSubscribers = useCallback(async (page = 1) => {
-    try {
-      setLoading(true);
-      const params = {
-        page,
+  const subscribersQuery = useQuery({
+    queryKey: ["waitlist-subscribers", currentPage, searchTerm, statusFilter, sourceFilter, token],
+    queryFn: async () => {
+      const response = await adminService.getSubscribers({
+        page: currentPage,
         per_page: 15,
         search: searchTerm || undefined,
-        status: statusFilter !== 'all' ? statusFilter : undefined,
-        source: sourceFilter !== 'all' ? sourceFilter : undefined,
-      };
-
-      const response: ApiResponse = await adminService.getSubscribers(params);
-      
-      if (response.success && response.data) {
-        setSubscribers(response.data.data || []);
-        setCurrentPage(response.data.current_page || 1);
-        setTotalPages(response.data.last_page || 1);
-      } else {
-        throw new Error(response.message || 'Failed to load subscribers');
-      }
-    } catch (error) {
-      console.error('Load subscribers error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load subscribers. Please check your authentication.",
-        variant: "destructive",
+        status: statusFilter !== "all" ? statusFilter : undefined,
+        source: sourceFilter !== "all" ? sourceFilter : undefined,
       });
-    } finally {
-      setLoading(false);
-    }
-  }, [adminService, searchTerm, sourceFilter, statusFilter, toast]);
-
-  const loadStats = useCallback(async () => {
-    try {
-      const response: ApiResponse = await adminService.getStats();
-      if (response.success && response.data) {
-        setStats(response.data);
+      if (!response.success || !response.data) {
+        throw new Error(response.message || "Failed to load subscribers");
       }
-    } catch (error) {
-      console.error('Load stats error:', error);
-    }
-  }, [adminService]);
+      return response.data;
+    },
+    placeholderData: (previous) => previous,
+  });
+
+  const statsQuery = useQuery({
+    queryKey: ["waitlist-stats", token],
+    queryFn: async () => {
+      const response = await adminService.getStats<WaitlistStats>();
+      return response.success && response.data ? response.data : null;
+    },
+  });
+
+  const subscribers = subscribersQuery.data?.data ?? [];
+  const totalPages = subscribersQuery.data?.last_page ?? 1;
+  const loading = subscribersQuery.isFetching && !subscribersQuery.data;
+  const stats = statsQuery.data ?? null;
 
   useEffect(() => {
-    loadSubscribers();
-    loadStats();
-  }, [loadSubscribers, loadStats]);
+    if (!subscribersQuery.isError) return;
+    toast({
+      title: "Error",
+      description: "Failed to load subscribers. Please check your authentication.",
+      variant: "destructive",
+    });
+  }, [subscribersQuery.isError, toast]);
+
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ["waitlist-subscribers"] });
+    void queryClient.invalidateQueries({ queryKey: ["waitlist-stats"] });
+  };
+
+  // Filter changes start again from the first page.
+  const changeFilter = (setter: (value: string) => void) => (value: string) => {
+    setter(value);
+    setCurrentPage(1);
+  };
 
   const handleDeleteSubscriber = async (id: number) => {
     if (!confirm('Are you sure you want to delete this subscriber?')) {
@@ -105,8 +112,7 @@ const EmailWaitlistAdmin = () => {
           title: "Success",
           description: "Subscriber deleted successfully",
         });
-        loadSubscribers(currentPage);
-        loadStats();
+        refresh();
       } else {
         throw new Error(response.message || 'Failed to delete subscriber');
       }
@@ -114,44 +120,6 @@ const EmailWaitlistAdmin = () => {
       toast({
         title: "Error",
         description: "Failed to delete subscriber",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleExportCSV = async () => {
-    try {
-      const response = await adminService.exportSubscribers({
-        status: statusFilter !== 'all' ? statusFilter : undefined,
-        source: sourceFilter !== 'all' ? sourceFilter : undefined,
-      });
-
-      if (response.success && response.data) {
-        const csvContent = "data:text/csv;charset=utf-8," 
-          + "Email,Name,Phone,Source,Status,Subscribed At,Email Verified\n"
-          + response.data.map((sub: EmailSubscription) => 
-              `${sub.email},"${sub.name || ''}","${sub.phone || ''}",${sub.source},${sub.status},${sub.subscribed_at},${sub.email_verified ? 'Yes' : 'No'}`
-            ).join("\n");
-
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `waitlist_subscribers_${new Date().toISOString().split('T')[0]}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        toast({
-          title: "Success",
-          description: `Exported ${response.data.length} subscribers to CSV`,
-        });
-      } else {
-        throw new Error('Failed to export data');
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to export subscribers",
         variant: "destructive",
       });
     }
@@ -175,15 +143,39 @@ const EmailWaitlistAdmin = () => {
     }
   };
 
+  const exportColumns: ExportColumn<EmailSubscription>[] = [
+    { header: "Email", value: (s) => s.email, width: 32 },
+    { header: "Name", value: (s) => s.name ?? "" },
+    { header: "Phone", value: (s) => s.phone ?? "" },
+    { header: "Source", value: (s) => s.source?.replace(/_/g, " ") ?? "" },
+    { header: "Status", value: (s) => s.status },
+    { header: "Verified", value: (s) => !!s.email_verified },
+    { header: "Subscribed", value: (s) => s.subscribed_at ?? null, type: "datetime" },
+  ];
+  const fetchAllRows = () =>
+    fetchAllPages<EmailSubscription>(async (page, per_page) => {
+      const res = await adminService.getSubscribers({
+        page,
+        per_page,
+        search: searchTerm || undefined,
+        status: statusFilter !== "all" ? statusFilter : undefined,
+        source: sourceFilter !== "all" ? sourceFilter : undefined,
+      });
+      return (res.data ?? { data: [] }) as never;
+    });
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+    <div className="animate-fade-in">
+      <BulkActionBar resource="waiting_list" selection={selection} describe={(s) => s.email} noun={["subscriber", "subscribers"]} onComplete={refresh}>
+        <ExportMenu variant="bar" title="Waiting list" filename="waiting-list" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
+      </BulkActionBar>
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+        <div>
+          <h1 className="text-3xl font-heading font-bold text-foreground">
             Waiting List Management
           </h1>
-          <p className="text-gray-600">
+          <p className="text-muted-foreground mt-1">
             Manage your email subscribers and view analytics
           </p>
         </div>
@@ -256,16 +248,16 @@ const EmailWaitlistAdmin = () => {
           <CardContent>
             <div className="flex flex-wrap gap-4 mb-4">
               <div className="flex items-center space-x-2">
-                <Search className="h-4 w-4 text-gray-400" />
+                <Search className="h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search by email or name..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => changeFilter(setSearchTerm)(e.target.value)}
                   className="w-64"
                 />
               </div>
 
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={statusFilter} onValueChange={changeFilter(setStatusFilter)}>
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
@@ -277,7 +269,7 @@ const EmailWaitlistAdmin = () => {
                 </SelectContent>
               </Select>
 
-              <Select value={sourceFilter} onValueChange={setSourceFilter}>
+              <Select value={sourceFilter} onValueChange={changeFilter(setSourceFilter)}>
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="Filter by source" />
                 </SelectTrigger>
@@ -292,14 +284,11 @@ const EmailWaitlistAdmin = () => {
               </Select>
 
               <div className="flex gap-2 ml-auto">
-                <Button onClick={() => loadSubscribers(currentPage)} variant="outline" size="sm">
+                <Button onClick={refresh} variant="outline" size="sm">
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Refresh
                 </Button>
-                <Button onClick={handleExportCSV} variant="outline" size="sm">
-                  <Download className="h-4 w-4 mr-2" />
-                  Export CSV
-                </Button>
+                <ExportMenu title="Waiting list" filename="waiting-list" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} size="sm" />
               </div>
             </div>
 
@@ -308,6 +297,7 @@ const EmailWaitlistAdmin = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-10"><SelectAllCheckbox selection={selection} rows={subscribers} /></TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Source</TableHead>
@@ -320,19 +310,20 @@ const EmailWaitlistAdmin = () => {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
+                      <TableCell colSpan={8} className="text-center py-8">
                         Loading subscribers...
                       </TableCell>
                     </TableRow>
                   ) : subscribers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
+                      <TableCell colSpan={8} className="text-center py-8">
                         No subscribers found
                       </TableCell>
                     </TableRow>
                   ) : (
                     subscribers.map((subscriber) => (
-                      <TableRow key={subscriber.id}>
+                      <TableRow key={subscriber.id} data-state={selection.isSelected(subscriber) ? "selected" : undefined}>
+                        <TableCell className="w-10"><SelectRowCheckbox selection={selection} row={subscriber} label={`Select ${subscriber.email}`} /></TableCell>
                         <TableCell className="font-medium">{subscriber.email}</TableCell>
                         <TableCell>{subscriber.name || '-'}</TableCell>
                         <TableCell>
@@ -377,7 +368,7 @@ const EmailWaitlistAdmin = () => {
               <div className="flex justify-center mt-4">
                 <div className="flex gap-2">
                   <Button
-                    onClick={() => loadSubscribers(currentPage - 1)}
+                    onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                     disabled={currentPage <= 1}
                     variant="outline"
                     size="sm"
@@ -388,7 +379,7 @@ const EmailWaitlistAdmin = () => {
                     Page {currentPage} of {totalPages}
                   </span>
                   <Button
-                    onClick={() => loadSubscribers(currentPage + 1)}
+                    onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
                     disabled={currentPage >= totalPages}
                     variant="outline"
                     size="sm"

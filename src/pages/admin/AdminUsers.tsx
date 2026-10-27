@@ -25,13 +25,19 @@ import DeleteConfirmModal from "@/components/admin/shared/DeleteConfirmModal";
 import { GenericEmptyState } from "@/components/admin/shared/GenericEmptyState";
 import { CsvImportDialog } from "@/components/admin/shared/CsvImportDialog";
 import { IconTooltipButton } from "@/components/admin/shared/IconTooltipButton";
-import { downloadAuthenticatedFile } from "@/lib/downloadCsv";
 import userService, { User } from "@/services/user.service";
 import rbacService, { Role } from "@/services/rbac.service";
 
+import { BulkActionBar, SelectAllCheckbox, SelectRowCheckbox } from "@/components/admin/data/BulkActionBar";
+import { ExportMenu } from "@/components/admin/data/ExportMenu";
+import { fetchAllPages } from "@/components/admin/data/fetchAllPages";
+import { rowId, useBulkSelection } from "@/components/admin/data/useBulkSelection";
+import { InsightsPanel } from "@/components/admin/data/InsightsPanel";
+import type { ExportColumn } from "@/lib/export/tableExport";
 const AdminUsers = () => {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const selection = useBulkSelection<User>(rowId);
 
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearch = useDebouncedValue(searchInput, 350);
@@ -186,34 +192,28 @@ const AdminUsers = () => {
   const from = listQuery.data?.from ?? 0;
   const to = listQuery.data?.to ?? 0;
 
+  const exportColumns: ExportColumn<User>[] = [
+    { header: "Name", value: (u) => u.name, width: 26 },
+    { header: "Email", value: (u) => u.email, width: 30 },
+    { header: "Phone", value: (u) => u.phone ?? "" },
+    { header: "Roles", value: (u) => (u.roles ?? []).map((r) => (typeof r === "string" ? r : r.name)).join(", ") },
+    { header: "Email verified", value: (u) => !!u.email_verified_at },
+    { header: "Joined", value: (u) => u.created_at, type: "date" },
+  ];
+  const fetchAllRows = () => fetchAllPages<User>((page, per_page) => userService.list({ ...queryParams, page, per_page }) as never);
+
   return (
     <div className="space-y-6 animate-fade-in">
+      <BulkActionBar resource="users" selection={selection} describe={(u) => u.name} noun={["user", "users"]} onComplete={() => qc.invalidateQueries({ queryKey: ["admin-users"] })}>
+        <ExportMenu variant="bar" title="Users" filename="users" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
+      </BulkActionBar>
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-heading font-bold text-foreground">User Management</h1>
           <p className="text-muted-foreground mt-1">Manage parishioner accounts and access.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={async () => {
-              try {
-                await downloadAuthenticatedFile("users/export", "users.csv", {
-                  role: roleFilter !== "all" ? roleFilter : undefined,
-                  search: debouncedSearch || undefined,
-                });
-              } catch (e) {
-                toast({
-                  title: "Export failed",
-                  description: e instanceof Error ? e.message : "Could not export users",
-                  variant: "destructive",
-                });
-              }
-            }}
-          >
-            <Download className="h-4 w-4" /> Export
-          </Button>
+          <ExportMenu title="Users" filename="users" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
           <Button variant="outline" className="gap-2" onClick={() => setIsImportOpen(true)}>
             <Upload className="h-4 w-4" /> Import
           </Button>
@@ -222,6 +222,8 @@ const AdminUsers = () => {
           </Button>
         </div>
       </div>
+
+      <InsightsPanel module="users" />
 
       <Card>
         <CardContent className="p-4">
@@ -315,6 +317,7 @@ const AdminUsers = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10"><SelectAllCheckbox selection={selection} rows={users} /></TableHead>
                       <TableHead>User</TableHead>
                       <TableHead>Phone</TableHead>
                       <TableHead>Role(s)</TableHead>
@@ -325,7 +328,8 @@ const AdminUsers = () => {
                   </TableHeader>
                   <TableBody>
                     {users.map((u) => (
-                      <TableRow key={u.id} className="hover:bg-muted/50">
+                      <TableRow key={u.id} className="hover:bg-muted/50" data-state={selection.isSelected(u) ? "selected" : undefined}>
+                        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}><SelectRowCheckbox selection={selection} row={u} label={`Select ${u.name}`} /></TableCell>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar className="h-10 w-10">

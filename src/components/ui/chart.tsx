@@ -89,9 +89,15 @@ ${colorConfig
 
 const ChartTooltip = RechartsPrimitive.Tooltip;
 
+// Recharts 3 passes `active`/`payload`/`label` to the tooltip *content*, not via Tooltip props.
+type TooltipContentData = Partial<
+  Pick<RechartsPrimitive.TooltipContentProps<RechartsPrimitive.TooltipValueType, string | number>, "active" | "payload" | "label">
+>;
+
 const ChartTooltipContent = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
+  Omit<React.ComponentProps<typeof RechartsPrimitive.Tooltip>, "active" | "payload" | "label"> &
+    TooltipContentData &
     React.ComponentProps<"div"> & {
       hideLabel?: boolean;
       hideIndicator?: boolean;
@@ -167,7 +173,7 @@ const ChartTooltipContent = React.forwardRef<
 
             return (
               <div
-                key={item.dataKey}
+                key={`${key}-${index}`}
                 className={cn(
                   "flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:text-muted-foreground",
                   indicator === "dot" && "items-center",
@@ -230,7 +236,11 @@ const ChartLegend = RechartsPrimitive.Legend;
 const ChartLegendContent = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div"> &
-    Pick<RechartsPrimitive.LegendProps, "payload" | "verticalAlign"> & {
+    {
+      // Recharts 3 passes the legend payload to the content component.
+      payload?: RechartsPrimitive.LegendPayload[];
+      verticalAlign?: RechartsPrimitive.LegendProps["verticalAlign"];
+    } & {
       hideIcon?: boolean;
       nameKey?: string;
     }

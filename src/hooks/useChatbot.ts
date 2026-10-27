@@ -13,11 +13,30 @@ export interface UseChatbotReturn {
   usingFallback: boolean;
 }
 
+/** Opening message; wording depends on whether the AI assistant is configured. */
+const createWelcomeMessage = (hasOpenAIKey: boolean): ChatMessage => {
+  return {
+    id: 'welcome',
+    role: 'assistant',
+    content: hasOpenAIKey 
+      ? `Welcome to St. Anthony Catholic Church, Gbaja!
+
+I'm your parish assistant. I can help with Mass times, sacraments, events, and other information about our Catholic parish community.
+
+How can I assist you today?`
+      : `Welcome to St. Anthony Catholic Church, Gbaja!
+
+I'm here to help with Mass times, sacraments, events, and basic information about our parish.
+
+How can I assist you today?`,
+    timestamp: new Date()
+  };
+};
+
 export const useChatbot = (): UseChatbotReturn => {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [createWelcomeMessage(isOpenAIEnabled)]);
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
-  const [usingFallback, setUsingFallback] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Check if OpenAI is available
@@ -26,30 +45,9 @@ export const useChatbot = (): UseChatbotReturn => {
   // Choose the appropriate service
   const currentService = hasOpenAIKey ? chatbotService : fallbackChatbotService;
 
-  useEffect(() => {
-    setUsingFallback(!hasOpenAIKey);
-  }, [hasOpenAIKey]);
+  // The OpenAI key is fixed at build time, so this never changes during a session.
+  const usingFallback = !hasOpenAIKey;
 
-  // Initialize with welcome message
-  useEffect(() => {
-    const welcomeMessage: ChatMessage = {
-      id: 'welcome',
-      role: 'assistant',
-      content: hasOpenAIKey 
-        ? `Welcome to St. Anthony Catholic Church, Gbaja!
-
-I'm your parish assistant. I can help with Mass times, sacraments, events, and other information about our Catholic parish community.
-
-How can I assist you today?`
-        : `Welcome to St. Anthony Catholic Church, Gbaja!
-
-I'm here to help with Mass times, sacraments, events, and basic information about our parish.
-
-How can I assist you today?`,
-      timestamp: new Date()
-    };
-    setMessages([welcomeMessage]);
-  }, [hasOpenAIKey]);
 
   const sendMessage = useCallback(async (userMessage: string) => {
     if (isLoading || !userMessage.trim()) return;

@@ -66,6 +66,9 @@ export interface TimePickerProps {
    * @default 1
    */
   minuteInterval?: number;
+
+  /** id for the trigger button, so a <Label htmlFor> can target it */
+  id?: string;
 }
 
 /**
@@ -82,6 +85,7 @@ export function TimePicker({
   disabled = false,
   className,
   minuteInterval = 1,
+  id,
 }: TimePickerProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   
@@ -109,11 +113,13 @@ export function TimePicker({
     time && time.hours >= 12 ? "PM" : "AM"
   );
 
-  // Initialize temp values when time changes externally
-  React.useEffect(() => {
+  // Re-initialise temp values when time (or format) changes from outside;
+  // adjusted during render instead of in an effect.
+  const [synced, setSynced] = React.useState({ time, format });
+  if (synced.time !== time || synced.format !== format) {
+    setSynced({ time, format });
     if (time) {
-      const initialHours = convertTo12Hour(time.hours);
-      setTempHours(initialHours);
+      setTempHours(convertTo12Hour(time.hours));
       setTempMinutes(time.minutes);
       if (format === "12h") {
         setAmPm(time.hours >= 12 ? "PM" : "AM");
@@ -124,7 +130,7 @@ export function TimePicker({
       setTempMinutes(0);
       setAmPm("AM");
     }
-  }, [time, format, convertTo12Hour]);
+  }
 
   // Generate hour options based on format
   const hourOptions = React.useMemo(() => {
@@ -220,6 +226,8 @@ export function TimePicker({
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <Button
+          type="button"
+          id={id}
           variant="outline"
           className={cn(
             "w-full justify-start text-left font-normal",
@@ -311,10 +319,10 @@ export function TimePicker({
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
-            <Button variant="outline" size="sm" onClick={handleCancel}>
+            <Button type="button" variant="outline" size="sm" onClick={handleCancel}>
               Cancel
             </Button>
-            <Button size="sm" onClick={handleConfirm}>
+            <Button type="button" size="sm" onClick={handleConfirm}>
               Confirm
             </Button>
           </div>
@@ -324,3 +332,27 @@ export function TimePicker({
   );
 }
 
+export interface IsoTimePickerProps extends Omit<TimePickerProps, "time" | "onTimeChange"> {
+  /** Time as stored by forms and the API: "HH:mm" (seconds ignored). */
+  value?: string;
+  onChange: (value: string) => void;
+}
+
+/** TimePicker for forms that store a time as an "HH:mm" string. */
+export function IsoTimePicker({ value, onChange, ...rest }: IsoTimePickerProps) {
+  // Memoised so TimePicker's sync effect doesn't reset an in-progress selection each render.
+  const time = React.useMemo(() => {
+    const match = /^(\d{1,2}):(\d{2})/.exec(value ?? "");
+    return match ? { hours: Number(match[1]), minutes: Number(match[2]) } : undefined;
+  }, [value]);
+
+  return (
+    <TimePicker
+      time={time}
+      onTimeChange={(t) =>
+        onChange(t ? `${String(t.hours).padStart(2, "0")}:${String(t.minutes).padStart(2, "0")}` : "")
+      }
+      {...rest}
+    />
+  );
+}

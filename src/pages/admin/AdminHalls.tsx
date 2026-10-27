@@ -43,12 +43,20 @@ import { downloadAuthenticatedFile } from "@/lib/downloadCsv";
 import facilityService, { Facility } from "@/services/facility.service";
 import facilityBookingService, { FacilityBooking, FacilityBookingStatus } from "@/services/facilityBooking.service";
 
+import { BulkActionBar, SelectAllCheckbox, SelectRowCheckbox } from "@/components/admin/data/BulkActionBar";
+import { ExportMenu } from "@/components/admin/data/ExportMenu";
+import { fetchAllPages } from "@/components/admin/data/fetchAllPages";
+import { rowId, useBulkSelection } from "@/components/admin/data/useBulkSelection";
+import type { ExportColumn } from "@/lib/export/tableExport";
+import { InsightsPanel } from "@/components/admin/data/InsightsPanel";
 type UnknownRecord = Record<string, unknown>;
 const isRecord = (v: unknown): v is UnknownRecord => typeof v === "object" && v !== null;
 
 const AdminHalls = () => {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const bookingSelection = useBulkSelection<FacilityBooking>(rowId);
+  const hallSelection = useBulkSelection<Facility>(rowId);
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<"halls" | "bookings" | "kanban">("halls");
@@ -194,6 +202,31 @@ const AdminHalls = () => {
     return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN" }).format(n);
   };
 
+  const hallColumns: ExportColumn<Facility>[] = [
+    { header: "Hall", value: (h) => h.name, width: 28 },
+    { header: "Capacity", value: (h) => h.capacity ?? null, type: "number" },
+    { header: "Rental fee", value: (h) => (h.rental_fee != null ? Number(h.rental_fee) : null), type: "money" },
+    { header: "Bookable", value: (h) => !!h.is_bookable },
+    { header: "Active", value: (h) => !!h.is_active },
+  ];
+  const fetchAllHalls = () => fetchAllPages<Facility>((page, per_page) => facilityService.getByType("hall") as never);
+
+  const bookingColumns: ExportColumn<FacilityBooking>[] = [
+    { header: "Reference", value: (b) => b.reference },
+    { header: "Hall", value: (b) => b.facility?.name ?? "" },
+    { header: "Date", value: (b) => b.booking_date, type: "date" },
+    { header: "Time", value: (b) => [b.start_time, b.end_time].filter(Boolean).map((t) => String(t).slice(0, 5)).join("–") },
+    { header: "Applicant", value: (b) => b.applicant_name ?? b.guest_name ?? "" },
+    { header: "Email", value: (b) => b.applicant_email ?? b.guest_email ?? "" },
+    { header: "Event", value: (b) => b.event_title ?? b.purpose ?? "" },
+    { header: "Guests", value: (b) => b.expected_attendance ?? null, type: "number" },
+    { header: "Status", value: (b) => b.status },
+    { header: "Payment", value: (b) => b.payment_status ?? "" },
+    { header: "Total", value: (b) => (b.total_amount != null ? Number(b.total_amount) : null), type: "money", total: true },
+    { header: "Paid", value: (b) => (b.amount_paid != null ? Number(b.amount_paid) : null), type: "money", total: true },
+  ];
+  const fetchAllBookings = () => fetchAllPages<FacilityBooking>((page, per_page) => facilityBookingService.listAdmin({ ...bookingsQueryParams, page, per_page }) as never);
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -241,6 +274,12 @@ const AdminHalls = () => {
         </TabsList>
 
         <TabsContent value="halls" className="space-y-6">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <ExportMenu title="Halls & venues" filename="halls" columns={hallColumns} fetchAll={fetchAllHalls} selected={hallSelection.rows} currency="NGN" />
+          </div>
+      <BulkActionBar resource="facilities" selection={hallSelection} describe={(h) => h.name} noun={["hall", "halls"]} onComplete={() => qc.invalidateQueries({ queryKey: ["admin-halls-facilities"] })}>
+        <ExportMenu variant="bar" title="Halls & venues" filename="halls" columns={hallColumns} fetchAll={fetchAllHalls} selected={hallSelection.rows} currency="NGN" />
+      </BulkActionBar>
           <Card>
             <CardContent className="p-4">
               <div className="flex flex-col md:flex-row gap-4">
@@ -299,6 +338,7 @@ const AdminHalls = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                      <TableHead className="w-10"><SelectAllCheckbox selection={hallSelection} rows={halls} /></TableHead>
                         <TableHead>Hall</TableHead>
                         <TableHead>Capacity</TableHead>
                         <TableHead>Price</TableHead>
@@ -308,7 +348,8 @@ const AdminHalls = () => {
                     </TableHeader>
                     <TableBody>
                       {halls.slice((hallPage - 1) * hallPerPage, hallPage * hallPerPage).map((h) => (
-                        <TableRow key={h.id} className="hover:bg-muted/50">
+                        <TableRow key={h.id} className="hover:bg-muted/50" data-state={hallSelection.isSelected(h) ? "selected" : undefined}>
+                        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}><SelectRowCheckbox selection={hallSelection} row={h} label={`Select ${h.name}`} /></TableCell>
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-2">
                               <Building className="h-4 w-4 text-muted-foreground" />
@@ -372,6 +413,13 @@ const AdminHalls = () => {
         </TabsContent>
 
         <TabsContent value="bookings" className="space-y-6">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <ExportMenu title="Hall bookings" filename="hall-bookings" columns={bookingColumns} fetchAll={fetchAllBookings} selected={bookingSelection.rows} currency="NGN" />
+          </div>
+          <InsightsPanel module="facility_bookings" />
+      <BulkActionBar resource="facility_bookings" selection={bookingSelection} describe={(b) => `${b.reference} · ${b.applicant_name ?? b.guest_name ?? ""}`} noun={["booking", "bookings"]} onComplete={() => qc.invalidateQueries({ queryKey: ["admin-facility-bookings"] })}>
+        <ExportMenu variant="bar" title="Hall bookings" filename="hall-bookings" columns={bookingColumns} fetchAll={fetchAllBookings} selected={bookingSelection.rows} currency="NGN" />
+      </BulkActionBar>
           <Card>
             <CardContent className="p-4">
               <div className="flex flex-col md:flex-row gap-4">
@@ -447,6 +495,7 @@ const AdminHalls = () => {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                      <TableHead className="w-10"><SelectAllCheckbox selection={bookingSelection} rows={bookings} /></TableHead>
                           <TableHead>Reference</TableHead>
                           <TableHead>Date</TableHead>
                           <TableHead>Applicant</TableHead>
@@ -457,7 +506,8 @@ const AdminHalls = () => {
                       </TableHeader>
                       <TableBody>
                         {bookings.map((b) => (
-                          <TableRow key={b.id} className="hover:bg-muted/50">
+                          <TableRow key={b.id} className="hover:bg-muted/50" data-state={bookingSelection.isSelected(b) ? "selected" : undefined}>
+                        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}><SelectRowCheckbox selection={bookingSelection} row={b} label={`Select ${`${b.reference} · ${b.applicant_name ?? b.guest_name ?? ""}`}`} /></TableCell>
                             <TableCell className="font-medium">{b.reference}</TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2 text-sm text-muted-foreground">

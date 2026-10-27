@@ -23,7 +23,16 @@ export type StatusType =
   | "active"
   | "inactive"
   | "completed"
-  | "cancelled";
+  | "cancelled"
+  // Approval workflow lifecycle
+  | "pending_review"
+  | "in_review"
+  | "changes_requested"
+  | "scheduled"
+  | "withdrawn"
+  | "standby"
+  | "superseded"
+  | "archived";
 
 interface StatusBadgeProps {
   status: StatusType;
@@ -99,6 +108,46 @@ const statusConfig: Record<
     label: "Cancelled",
     variant: "destructive",
     className: "bg-red-100 text-red-700 border-red-200",
+  },
+  pending_review: {
+    label: "Pending Review",
+    variant: "outline",
+    className: "bg-yellow-50 text-yellow-700 border-yellow-200",
+  },
+  in_review: {
+    label: "In Review",
+    variant: "outline",
+    className: "bg-amber-50 text-amber-700 border-amber-200",
+  },
+  changes_requested: {
+    label: "Changes Requested",
+    variant: "outline",
+    className: "bg-orange-50 text-orange-700 border-orange-200",
+  },
+  scheduled: {
+    label: "Scheduled",
+    variant: "secondary",
+    className: "bg-indigo-50 text-indigo-700 border-indigo-200",
+  },
+  withdrawn: {
+    label: "Withdrawn",
+    variant: "secondary",
+    className: "bg-gray-100 text-gray-700 border-gray-200",
+  },
+  standby: {
+    label: "Standby",
+    variant: "outline",
+    className: "bg-slate-50 text-slate-600 border-slate-200",
+  },
+  superseded: {
+    label: "Superseded",
+    variant: "secondary",
+    className: "bg-gray-100 text-gray-600 border-gray-200",
+  },
+  archived: {
+    label: "Archived",
+    variant: "secondary",
+    className: "bg-gray-100 text-gray-600 border-gray-200",
   },
 };
 

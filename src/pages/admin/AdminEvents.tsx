@@ -14,7 +14,7 @@
 
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,6 +65,7 @@ import {
   Users,
   AlertCircle,
   Grid,
+  CalendarDays,
   List
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -77,6 +78,12 @@ import { StatusBadge } from "@/components/admin/shared/StatusBadge";
 import { GenericEmptyState } from "@/components/admin/shared/GenericEmptyState";
 import { IconTooltipButton } from "@/components/admin/shared/IconTooltipButton";
 
+import { BulkActionBar, SelectAllCheckbox, SelectRowCheckbox } from "@/components/admin/data/BulkActionBar";
+import { ExportMenu } from "@/components/admin/data/ExportMenu";
+import { fetchAllPages } from "@/components/admin/data/fetchAllPages";
+import { rowId, useBulkSelection } from "@/components/admin/data/useBulkSelection";
+import type { ExportColumn } from "@/lib/export/tableExport";
+import AdminEventsCalendar from "@/components/events/calendar/AdminEventsCalendar";
 type EventStatus = "upcoming" | "ongoing" | "recurring" | "past" | "draft" | "pending" | "approved" | "rejected";
 
 interface EventWithStatus extends Event {
@@ -88,12 +95,28 @@ const AdminEvents = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const selection = useBulkSelection<EventWithStatus>(rowId);
 
   // State management
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
-  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
+  // "calendar" is kept in the URL (?view=calendar) so it survives reloads and can be linked to.
+  const [pageParams, setPageParams] = useSearchParams();
+  const [viewMode, setViewModeState] = useState<"table" | "grid" | "calendar">(() =>
+    pageParams.get("view") === "calendar" ? "calendar" : "table"
+  );
+  const setViewMode = (mode: "table" | "grid" | "calendar") => {
+    setViewModeState(mode);
+    const next = new URLSearchParams(pageParams);
+    if (mode === "calendar") next.set("view", "calendar");
+    else {
+      next.delete("view");
+      next.delete("cal");
+      next.delete("on");
+    }
+    setPageParams(next, { replace: true });
+  };
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -294,8 +317,23 @@ const AdminEvents = () => {
   const from = (eventsData && 'from' in eventsData) ? eventsData.from : 0;
   const to = (eventsData && 'to' in eventsData) ? eventsData.to : 0;
 
+  const exportColumns: ExportColumn<EventWithStatus>[] = [
+    { header: "Event", value: (e) => e.name, width: 36 },
+    { header: "Starts", value: (e) => e.start_date, type: "date" },
+    { header: "Time", value: (e) => (e.is_all_day ? "All day" : e.start_time ?? "") },
+    { header: "Location", value: (e) => e.location ?? e.online_url ?? "" },
+    { header: "Status", value: (e) => e.status },
+    { header: "Published", value: (e) => !!e.is_published },
+    { header: "Featured", value: (e) => !!e.is_featured },
+    { header: "Capacity", value: (e) => e.max_attendees ?? null, type: "number" },
+  ];
+  const fetchAllRows = () => fetchAllPages<EventWithStatus>((page, per_page) => eventService.list({ ...queryParams, page, per_page }) as never);
+
   return (
     <div className="space-y-6 animate-fade-in">
+      <BulkActionBar resource="events" selection={selection} describe={(event) => event.name} noun={["event", "events"]} onComplete={() => queryClient.invalidateQueries({ queryKey: ["events"] })}>
+        <ExportMenu variant="bar" title="Events" filename="events" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
+      </BulkActionBar>
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -304,9 +342,12 @@ const AdminEvents = () => {
             Create and manage parish events, celebrations, and activities.
           </p>
         </div>
-        <Button onClick={handleCreate} className="gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <ExportMenu title="Events" filename="events" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
+          <Button onClick={handleCreate} className="gap-2">
           <Plus className="h-4 w-4" /> New Event
         </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -374,6 +415,8 @@ const AdminEvents = () => {
                 variant={viewMode === "table" ? "default" : "outline"}
                 size="icon"
                 onClick={() => setViewMode("table")}
+                aria-label="Table view"
+                aria-pressed={viewMode === "table"}
               >
                 <List className="h-4 w-4" />
               </Button>
@@ -381,15 +424,29 @@ const AdminEvents = () => {
                 variant={viewMode === "grid" ? "default" : "outline"}
                 size="icon"
                 onClick={() => setViewMode("grid")}
+                aria-label="Grid view"
+                aria-pressed={viewMode === "grid"}
               >
                 <Grid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === "calendar" ? "default" : "outline"}
+                size="icon"
+                onClick={() => setViewMode("calendar")}
+                aria-label="Calendar view"
+                aria-pressed={viewMode === "calendar"}
+              >
+                <CalendarDays className="h-4 w-4" />
               </Button>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Events Table/Grid */}
+      {/* Events calendar / table / grid */}
+      {viewMode === "calendar" ? (
+        <AdminEventsCalendar />
+      ) : (
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -441,6 +498,7 @@ const AdminEvents = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10"><SelectAllCheckbox selection={selection} rows={events} /></TableHead>
                       <TableHead>Image</TableHead>
                       <TableHead className="w-[300px]">Event Name</TableHead>
                       <TableHead>Start Date</TableHead>
@@ -453,7 +511,8 @@ const AdminEvents = () => {
                   </TableHeader>
                   <TableBody>
                     {events.map((event) => (
-                      <TableRow key={event.id} className="hover:bg-muted/50">
+                      <TableRow key={event.id} className="hover:bg-muted/50" data-state={selection.isSelected(event) ? "selected" : undefined}>
+                        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}><SelectRowCheckbox selection={selection} row={event} label={`Select ${event.name}`} /></TableCell>
                         <TableCell>
                           {event.image && (
                             <img
@@ -625,7 +684,13 @@ const AdminEvents = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {events.map((event) => (
-                <Card key={event.id} className="hover:shadow-lg transition-shadow">
+                <Card
+                  key={event.id}
+                  className={`surface-glow relative ${selection.isSelected(event) ? "border-church-gold-warm ring-1 ring-church-gold/40" : ""}`}
+                >
+                  <div className="absolute left-3 top-3 z-10 rounded-md bg-background/90 p-1.5 shadow-sm backdrop-blur">
+                    <SelectRowCheckbox selection={selection} row={event} label={`Select ${event.name}`} />
+                  </div>
                   <CardHeader>
                     {event.image && (
                       <img
@@ -684,6 +749,7 @@ const AdminEvents = () => {
           )}
         </CardContent>
       </Card>
+      )}
 
       {/* Modals */}
       <EventDetails

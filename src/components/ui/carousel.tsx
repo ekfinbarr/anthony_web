@@ -3,6 +3,7 @@ import useEmblaCarousel, { type UseEmblaCarouselType } from "embla-carousel-reac
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useCarouselValue } from "@/hooks/useCarouselValue";
 import { Button } from "@/components/ui/button";
 
 type CarouselApi = UseEmblaCarouselType[1];
@@ -47,17 +48,8 @@ const Carousel = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEl
       },
       plugins,
     );
-    const [canScrollPrev, setCanScrollPrev] = React.useState(false);
-    const [canScrollNext, setCanScrollNext] = React.useState(false);
-
-    const onSelect = React.useCallback((api: CarouselApi) => {
-      if (!api) {
-        return;
-      }
-
-      setCanScrollPrev(api.canScrollPrev());
-      setCanScrollNext(api.canScrollNext());
-    }, []);
+    const canScrollPrev = useCarouselValue(api, (carousel) => carousel.canScrollPrev(), false);
+    const canScrollNext = useCarouselValue(api, (carousel) => carousel.canScrollNext(), false);
 
     const scrollPrev = React.useCallback(() => {
       api?.scrollPrev();
@@ -87,20 +79,6 @@ const Carousel = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEl
 
       setApi(api);
     }, [api, setApi]);
-
-    React.useEffect(() => {
-      if (!api) {
-        return;
-      }
-
-      onSelect(api);
-      api.on("reInit", onSelect);
-      api.on("select", onSelect);
-
-      return () => {
-        api?.off("select", onSelect);
-      };
-    }, [api, onSelect]);
 
     return (
       <CarouselContext.Provider

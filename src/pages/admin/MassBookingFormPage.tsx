@@ -110,7 +110,9 @@ const formSchema = z.object({
     }
 });
 
-type FormValues = z.infer<typeof formSchema>;
+// Defaults make some fields optional on input but always present after parsing.
+type FormInput = z.input<typeof formSchema>;
+type FormValues = z.output<typeof formSchema>;
 
 type MultipleBookingDraft = {
     booking_date: Date;
@@ -118,19 +120,29 @@ type MultipleBookingDraft = {
 };
 
 type SuccessBooking = {
+    reference?: string;
+    status?: string;
     booking_date: string;
     intention?: string;
+    offered_by?: string | null;
     mass_schedule?: { title?: string; start_time?: string } | null;
 };
 
 type SuccessData = {
+    reference?: string;
     status?: string;
     bookings: SuccessBooking[];
-    [key: string]: unknown;
+    total_amount?: number | null;
+    currency?: string;
+    guest_name?: string;
+    guest_email?: string;
+    guest_phone?: string;
+    mode?: "parishioner" | "guest";
+    user_id?: string;
 };
 
 // Internal component for the Receipt Preview
-const ReceiptPreview = ({ control, schedules }: { control: Control<FormValues>, schedules: MassSchedule[] }) => {
+const ReceiptPreview = ({ control, schedules }: { control: Control<FormInput, unknown, FormValues>, schedules: MassSchedule[] }) => {
 
     const queryClient = useQueryClient();
     // Fetch users for parishioner selection
@@ -253,11 +265,13 @@ const MassBookingFormPage = () => {
     const parishioners = usersData?.data || [];
 
     // Fetch mass booking if editing
-    const { data: massBooking } = useQuery({
+    // The API wraps the record ({ data: booking }); unwrap it so the edit form is populated.
+    const { data: massBookingResponse } = useQuery({
         queryKey: ["mass-booking", id],
         queryFn: () => massBookingService.getAdminById(id!),
         enabled: isEditMode && !!id,
     });
+    const massBooking = massBookingResponse?.data;
 
     // Fetch Schedules
     const { data: schedulesData } = useQuery({
@@ -267,7 +281,7 @@ const MassBookingFormPage = () => {
     const schedules = schedulesData?.data || [];
 
     // Form initialization
-    const form = useForm<FormValues>({
+    const form = useForm<FormInput, unknown, FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             mode: "parishioner",
@@ -298,21 +312,24 @@ const MassBookingFormPage = () => {
     useEffect(() => {
         if (isEditMode && massBooking) {
             form.reset({
-                mode: massBooking.mode as "parishioner" | "guest",
-                mass_schedule_id: massBooking.mass_schedule_id,
+                // The API returns related records, not raw ids; derive the form fields from them.
+                mode: massBooking.user ? "parishioner" : "guest",
+                mass_schedule_id: massBooking.mass_schedule?.id ?? "",
                 booking_date: new Date(massBooking.booking_date),
                 intention: massBooking.intention,
                 offered_by: massBooking.offered_by,
                 guest_name: massBooking.guest_name,
                 guest_email: massBooking.guest_email,
                 guest_phone: massBooking.guest_phone,
-                payment_status: massBooking.payment_status as "pending" | "paid" | "cancelled",
-                payment_evidence: massBooking.payment_evidence,
-                payment_date: new Date(massBooking.payment_date),
+                payment_status: (["pending", "paid", "cancelled"].includes(massBooking.payment_status ?? "")
+                    ? massBooking.payment_status
+                    : "pending") as "pending" | "paid" | "cancelled",
+                payment_evidence: massBooking.payment_evidence ?? "",
+                payment_date: new Date(),
                 amount: massBooking.amount ? Number(massBooking.amount) : null,
                 currency: (massBooking.currency as "NGN" | "USD" | "EUR" | "GBP") || "NGN",
-                user_id: massBooking.user_id,
-                schedule_type: massBooking.schedule_type as "multiple" | "single" | "recurring",
+                user_id: massBooking.user?.id ?? "",
+                schedule_type: "single",
             });
         }
     }, [massBooking, isEditMode, form]);
@@ -361,8 +378,12 @@ const MassBookingFormPage = () => {
             queryClient.invalidateQueries({ queryKey: ["admin-mass-bookings"] });
 
             // Set success data for receipt view
+            const created = (response.data ?? []) as SuccessBooking[];
             setSuccessData({
-                bookings: response.data,
+                // The receipt shows these; take them from the created booking(s).
+                reference: created.map((b) => b.reference).filter(Boolean).join(", "),
+                status: created[0]?.status,
+                bookings: created,
                 total_amount: variables.amount,
                 currency: variables.currency,
                 guest_name: variables.guest_name,

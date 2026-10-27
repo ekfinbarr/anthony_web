@@ -98,7 +98,12 @@ const BulletinDetail = () => {
     return (
       <div className="bg-church-pearl/40 py-16">
         <div className="container mx-auto max-w-lg px-4 text-center">
-          <SEOHead title="Bulletin Not Found" path={`/bulletin/${slug}`} noindex />
+          <SEOHead
+            title="Bulletin Not Found"
+            description="This parish bulletin could not be found. Browse the bulletin archive for other editions."
+            path={`/bulletin/${slug}`}
+            noindex
+          />
           <h1 className="font-serif text-3xl font-semibold text-church-charcoal">
             Bulletin not found
           </h1>

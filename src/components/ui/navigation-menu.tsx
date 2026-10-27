@@ -116,17 +116,17 @@ const NavigationMenuTrigger = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof NavigationMenuPrimitive.Trigger>
 >(({ className, children, onPointerDown: userOnPointerDown, ...props }, ref) => {
   const ctx = React.useContext(NavigationMenuContext);
-  const localRef = React.useRef<HTMLElement | null>(null);
+  const localRef = React.useRef<HTMLButtonElement | null>(null);
 
   // merge forwarded ref with localRef
   React.useEffect(() => {
     if (!ref) return;
     if (typeof ref === "function") ref(localRef.current);
-    else (ref as React.MutableRefObject<HTMLElement | null>).current = localRef.current;
+    else (ref as React.MutableRefObject<HTMLButtonElement | null>).current = localRef.current;
   }, [ref]);
 
   // pointerdown handler to capture the trigger's DOMRect before Radix toggles
-  const onPointerDown: React.PointerEventHandler = (e) => {
+  const onPointerDown: React.PointerEventHandler<HTMLButtonElement> = (e) => {
     // Preserve any user-provided handler.
     if (userOnPointerDown) userOnPointerDown(e);
 

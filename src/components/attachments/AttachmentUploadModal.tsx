@@ -161,13 +161,15 @@ export default function AttachmentUploadModal({
     };
   }, [previewUrl]);
 
-  // Reset when modal closes.
-  useEffect(() => {
+  // Reset when the modal closes (adjusted during render, not in an effect).
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
     if (!open) {
       reset();
       setPreviewUrl(null);
     }
-  }, [open]);
+  }
 
   const handleFileSelect = (file: File) => {
     // Validate kind

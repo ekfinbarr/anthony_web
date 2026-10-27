@@ -88,8 +88,9 @@ export const list = async (
  * @returns Mass schedule details
  */
 export const getById = async (id: string): Promise<MassSchedule> => {
-  const response = await apiClient.get<MassSchedule>(`mass-schedules/${id}`);
-  return response.data;
+  // The API wraps single records as { data: record }.
+  const response = await apiClient.get<{ data: MassSchedule }>(`mass-schedules/${id}`);
+  return response.data.data;
 };
 
 /**

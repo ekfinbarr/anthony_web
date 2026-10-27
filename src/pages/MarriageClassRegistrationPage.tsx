@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import marriageClasses from '@/data/marriage-classes.json';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, MapPin, Users, ArrowLeft } from 'lucide-react';
@@ -25,31 +26,10 @@ interface MarriageClass {
 }
 
 const MarriageClassRegistrationPage: React.FC = () => {
-  const [classes, setClasses] = useState<MarriageClass[]>([]);
+  // Bundled with the app: fetching "/src/data/..." only worked on the dev server.
+  const classes = marriageClasses as MarriageClass[];
   const [selectedClass, setSelectedClass] = useState<MarriageClass | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  // Fetch available marriage classes
-  const fetchAvailableClasses = async () => {
-    try {
-      // In a real app, this would be an API call
-      // For now, we'll load from the JSON file
-      const response = await fetch('/src/data/marriage-classes.json');
-      const data = await response.json();
-      setClasses(data);
-    } catch (error) {
-      console.error('Error fetching marriage classes:', error);
-      // Fallback to empty array
-      setClasses([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchAvailableClasses();
-  }, []);
 
   const handleRegister = (classData: MarriageClass) => {
     setSelectedClass(classData);
@@ -59,35 +39,7 @@ const MarriageClassRegistrationPage: React.FC = () => {
   const handleRegistrationComplete = () => {
     setIsModalOpen(false);
     setSelectedClass(null);
-    // Refresh data or show success message
-    fetchAvailableClasses();
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <PageHeader
-          tone="light"
-          align="start"
-          title="Marriage Class Registration"
-          description="Prepare for the Sacrament of Holy Matrimony"
-        />
-        <div className="container mx-auto px-4 py-12">
-          <div className="text-center">
-            <div className="animate-pulse">
-              <div className="h-8 bg-gray-300 rounded w-1/3 mx-auto mb-4"></div>
-              <div className="h-4 bg-gray-300 rounded w-1/2 mx-auto mb-8"></div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-64 bg-gray-300 rounded-lg"></div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background">

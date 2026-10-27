@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Loader2 } from "lucide-react";
@@ -28,15 +28,18 @@ const schema = z.object({
   time_block_ids: z.array(z.string()).min(1, "Select at least one time block"),
   event_title: z.string().min(2, "Event title is required"),
   event_category: z.string().optional(),
-  expected_attendance: z.coerce.number().min(1, "Expected attendance is required"),
+  // Number inputs yield strings; coerce while typing the form input honestly.
+  expected_attendance: z.coerce.number<string | number>().min(1, "Expected attendance is required"),
   event_description: z.string().optional(),
   setup_requirements: z.string().optional(),
   accessibility_requirements: z.string().optional(),
-  accept_terms: z.literal(true, { errorMap: () => ({ message: "You must accept the rental terms" }) }),
-  accept_privacy: z.literal(true, { errorMap: () => ({ message: "You must accept the privacy notice" }) }),
+  accept_terms: z.literal(true, { message: "You must accept the rental terms" }),
+  accept_privacy: z.literal(true, { message: "You must accept the privacy notice" }),
 });
 
-type FormValues = z.infer<typeof schema>;
+// Defaults/coercion make the form's input type differ from its parsed output.
+type FormInput = z.input<typeof schema>;
+type FormValues = z.output<typeof schema>;
 
 interface Props {
   open: boolean;
@@ -72,7 +75,7 @@ export default function RentalRequestWizard({ open, onOpenChange, facilitySlug }
   const [submitting, setSubmitting] = useState(false);
   const [idempotencyKey] = useState(() => crypto.randomUUID());
 
-  const form = useForm<FormValues>({
+  const form = useForm<FormInput, unknown, FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       full_name: "",
@@ -94,9 +97,15 @@ export default function RentalRequestWizard({ open, onOpenChange, facilitySlug }
     },
   });
 
+  // Start from the first step each time the wizard opens (adjusted during render).
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) setStep(0);
+  }
+
   useEffect(() => {
     if (!open) return;
-    setStep(0);
     (async () => {
       try {
         const [listRes, options] = await Promise.all([
@@ -134,7 +143,8 @@ export default function RentalRequestWizard({ open, onOpenChange, facilitySlug }
     [venue]
   );
 
-  const selectedBlocks = blocks.filter((b) => form.watch("time_block_ids").includes(b.id));
+  const selectedBlockIds = useWatch({ control: form.control, name: "time_block_ids" }) ?? [];
+  const selectedBlocks = blocks.filter((b) => selectedBlockIds.includes(b.id));
   const indicativeTotal = selectedBlocks.reduce((sum, b) => sum + Number(b.price || 0), 0);
 
   const checkSlot = async () => {
@@ -164,12 +174,12 @@ export default function RentalRequestWizard({ open, onOpenChange, facilitySlug }
     const ok = await form.trigger(fields[step]);
     if (!ok) return;
     if (step === 1) {
-      if (venue?.capacity && form.getValues("expected_attendance") > venue.capacity) {
+      if (venue?.capacity && Number(form.getValues("expected_attendance")) > venue.capacity) {
         // capacity checked on event step primarily
       }
       await checkSlot();
     }
-    if (step === 2 && venue?.capacity && form.getValues("expected_attendance") > venue.capacity) {
+    if (step === 2 && venue?.capacity && Number(form.getValues("expected_attendance")) > venue.capacity) {
       form.setError("expected_attendance", {
         message: `Attendance exceeds venue capacity (${venue.capacity}).`,
       });

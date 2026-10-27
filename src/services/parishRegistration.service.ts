@@ -16,6 +16,17 @@ export type RegistrationOptions = {
 
 export type RegistrationResult = { reference: string; status: string; message: string };
 
+export type SacramentAnswer = "received" | "not_yet" | "unsure";
+export type SacramentKey = "baptism" | "first_communion" | "confirmation" | "marriage";
+export type Sacraments = Partial<Record<SacramentKey, SacramentAnswer>>;
+
+export type HouseholdMember = {
+  name: string;
+  relationship: "spouse" | "child" | "parent" | "sibling" | "relative" | "other";
+  date_of_birth: string | null;
+  sacraments: Sacraments | null;
+};
+
 export type VerifiedProfile = {
   full_name: string;
   phone: string | null;
@@ -25,6 +36,16 @@ export type VerifiedProfile = {
   preferred_mass_schedule_id: string | null;
   groups: { type: "ministry" | "organization"; id: string }[];
   has_parishioner: boolean;
+  date_of_birth: string | null;
+  gender: "male" | "female" | null;
+  occupation: string | null;
+  marital_status: "single" | "married" | "widowed" | "separated" | null;
+  faith_status: "catholic" | "returning" | "exploring" | null;
+  sacraments: Sacraments | null;
+  household: unknown[];
+  wants_preparation: boolean;
+  news_opt_in: boolean;
+  giving_preference: "envelopes" | "online" | null;
 };
 
 /** @deprecated Prefer ApiError; kept for existing instanceof checks in registration UI. */

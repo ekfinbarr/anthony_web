@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { format, startOfMonth } from "date-fns";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { format } from "date-fns";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import PageHeader from "@/components/layout/PageHeader";
 import SEOHead from "@/components/seo/SEOHead";
@@ -10,13 +11,14 @@ import EventsFeatured from "@/components/events/EventsFeatured";
 import EventsComingUp from "@/components/events/EventsComingUp";
 import EventsFilters from "@/components/events/EventsFilters";
 import EventsToolbar from "@/components/events/EventsToolbar";
-import EventsCalendar from "@/components/events/EventsCalendar";
+import EventCalendar from "@/components/events/calendar/EventCalendar";
+import { isoDay, visibleRange, type CalendarView } from "@/components/events/calendar/calendarModel";
 import EventsPastArchive from "@/components/events/EventsPastArchive";
 import EventsPagination from "@/components/events/EventsPagination";
 import EventsEmptyState from "@/components/events/EventsEmptyState";
 import eventService from "@/services/event.service";
 import categoryService from "@/services/category.service";
-import { relativeDateLabel } from "@/lib/events";
+import { eventHref, relativeDateLabel } from "@/lib/events";
 import bannerPhoto from "@/assets/images/st_anthony.webp";
 
 const PER_PAGE = 12;
@@ -34,7 +36,12 @@ const Events = () => {
   const yearParam = searchParams.get("year") || "";
 
   const [searchInput, setSearchInput] = useState(() => qParam);
-  const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(new Date()));
+  const calParam = searchParams.get("cal") as CalendarView | null;
+  const calView: CalendarView = calParam && ["month", "week", "day", "agenda"].includes(calParam) ? calParam : "month";
+  const [calDate, setCalDate] = useState(() => new Date());
+  const calRange = visibleRange(calView, calDate);
+  const calFrom = isoDay(calRange.start);
+  const calTo = isoDay(calRange.end);
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -117,15 +124,22 @@ const Events = () => {
   });
 
   const calendarQuery = useQuery({
-    queryKey: ["events", "calendar", calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, category, qParam],
-    queryFn: () =>
-      eventService.getCalendar({
-        year: calendarMonth.getFullYear(),
-        month: calendarMonth.getMonth() + 1,
-      }),
+    queryKey: ["events", "calendar", calFrom, calTo],
+    queryFn: () => eventService.getCalendar({ from: calFrom, to: calTo }),
     enabled: view === "calendar",
+    placeholderData: keepPreviousData,
     staleTime: 60 * 1000,
   });
+
+  // The calendar endpoint has no filters; apply the page's category and search here.
+  const calendarEvents = useMemo(() => {
+    const q = qParam.trim().toLowerCase();
+    return (calendarQuery.data ?? []).filter(
+      (event) =>
+        (!category || (event.categories ?? []).some((c) => c.slug === category)) &&
+        (!q || `${event.name} ${event.summary ?? ""} ${event.location ?? ""}`.toLowerCase().includes(q))
+    );
+  }, [calendarQuery.data, category, qParam]);
 
   const pastPreviewQuery = useQuery({
     queryKey: ["events", "past-preview", yearParam],
@@ -140,7 +154,7 @@ const Events = () => {
     staleTime: 60 * 1000,
   });
 
-  const events = listQuery.data?.data ?? [];
+  const events = useMemo(() => listQuery.data?.data ?? [], [listQuery.data]);
   const featured = featuredQuery.data;
   const comingUp = useMemo(() => {
     const source = events.filter((e) => e.id !== featured?.id).slice(0, 4);
@@ -205,13 +219,18 @@ const Events = () => {
         </div>
 
         {view === "calendar" ? (
-          <EventsCalendar
-            month={calendarMonth}
-            onMonthChange={setCalendarMonth}
-            selectedDate={dateParam || null}
-            onSelectDate={(iso) => updateParams({ date: iso })}
-            events={calendarQuery.data || []}
-            isLoading={calendarQuery.isLoading}
+          <EventCalendar
+            events={calendarEvents}
+            loading={calendarQuery.isFetching}
+            view={calView}
+            date={calDate}
+            onViewChange={(v) => updateParams({ cal: v === "month" ? null : v })}
+            onDateChange={setCalDate}
+            renderActions={(event) => (
+              <Button asChild size="sm">
+                <Link to={eventHref(event)}>View event details</Link>
+              </Button>
+            )}
           />
         ) : (
           <>

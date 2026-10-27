@@ -70,10 +70,16 @@ import { GenericEmptyState } from "@/components/admin/shared/GenericEmptyState";
 import { IconTooltipButton } from "@/components/admin/shared/IconTooltipButton";
 import { format } from "date-fns";
 
+import { BulkActionBar, SelectAllCheckbox, SelectRowCheckbox } from "@/components/admin/data/BulkActionBar";
+import { ExportMenu } from "@/components/admin/data/ExportMenu";
+import { fetchAllPages } from "@/components/admin/data/fetchAllPages";
+import { rowId, useBulkSelection } from "@/components/admin/data/useBulkSelection";
+import type { ExportColumn } from "@/lib/export/tableExport";
 const AdminSermons = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const selection = useBulkSelection<Sermon>(rowId);
 
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearch = useDebouncedValue(searchInput, 350);
@@ -177,8 +183,23 @@ const AdminSermons = () => {
   const from = sermonsData?.from || 0;
   const to = sermonsData?.to || 0;
 
+  const exportColumns: ExportColumn<Sermon>[] = [
+    { header: "Title", value: (s) => s.title, width: 36 },
+    { header: "Speaker", value: (s) => s.speaker },
+    { header: "Series", value: (s) => s.series ?? "" },
+    { header: "Scripture", value: (s) => s.scripture_reference ?? "" },
+    { header: "Preached", value: (s) => s.preached_date ?? s.date ?? null, type: "date" },
+    { header: "Published", value: (s) => !!s.is_published },
+    { header: "Views", value: (s) => s.view_count ?? 0, type: "number", total: true },
+    { header: "Downloads", value: (s) => s.download_count ?? 0, type: "number", total: true },
+  ];
+  const fetchAllRows = () => fetchAllPages<Sermon>((page, per_page) => sermonService.list({ ...queryParams, page, per_page }) as never);
+
   return (
     <div className="space-y-6 animate-fade-in">
+      <BulkActionBar resource="sermons" selection={selection} describe={(sermon) => sermon.title} noun={["sermon", "sermons"]} onComplete={() => queryClient.invalidateQueries({ queryKey: ["sermons"] })}>
+        <ExportMenu variant="bar" title="Sermons" filename="sermons" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
+      </BulkActionBar>
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-heading font-bold text-foreground">Sermons Management</h1>
@@ -186,9 +207,12 @@ const AdminSermons = () => {
             Manage church sermons, series, and speakers.
           </p>
         </div>
-        <Button onClick={() => navigate("/admin/sermons/new")} className="gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <ExportMenu title="Sermons" filename="sermons" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
+          <Button onClick={() => navigate("/admin/sermons/new")} className="gap-2">
           <Plus className="h-4 w-4" /> New Sermon
         </Button>
+        </div>
       </div>
 
       {stats ? (
@@ -382,6 +406,7 @@ const AdminSermons = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10"><SelectAllCheckbox selection={selection} rows={sermons} /></TableHead>
                       <TableHead>Sermon</TableHead>
                       <TableHead>Speaker & Series</TableHead>
                       <TableHead>Date</TableHead>
@@ -393,7 +418,8 @@ const AdminSermons = () => {
                   </TableHeader>
                   <TableBody>
                     {sermons.map((sermon) => (
-                      <TableRow key={sermon.id} className="hover:bg-muted/50">
+                      <TableRow key={sermon.id} className="hover:bg-muted/50" data-state={selection.isSelected(sermon) ? "selected" : undefined}>
+                        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}><SelectRowCheckbox selection={selection} row={sermon} label={`Select ${sermon.title}`} /></TableCell>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             {sermon.thumbnail_url ? (

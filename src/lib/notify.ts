@@ -17,23 +17,33 @@ function toDescription(value: unknown): string | undefined {
   return undefined;
 }
 
+/** Accepts a bare description string or a full options object. */
+function normalize(descriptionOrOptions?: string | NotifyOptions): NotifyOptions {
+  if (typeof descriptionOrOptions === "string") return { description: descriptionOrOptions };
+  return descriptionOrOptions ?? {};
+}
+
+function show(
+  kind: "success" | "info" | "warning" | "message",
+  title: string,
+  descriptionOrOptions: string | NotifyOptions | undefined,
+  defaultDuration: number
+) {
+  const opts = normalize(descriptionOrOptions);
+  return toast[kind](title, {
+    description: opts.description,
+    duration: opts.duration ?? defaultDuration,
+    action: opts.action,
+  });
+}
+
 export const notify = {
   success(title: string, descriptionOrOptions?: string | NotifyOptions) {
-    if (typeof descriptionOrOptions === "string" || descriptionOrOptions == null) {
-      return toast.success(title, {
-        description: descriptionOrOptions,
-        duration: 4500,
-      });
-    }
-    return toast.success(title, {
-      description: descriptionOrOptions.description,
-      duration: descriptionOrOptions.duration ?? 4500,
-      action: descriptionOrOptions.action,
-    });
+    return show("success", title, descriptionOrOptions, 4500);
   },
 
   error(errorOrTitle: unknown, options?: string | NotifyOptions) {
-    const opts = typeof options === "string" ? { description: options } : options ?? {};
+    const opts = normalize(options);
     const isErrorLike =
       errorOrTitle instanceof Error ||
       (typeof errorOrTitle === "object" && errorOrTitle !== null);
@@ -74,45 +84,15 @@ export const notify = {
   },
 
   info(title: string, descriptionOrOptions?: string | NotifyOptions) {
-    if (typeof descriptionOrOptions === "string" || descriptionOrOptions == null) {
-      return toast.info(title, {
-        description: descriptionOrOptions,
-        duration: 4500,
-      });
-    }
-    return toast.info(title, {
-      description: descriptionOrOptions.description,
-      duration: descriptionOrOptions.duration ?? 4500,
-      action: descriptionOrOptions.action,
-    });
+    return show("info", title, descriptionOrOptions, 4500);
   },
 
   warning(title: string, descriptionOrOptions?: string | NotifyOptions) {
-    if (typeof descriptionOrOptions === "string" || descriptionOrOptions == null) {
-      return toast.warning(title, {
-        description: descriptionOrOptions,
-        duration: 5000,
-      });
-    }
-    return toast.warning(title, {
-      description: descriptionOrOptions.description,
-      duration: descriptionOrOptions.duration ?? 5000,
-      action: descriptionOrOptions.action,
-    });
+    return show("warning", title, descriptionOrOptions, 5000);
   },
 
   message(title: string, descriptionOrOptions?: string | NotifyOptions) {
-    if (typeof descriptionOrOptions === "string" || descriptionOrOptions == null) {
-      return toast.message(title, {
-        description: descriptionOrOptions,
-        duration: 4500,
-      });
-    }
-    return toast.message(title, {
-      description: descriptionOrOptions.description,
-      duration: descriptionOrOptions.duration ?? 4500,
-      action: descriptionOrOptions.action,
-    });
+    return show("message", title, descriptionOrOptions, 4500);
   },
 
   promise<T>(

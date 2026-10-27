@@ -55,6 +55,7 @@ export interface BackendUser {
   avatar?: string;
   role?: string;
   roles?: Array<{ name: string }>;
+  permission_names?: string[];
   isVerified?: boolean;
   created_at?: string;
   updated_at?: string;

@@ -236,15 +236,18 @@ const MassBookingWizard = () => {
     };
   }, []);
 
-  useEffect(() => {
-    if (!user) return;
+  // Prefill empty contact fields from the signed-in profile whenever it (re)loads;
+  // adjusted during render rather than in an effect.
+  const [prefilledFrom, setPrefilledFrom] = useState<typeof user | null>(null);
+  if (user && user !== prefilledFrom) {
+    setPrefilledFrom(user);
     setDraft((current) => ({
       ...current,
       name: current.name || user.name || "",
       email: current.email || user.email || "",
       phone: current.phone || user.phone || "",
     }));
-  }, [user]);
+  }
 
   const schedulesFor = (date: string) => {
     if (!options || !date) return [];

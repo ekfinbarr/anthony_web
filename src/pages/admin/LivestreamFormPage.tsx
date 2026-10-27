@@ -5,7 +5,7 @@
 import { useEffect } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
@@ -57,6 +57,7 @@ import livestreamService, {
 } from "@/services/livestream.service";
 import { combineLagosDateAndTime, lagosDateAndTimeFromIso } from "@/lib/liveTimezone";
 
+import SubmitForReviewButton from "@/components/admin/shared/SubmitForReviewButton";
 const formSchema = z
   .object({
     title: z.string().min(1, "Title is required"),
@@ -102,7 +103,9 @@ const formSchema = z
     }
   );
 
-type FormValues = z.infer<typeof formSchema>;
+// Defaults/coercion make the form's input type differ from its parsed output.
+type FormInput = z.input<typeof formSchema>;
+type FormValues = z.output<typeof formSchema>;
 
 const LivestreamFormPage = () => {
   const navigate = useNavigate();
@@ -117,7 +120,7 @@ const LivestreamFormPage = () => {
     enabled: isEditMode && !!id,
   });
 
-  const form = useForm<FormValues>({
+  const form = useForm<FormInput, unknown, FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
@@ -156,10 +159,10 @@ const LivestreamFormPage = () => {
     });
   }, [livestream, form]);
 
-  const watchedPlatform = form.watch("platform");
-  const watchedVideoId = form.watch("platform_video_id");
-  const watchedEmbedHtml = form.watch("embed_html");
-  const watchedStatus = form.watch("status");
+  const [watchedPlatform, watchedVideoId, watchedEmbedHtml, watchedStatus] = useWatch({
+    control: form.control,
+    name: ["platform", "platform_video_id", "embed_html", "status"],
+  });
 
   const createMutation = useMutation({
     mutationFn: (data: CreateLivestreamPayload) => livestreamService.create(data),
@@ -640,6 +643,7 @@ const LivestreamFormPage = () => {
                       </span>
                     )}
                   </Button>
+                  <SubmitForReviewButton contentType="livestream" contentId={id} className="w-full" />
                   <Button
                     type="button"
                     variant="outline"

@@ -45,6 +45,7 @@ import ministryService, {
 import ministryCategoryService from "@/services/ministryCategory.service";
 import userService from "@/services/user.service";
 
+import { IsoDateTimePicker } from "@/components/ui/date-picker";
 const JOINING_OPTIONS: { value: JoiningMethod; label: string }[] = [
   { value: "online_eoi", label: "Online expression of interest" },
   { value: "download", label: "Downloadable form / resource" },
@@ -742,11 +743,10 @@ const GroupFormPage = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="published_at">Publish date</Label>
-                <Input
+                <IsoDateTimePicker
                   id="published_at"
-                  type="datetime-local"
                   value={formData.published_at}
-                  onChange={(e) => setFormData((p) => ({ ...p, published_at: e.target.value }))}
+                  onChange={(value) => setFormData((p) => ({ ...p, published_at: value }))}
                   disabled={isSubmitting}
                 />
               </div>

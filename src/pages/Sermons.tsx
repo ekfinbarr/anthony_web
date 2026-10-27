@@ -48,9 +48,12 @@ const Sermons = () => {
   const [searchDraft, setSearchDraft] = useState(searchInput);
   const debouncedSearch = useDebouncedValue(searchDraft, 350);
 
-  useEffect(() => {
+  // Follow URL changes (back/forward, cleared filters) by adjusting during render.
+  const [syncedSearchInput, setSyncedSearchInput] = useState(searchInput);
+  if (searchInput !== syncedSearchInput) {
+    setSyncedSearchInput(searchInput);
     setSearchDraft(searchInput);
-  }, [searchInput]);
+  }
 
   const patchParams = useCallback(
     (patch: Record<string, string | null>, options?: { resetPage?: boolean }) => {

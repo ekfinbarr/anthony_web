@@ -67,10 +67,16 @@ import SacramentDetails from "@/components/admin/sacraments/SacramentDetails";
 import { StatusBadge } from "@/components/admin/shared/StatusBadge";
 import { GenericEmptyState } from "@/components/admin/shared/GenericEmptyState";
 
+import { BulkActionBar, SelectAllCheckbox, SelectRowCheckbox } from "@/components/admin/data/BulkActionBar";
+import { ExportMenu } from "@/components/admin/data/ExportMenu";
+import { fetchAllPages } from "@/components/admin/data/fetchAllPages";
+import { rowId, useBulkSelection } from "@/components/admin/data/useBulkSelection";
+import type { ExportColumn } from "@/lib/export/tableExport";
 const AdminSacraments = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const selection = useBulkSelection<Sacrament>(rowId);
 
   // State management
   const [searchQuery, setSearchQuery] = useState("");
@@ -167,8 +173,20 @@ const AdminSacraments = () => {
   const from = (sacramentsData && 'from' in sacramentsData) ? sacramentsData.from : 0;
   const to = (sacramentsData && 'to' in sacramentsData) ? sacramentsData.to : 0;
 
+  const exportColumns: ExportColumn<Sacrament>[] = [
+    { header: "Sacrament", value: (s) => s.name, width: 28 },
+    { header: "Description", value: (s) => s.description ?? "", width: 50 },
+    { header: "Contact", value: (s) => (typeof s.contact === "string" ? s.contact : "") },
+    { header: "Active", value: (s) => !!s.is_active },
+    { header: "Updated", value: (s) => s.updated_at, type: "date" },
+  ];
+  const fetchAllRows = () => fetchAllPages<Sacrament>((page, per_page) => sacramentService.list({ ...queryParams, page, per_page }) as never);
+
   return (
     <div className="space-y-6 animate-fade-in">
+      <BulkActionBar resource="sacraments" selection={selection} describe={(sacrament) => sacrament.name} noun={["sacrament", "sacraments"]} onComplete={() => queryClient.invalidateQueries({ queryKey: ["sacraments"] })}>
+        <ExportMenu variant="bar" title="Sacraments" filename="sacraments" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
+      </BulkActionBar>
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -177,9 +195,12 @@ const AdminSacraments = () => {
             Manage parish sacraments and their information.
           </p>
         </div>
-        <Button onClick={handleCreate} className="gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <ExportMenu title="Sacraments" filename="sacraments" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
+          <Button onClick={handleCreate} className="gap-2">
           <Plus className="h-4 w-4" /> New Sacrament
         </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -281,6 +302,7 @@ const AdminSacraments = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10"><SelectAllCheckbox selection={selection} rows={sacraments} /></TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead>Contact</TableHead>
@@ -292,7 +314,8 @@ const AdminSacraments = () => {
                   </TableHeader>
                   <TableBody>
                     {sacraments.map((sacrament) => (
-                      <TableRow key={sacrament.id} className="hover:bg-muted/50">
+                      <TableRow key={sacrament.id} className="hover:bg-muted/50" data-state={selection.isSelected(sacrament) ? "selected" : undefined}>
+                        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}><SelectRowCheckbox selection={selection} row={sacrament} label={`Select ${sacrament.name}`} /></TableCell>
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
                             <Church className="h-4 w-4 text-muted-foreground" />

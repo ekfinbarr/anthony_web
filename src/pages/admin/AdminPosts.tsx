@@ -74,6 +74,11 @@ import ApprovalModal from "@/components/admin/posts/ApprovalModal";
 import { PostStatusBadge } from "@/components/admin/posts/PostStatusBadge";
 import { EmptyState } from "@/components/admin/posts/EmptyState";
 
+import { BulkActionBar, SelectAllCheckbox, SelectRowCheckbox } from "@/components/admin/data/BulkActionBar";
+import { ExportMenu } from "@/components/admin/data/ExportMenu";
+import { fetchAllPages } from "@/components/admin/data/fetchAllPages";
+import { rowId, useBulkSelection } from "@/components/admin/data/useBulkSelection";
+import type { ExportColumn } from "@/lib/export/tableExport";
 type PostStatus = "draft" | "pending" | "approved" | "rejected" | "published";
 
 interface PostWithStatus extends Post {
@@ -86,6 +91,7 @@ const AdminPosts = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const selection = useBulkSelection<PostWithStatus>(rowId);
 
   // State management
   const [searchQuery, setSearchQuery] = useState("");
@@ -266,8 +272,23 @@ const AdminPosts = () => {
   const from = (postsData && 'from' in postsData) ? postsData.from : 0;
   const to = (postsData && 'to' in postsData) ? postsData.to : 0;
 
+  const exportColumns: ExportColumn<PostWithStatus>[] = [
+    { header: "Title", value: (p) => p.title, width: 40 },
+    { header: "Type", value: (p) => p.post_type ?? p.type },
+    { header: "Status", value: (p) => (p.archived ? "Archived" : p.published ? "Published" : "Draft") },
+    { header: "Featured", value: (p) => !!p.is_featured },
+    { header: "Author", value: (p) => p.author?.name ?? "" },
+    { header: "Published", value: (p) => p.published_at ?? null, type: "datetime" },
+    { header: "Created", value: (p) => p.created_at, type: "date" },
+    { header: "Views", value: (p) => p.views ?? 0, type: "number", total: true },
+  ];
+  const fetchAllRows = () => fetchAllPages<PostWithStatus>((page, per_page) => postService.list({ ...queryParams, page, per_page }) as never);
+
   return (
     <div className="space-y-6 animate-fade-in">
+      <BulkActionBar resource="posts" selection={selection} describe={(post) => post.title} noun={["post", "posts"]} onComplete={() => queryClient.invalidateQueries({ queryKey: ["posts"] })}>
+        <ExportMenu variant="bar" title="Posts" filename="posts" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
+      </BulkActionBar>
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -276,9 +297,12 @@ const AdminPosts = () => {
             Create and manage blog posts, announcements, and content for your church.
           </p>
         </div>
-        <Button onClick={handleCreate} className="gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <ExportMenu title="Posts" filename="posts" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
+          <Button onClick={handleCreate} className="gap-2">
           <Plus className="h-4 w-4" /> New Post
         </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -383,6 +407,7 @@ const AdminPosts = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10"><SelectAllCheckbox selection={selection} rows={posts} /></TableHead>
                       <TableHead className="w-[300px]">Title</TableHead>
                       <TableHead>Author</TableHead>
                       <TableHead>Type</TableHead>
@@ -395,7 +420,8 @@ const AdminPosts = () => {
                   </TableHeader>
                   <TableBody>
                     {posts.map((post) => (
-                      <TableRow key={post.id} className="hover:bg-muted/50">
+                      <TableRow key={post.id} className="hover:bg-muted/50" data-state={selection.isSelected(post) ? "selected" : undefined}>
+                        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}><SelectRowCheckbox selection={selection} row={post} label={`Select ${post.title}`} /></TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
 

@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import AdminProtectedRoute from "@/components/auth/AdminProtectedRoute";
+import ApprovalsProtectedRoute from "@/components/auth/ApprovalsProtectedRoute";
 import ErrorBoundary from "@/components/common/ErrorBoundary";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import RouteSEO from "@/components/seo/RouteSEO";
@@ -78,6 +79,9 @@ const ResetPassword = lazy(() => import("./pages/auth/ResetPassword"));
 // ── Dashboard pages ──
 const DashboardLayout = lazy(() => import("./components/dashboard/DashboardLayout"));
 const DashboardHome = lazy(() => import("./pages/dashboard/DashboardHome"));
+const MyMassBookings = lazy(() => import("./pages/dashboard/MyMassBookings"));
+const MyDonations = lazy(() => import("./pages/dashboard/MyDonations"));
+const MyGroups = lazy(() => import("./pages/dashboard/MyGroups"));
 const Profile = lazy(() => import("./pages/dashboard/Profile"));
 const Settings = lazy(() => import("./pages/dashboard/Settings"));
 const ParishCard = lazy(() => import("./pages/dashboard/ParishCard"));
@@ -127,6 +131,13 @@ const AdminBulletins = lazy(() => import("./pages/admin/AdminBulletins"));
 const LeadershipFormPage = lazy(() => import("./pages/admin/LeadershipFormPage"));
 const AdminContact = lazy(() => import("./pages/admin/AdminContact"));
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
+const AdminApprovalsOverview = lazy(() => import("./pages/admin/approvals/AdminApprovalsOverview"));
+const AdminApprovalQueue = lazy(() => import("./pages/admin/approvals/AdminApprovalQueue"));
+const AdminApprovalRequestDetail = lazy(() => import("./pages/admin/approvals/AdminApprovalRequestDetail"));
+const AdminApprovalHistory = lazy(() => import("./pages/admin/approvals/AdminApprovalHistory"));
+const AdminApprovalReports = lazy(() => import("./pages/admin/approvals/AdminApprovalReports"));
+const AdminWorkflows = lazy(() => import("./pages/admin/approvals/AdminWorkflows"));
+const AdminWorkflowBuilder = lazy(() => import("./pages/admin/approvals/AdminWorkflowBuilder"));
 
 const queryClient = new QueryClient();
 
@@ -230,12 +241,32 @@ const AppRoutes = () => {
             <Route path="settings" element={<Settings />} />
             <Route path="parish-card" element={<ParishCard />} />
             <Route path="notifications" element={<Notifications />} />
-            <Route path="mass-bookings" element={<Navigate to="/book-mass" replace />} />
-            <Route path="donations" element={<Donations />} />
+            <Route path="mass-bookings" element={<MyMassBookings />} />
+            <Route path="donations" element={<MyDonations />} />
             <Route path="sacraments" element={<SacramentsPage />} />
             <Route path="prayer-requests" element={<PrayerRequestsPage />} />
-            <Route path="groups" element={<Groups />} />
+            <Route path="groups" element={<MyGroups />} />
             <Route path="announcements" element={<AnnouncementsPage />} />
+          </Route>
+
+          {/* Approvals — reachable by approval participants without full CMS admin access */}
+          <Route path="/admin/approvals" element={<ApprovalsProtectedRoute><AdminLayout /></ApprovalsProtectedRoute>}>
+            <Route index element={<AdminApprovalsOverview />} />
+            <Route path="queue" element={<AdminApprovalQueue />} />
+            <Route path="requests/:id" element={<AdminApprovalRequestDetail />} />
+            <Route path="history" element={<AdminApprovalHistory />} />
+            <Route
+              path="reports"
+              element={<ApprovalsProtectedRoute permissions={["view approval-reports", "manage workflows"]}><AdminApprovalReports /></ApprovalsProtectedRoute>}
+            />
+            <Route
+              path="workflows"
+              element={<ApprovalsProtectedRoute permissions={["view workflows", "manage workflows"]}><AdminWorkflows /></ApprovalsProtectedRoute>}
+            />
+            <Route
+              path="workflows/:id"
+              element={<ApprovalsProtectedRoute permissions={["view workflows", "manage workflows"]}><AdminWorkflowBuilder /></ApprovalsProtectedRoute>}
+            />
           </Route>
 
           {/* Admin Routes */}

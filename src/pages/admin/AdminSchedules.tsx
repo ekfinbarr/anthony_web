@@ -68,12 +68,18 @@ import DeleteConfirmModal from "@/components/admin/shared/DeleteConfirmModal";
 import { StatusBadge } from "@/components/admin/shared/StatusBadge";
 import { GenericEmptyState } from "@/components/admin/shared/GenericEmptyState";
 
+import { BulkActionBar, SelectAllCheckbox, SelectRowCheckbox } from "@/components/admin/data/BulkActionBar";
+import { ExportMenu } from "@/components/admin/data/ExportMenu";
+import { fetchAllPages } from "@/components/admin/data/fetchAllPages";
+import { rowId, useBulkSelection } from "@/components/admin/data/useBulkSelection";
+import type { ExportColumn } from "@/lib/export/tableExport";
 const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
 
 const AdminSchedules = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const selection = useBulkSelection<MassSchedule>(rowId);
 
   // State management
   const [searchQuery, setSearchQuery] = useState("");
@@ -202,8 +208,23 @@ const AdminSchedules = () => {
     return map;
   }, [schedules]);
 
+  const exportColumns: ExportColumn<MassSchedule>[] = [
+    { header: "Mass", value: (m) => m.title, width: 28 },
+    { header: "Day", value: (m) => m.day_of_week },
+    { header: "Starts", value: (m) => m.start_time?.slice(0, 5) ?? "" },
+    { header: "Ends", value: (m) => m.end_time?.slice(0, 5) ?? "" },
+    { header: "Language", value: (m) => m.language ?? "" },
+    { header: "Location", value: (m) => m.location ?? "" },
+    { header: "Capacity", value: (m) => m.capacity ?? null, type: "number" },
+    { header: "Active", value: (m) => !!m.is_active },
+  ];
+  const fetchAllRows = () => fetchAllPages<MassSchedule>((page, per_page) => massScheduleService.list({ ...queryParams, page, per_page }) as never);
+
   return (
     <div className="space-y-6 animate-fade-in">
+      <BulkActionBar resource="mass_schedules" selection={selection} describe={(schedule) => `${schedule.title} (${schedule.day_of_week})`} noun={["schedule", "schedules"]} onComplete={() => queryClient.invalidateQueries({ queryKey: ["mass-schedules"] })}>
+        <ExportMenu variant="bar" title="Mass schedules" filename="mass-schedules" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
+      </BulkActionBar>
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -213,6 +234,7 @@ const AdminSchedules = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <ExportMenu title="Mass schedules" filename="mass-schedules" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} />
           <div className="inline-flex rounded-lg border p-1">
             <Button
               type="button"
@@ -388,6 +410,7 @@ const AdminSchedules = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10"><SelectAllCheckbox selection={selection} rows={schedules} /></TableHead>
                       <TableHead>Title</TableHead>
                       <TableHead>Day</TableHead>
                       <TableHead>Time</TableHead>
@@ -400,7 +423,8 @@ const AdminSchedules = () => {
                   </TableHeader>
                   <TableBody>
                     {schedules.map((schedule) => (
-                      <TableRow key={schedule.id} className="hover:bg-muted/50">
+                      <TableRow key={schedule.id} className="hover:bg-muted/50" data-state={selection.isSelected(schedule) ? "selected" : undefined}>
+                        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}><SelectRowCheckbox selection={selection} row={schedule} label={`Select ${`${schedule.title} (${schedule.day_of_week})`}`} /></TableCell>
                         <TableCell className="font-medium">{schedule.title}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">

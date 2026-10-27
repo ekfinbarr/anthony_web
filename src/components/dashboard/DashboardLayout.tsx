@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { getUnreadCount } from "@/services/account.service";
 import { useAuth } from "@/contexts/AuthContext";
 import type { User as AuthUser } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -47,6 +49,20 @@ const sidebarItems = [
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
+const isActivePath = (pathname: string, href: string) =>
+  href === "/dashboard" ? pathname === href : pathname === href || pathname.startsWith(href + "/");
+
+const pageLabel = (pathname: string) =>
+  sidebarItems.find((item) => item.href !== "/dashboard" && isActivePath(pathname, item.href))?.name ??
+  (pathname.split("/").pop() ?? "").replace(/-/g, " ");
+
+const UnreadBadge = ({ count, className }: { count: number; className?: string }) =>
+  count > 0 ? (
+    <Badge className={cn("bg-destructive text-destructive-foreground text-xs", className)} aria-label={`${count} unread`}>
+      {count > 99 ? "99+" : count}
+    </Badge>
+  ) : null;
+
 const getInitials = (name: string) => {
   return name
     .split(" ")
@@ -60,10 +76,12 @@ const SidebarContent = ({
   onItemClick,
   locationPathname,
   user,
+  unreadCount,
 }: {
   onItemClick?: () => void;
   locationPathname: string;
   user: AuthUser | null;
+  unreadCount: number;
 }) => (
   <div className="flex flex-col h-full">
     {/* Logo */}
@@ -82,12 +100,13 @@ const SidebarContent = ({
     {/* Navigation */}
     <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
       {sidebarItems.map((item) => {
-        const isActive = locationPathname === item.href;
+        const isActive = isActivePath(locationPathname, item.href);
         return (
           <Link
             key={item.name}
             to={item.href}
             onClick={onItemClick}
+            aria-current={isActive ? "page" : undefined}
             className={cn(
               "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
               isActive
@@ -97,9 +116,7 @@ const SidebarContent = ({
           >
             <item.icon className="h-5 w-5" />
             <span>{item.name}</span>
-            {item.name === "Notifications" && (
-              <Badge className="ml-auto bg-destructive text-destructive-foreground text-xs">3</Badge>
-            )}
+            {item.name === "Notifications" && <UnreadBadge count={unreadCount} className="ml-auto" />}
           </Link>
         );
       })}
@@ -128,6 +145,12 @@ const DashboardLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { data: unreadCount = 0 } = useQuery({
+    queryKey: ["me", "notifications", "unread-count"],
+    queryFn: getUnreadCount,
+    refetchInterval: 60_000,
+    enabled: !!user,
+  });
 
   const handleLogout = () => {
     logout();
@@ -135,10 +158,10 @@ const DashboardLayout = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-muted">
+    <div className="parish-dashboard min-h-screen flex bg-muted">
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-sidebar text-sidebar-foreground">
-        <SidebarContent user={user} locationPathname={location.pathname} />
+        <SidebarContent user={user} locationPathname={location.pathname} unreadCount={unreadCount} />
       </aside>
 
       {/* Mobile Sidebar */}
@@ -147,6 +170,7 @@ const DashboardLayout = () => {
           <SidebarContent
             user={user}
             locationPathname={location.pathname}
+            unreadCount={unreadCount}
             onItemClick={() => setSidebarOpen(false)}
           />
         </SheetContent>
@@ -158,14 +182,19 @@ const DashboardLayout = () => {
         <header className="sticky top-0 z-40 bg-background border-b">
           <div className="flex items-center justify-between h-16 px-4 lg:px-6">
             {/* Mobile Menu Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="lg:hidden"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
+            <div className="flex min-w-0 items-center gap-2 lg:hidden">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSidebarOpen(true)}
+                aria-label="Open menu"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+              <span className="truncate font-heading font-semibold capitalize">
+                {location.pathname === "/dashboard" ? "Dashboard" : pageLabel(location.pathname)}
+              </span>
+            </div>
 
             {/* Breadcrumb */}
             <div className="hidden lg:flex items-center gap-2 text-sm text-muted-foreground">
@@ -173,9 +202,7 @@ const DashboardLayout = () => {
               {location.pathname !== "/dashboard" && (
                 <>
                   <ChevronRight className="h-4 w-4" />
-                  <span className="text-foreground capitalize">
-                    {location.pathname.split("/").pop()?.replace("-", " ")}
-                  </span>
+                  <span className="text-foreground capitalize">{pageLabel(location.pathname)}</span>
                 </>
               )}
             </div>
@@ -183,11 +210,13 @@ const DashboardLayout = () => {
             <div className="flex items-center gap-3">
               {/* Notifications */}
               <Button variant="ghost" size="icon" asChild className="relative">
-                <Link to="/dashboard/notifications">
+                <Link to="/dashboard/notifications" aria-label={unreadCount ? `Notifications, ${unreadCount} unread` : "Notifications"}>
                   <Bell className="h-5 w-5" />
-                  <span className="absolute -top-1 -right-1 h-4 w-4 bg-destructive text-destructive-foreground text-xs rounded-full flex items-center justify-center">
-                    3
-                  </span>
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] text-destructive-foreground" aria-hidden>
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
                 </Link>
               </Button>
 
@@ -236,7 +265,7 @@ const DashboardLayout = () => {
         </header>
 
         {/* Page Content */}
-        <main className="p-4 lg:p-6">
+        <main className="p-4 sm:p-5 lg:p-8">
           <Outlet />
         </main>
 

@@ -1,4 +1,5 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -53,27 +54,14 @@ const MOCK_REGISTRATIONS: RegistrationRecord[] = [
 ];
 
 const RegistrationHistory: React.FC = () => {
-  const [registrations, setRegistrations] = useState<RegistrationRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Fetch user registration history
-  const fetchUserRegistrationHistory = useCallback(async () => {
-    try {
-      // In a real app, this would be an API call
-      // For now, we'll use mock data
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setRegistrations(MOCK_REGISTRATIONS);
-    } catch (error) {
-      console.error('Error fetching registration history:', error);
-      setRegistrations([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchUserRegistrationHistory();
-  }, [fetchUserRegistrationHistory]);
+  // Placeholder data until the registration history API exists.
+  const { data: registrations = [], isLoading: loading, refetch } = useQuery({
+    queryKey: ["marriage-registration-history"],
+    queryFn: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      return MOCK_REGISTRATIONS;
+    },
+  });
 
   const getStatusBadge = (status: RegistrationRecord['status']) => {
     const statusConfig = {
@@ -142,7 +130,7 @@ const RegistrationHistory: React.FC = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={fetchUserRegistrationHistory}
+            onClick={() => refetch()}
             disabled={loading}
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />

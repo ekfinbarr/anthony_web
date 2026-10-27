@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import facilityBookingService, { FacilityBooking } from "@/services/facilityBooking.service";
 import { paymentReturnUrl } from "@/services/payment.service";
 
+import { IsoDatePicker } from "@/components/ui/date-picker";
 function money(amount: string | number | null | undefined, currency = "NGN") {
   return `${currency === "NGN" ? "₦" : currency + " "}${Number(amount ?? 0).toLocaleString("en-NG", {
     minimumFractionDigits: 2,
@@ -125,11 +126,11 @@ export default function RentalStatus() {
     <>
       <PageHeader
         title="Venue request status"
-        subtitle={booking.public_status || booking.status}
+        description={booking.public_status || booking.status}
         breadcrumbs={[
-          { label: "Home", href: "/" },
-          { label: "Hall & Rentals", href: "/rentals" },
-          { label: booking.reference },
+          { name: "Home", path: "/" },
+          { name: "Hall & Rentals", path: "/rentals" },
+          { name: booking.reference, path: `/rentals/status/${token}` },
         ]}
       />
       <div className="container max-w-2xl py-8 space-y-6">
@@ -191,7 +192,7 @@ export default function RentalStatus() {
                   </div>
                   <div>
                     <Label htmlFor="td">Transfer date</Label>
-                    <Input id="td" type="date" value={transferDate} onChange={(e) => setTransferDate(e.target.value)} />
+                    <IsoDatePicker id="td" value={transferDate} onChange={setTransferDate} max={new Date().toISOString().slice(0, 10)} />
                   </div>
                 </div>
                 <div>

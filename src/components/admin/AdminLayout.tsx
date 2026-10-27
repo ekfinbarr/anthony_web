@@ -37,6 +37,7 @@ import {
   Shield,
   Building2,
   ChevronDown,
+  ClipboardCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -47,8 +48,36 @@ import {
 import adminNotificationService from "@/services/adminNotification.service";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-const adminSidebarItems = [
+type SidebarLink = {
+  name: string;
+  href: string;
+  icon: typeof LayoutDashboard;
+  /** When set, users holding any of these permissions see the item even without CMS admin access. */
+  permissions?: string[];
+};
+type SidebarItem = Partial<SidebarLink> & {
+  name: string;
+  icon: typeof LayoutDashboard;
+  children?: SidebarLink[];
+  superAdminOnly?: boolean;
+};
+
+const APPROVAL_PARTICIPANT = ["view approvals", "decide approvals", "manage workflows", "view workflows"];
+
+const adminSidebarItems: SidebarItem[] = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  {
+    name: "Approvals",
+    icon: ClipboardCheck,
+    permissions: APPROVAL_PARTICIPANT,
+    children: [
+      { name: "Overview", href: "/admin/approvals", icon: ClipboardCheck, permissions: APPROVAL_PARTICIPANT },
+      { name: "My queue", href: "/admin/approvals/queue", icon: ClipboardCheck, permissions: ["view approvals", "decide approvals"] },
+      { name: "History", href: "/admin/approvals/history", icon: ClipboardCheck, permissions: ["view approvals", "manage workflows"] },
+      { name: "Workflows", href: "/admin/approvals/workflows", icon: ClipboardCheck, permissions: ["view workflows", "manage workflows"] },
+      { name: "Reports", href: "/admin/approvals/reports", icon: ClipboardCheck, permissions: ["view approval-reports", "manage workflows"] },
+    ],
+  },
   // { name: "News", href: "/admin/news", icon: FileText },
   // Content Management
   {
@@ -117,16 +146,26 @@ const SidebarContent = ({
   locationPathname,
   user,
   isSuperAdmin,
+  isAdmin,
+  hasPermission,
 }: {
   onItemClick?: () => void;
   locationPathname: string;
   user: User | null;
   isSuperAdmin: () => boolean;
-}) => (
+  isAdmin: () => boolean;
+  hasPermission: (...permissions: string[]) => boolean;
+}) => {
+  // CMS admins see everything; approval participants see only permission-tagged items.
+  const canSee = (item: { permissions?: string[] }) =>
+    isAdmin() ? !item.permissions || hasPermission(...item.permissions) : !!item.permissions && hasPermission(...item.permissions);
+  const homeHref = isAdmin() ? "/admin" : "/admin/approvals";
+
+  return (
   <div className="flex flex-col h-full">
     {/* Logo */}
     <div className="p-6 border-b border-sidebar-border">
-      <Link to="/admin" className="flex items-center gap-3" onClick={onItemClick}>
+      <Link to={homeHref} className="flex items-center gap-3" onClick={onItemClick}>
         <div className="w-10 h-10 rounded-lg bg-gradient-church flex items-center justify-center">
           <Shield className="h-5 w-5 text-primary-foreground" />
         </div>
@@ -140,10 +179,13 @@ const SidebarContent = ({
     {/* Navigation */}
     <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
       {adminSidebarItems.map((item) => {
-        if ("superAdminOnly" in item && item.superAdminOnly && !isSuperAdmin()) return null;
+        if (item.superAdminOnly && !isSuperAdmin()) return null;
+        if (!canSee(item)) return null;
 
         if (item.children) {
-          const isChildActive = item.children.some(
+          const visibleChildren = item.children.filter(canSee);
+          if (visibleChildren.length === 0) return null;
+          const isChildActive = visibleChildren.some(
             (child) => locationPathname === child.href || locationPathname.startsWith(child.href + "/")
           );
 
@@ -164,10 +206,10 @@ const SidebarContent = ({
                 </div>
               </CollapsibleTrigger>
               <CollapsibleContent className="pl-9 space-y-1 mt-1">
-                {item.children.map((child) => {
+                {visibleChildren.map((child) => {
                   const matchesSelf =
                     locationPathname === child.href || locationPathname.startsWith(child.href + "/");
-                  const hasMoreSpecificSibling = item.children.some(
+                  const hasMoreSpecificSibling = visibleChildren.some(
                     (sibling) =>
                       sibling.href !== child.href &&
                       sibling.href.startsWith(child.href + "/") &&
@@ -227,16 +269,17 @@ const SidebarContent = ({
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm text-sidebar-foreground truncate">{user?.name}</p>
           <Badge variant="secondary" className="text-xs mt-1">
-            {isSuperAdmin() ? "Super Admin" : "Admin"}
+            {isSuperAdmin() ? "Super Admin" : isAdmin() ? "Admin" : "Approver"}
           </Badge>
         </div>
       </div>
     </div>
   </div>
-);
+  );
+};
 
 const AdminLayout = () => {
-  const { user, logout, isSuperAdmin } = useAuth();
+  const { user, logout, isSuperAdmin, isAdmin, hasPermission } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -284,7 +327,13 @@ const AdminLayout = () => {
     <div className="min-h-screen flex bg-muted">
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-sidebar text-sidebar-foreground">
-        <SidebarContent user={user} isSuperAdmin={isSuperAdmin} locationPathname={location.pathname} />
+        <SidebarContent
+          user={user}
+          isSuperAdmin={isSuperAdmin}
+          isAdmin={isAdmin}
+          hasPermission={hasPermission}
+          locationPathname={location.pathname}
+        />
       </aside>
 
       {/* Mobile Sidebar */}
@@ -293,6 +342,8 @@ const AdminLayout = () => {
           <SidebarContent
             user={user}
             isSuperAdmin={isSuperAdmin}
+            isAdmin={isAdmin}
+            hasPermission={hasPermission}
             locationPathname={location.pathname}
             onItemClick={() => setSidebarOpen(false)}
           />

@@ -43,6 +43,25 @@ interface PersonalizationConfig {
   maxHistoryDays?: number;
 }
 
+function readStoredMetrics(): PersonalizationMetrics {
+  try {
+    const stored = localStorage.getItem('personalizationMetrics');
+    return stored ? { ...defaultMetrics, ...JSON.parse(stored) } : defaultMetrics;
+  } catch (error) {
+    console.error('Failed to load personalization metrics:', error);
+    return defaultMetrics;
+  }
+}
+
+function readStoredLastUpdate(): Date | null {
+  try {
+    const stored = localStorage.getItem('personalizationMetrics') && localStorage.getItem('personalizationLastUpdate');
+    return stored ? new Date(stored) : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Personalization metrics hook
  */
@@ -53,31 +72,10 @@ export function usePersonalization(config: PersonalizationConfig = {}) {
     maxHistoryDays = 90
   } = config;
 
-  const [personalizationMetrics, setPersonalizationMetrics] = useState<PersonalizationMetrics>(defaultMetrics);
-  const [isLoading, setIsLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-
-  /**
-   * Load personalization metrics from storage
-   */
-  const loadMetrics = useCallback(() => {
-    try {
-      const stored = localStorage.getItem('personalizationMetrics');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setPersonalizationMetrics({ ...defaultMetrics, ...parsed });
-        
-        const lastUpdateStored = localStorage.getItem('personalizationLastUpdate');
-        if (lastUpdateStored) {
-          setLastUpdated(new Date(lastUpdateStored));
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load personalization metrics:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  // Stored metrics are read synchronously on first render, so there is no loading phase.
+  const [personalizationMetrics, setPersonalizationMetrics] = useState<PersonalizationMetrics>(readStoredMetrics);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(readStoredLastUpdate);
+  const isLoading = false;
 
   /**
    * Save personalization metrics to storage
@@ -92,12 +90,6 @@ export function usePersonalization(config: PersonalizationConfig = {}) {
     }
   }, []);
 
-  /**
-   * Initialize metrics on component mount
-   */
-  useEffect(() => {
-    loadMetrics();
-  }, [loadMetrics]);
 
   /**
    * Update content engagement metrics

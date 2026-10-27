@@ -430,3 +430,103 @@ All colors MUST be HSL.
 .spacer-1 {
   background-image: url('../src/assets/images/svgs/spacer-1.svg');
 }
+/* Parishioner dashboard: entrance animations are decorative only. */
+@media (prefers-reduced-motion: reduce) {
+  .parish-dashboard [class*="animate-"] {
+    animation: none !important;
+  }
+  .parish-dashboard * {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Admin & dashboard surface effects (gold-accented, motion-safe)
+   --------------------------------------------------------------------------- */
+@layer components {
+  /* Card that lifts with a soft gold glow on hover/focus-within. */
+  .surface-glow {
+    @apply relative rounded-xl border bg-card transition-all duration-300;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+  }
+  .surface-glow:hover,
+  .surface-glow:focus-within {
+    border-color: hsl(var(--church-gold) / 0.45);
+    box-shadow:
+      0 12px 32px -14px hsl(var(--church-gold-warm) / 0.45),
+      0 0 0 1px hsl(var(--church-gold) / 0.12);
+    transform: translateY(-2px);
+  }
+
+  /* Animated gold gradient border (used on the bulk-action bar). */
+  .border-glow {
+    position: relative;
+    isolation: isolate;
+  }
+  .border-glow::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    z-index: -1;
+    border-radius: inherit;
+    padding: 1px;
+    background: conic-gradient(
+      from var(--glow-angle, 0deg),
+      hsl(var(--church-gold) / 0.15),
+      hsl(var(--church-gold) / 0.95),
+      hsl(var(--church-gold-warm) / 0.4),
+      hsl(var(--church-gold) / 0.15)
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    animation: glow-spin 6s linear infinite;
+  }
+  .glow-pulse {
+    animation: glow-pulse 2.4s ease-in-out infinite;
+  }
+}
+
+@property --glow-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes glow-spin {
+  to {
+    --glow-angle: 360deg;
+  }
+}
+
+@keyframes glow-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 hsl(var(--church-gold) / 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 8px hsl(var(--church-gold) / 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .surface-glow:hover,
+  .surface-glow:focus-within {
+    transform: none;
+  }
+  .border-glow::before,
+  .glow-pulse {
+    animation: none;
+  }
+}
+
+/* Single-series chart accent: brand gold, stepped per mode for >= 3:1 contrast
+   against the surface (validated: #bc8552 on light, #ddad5a on dark). */
+:root {
+  --chart-accent: 29 44% 53%;
+  --chart-grid: 30 10% 90%;
+}
+.dark {
+  --chart-accent: 38 66% 61%;
+  --chart-grid: 222 30% 18%;
+}

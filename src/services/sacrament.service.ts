@@ -69,8 +69,9 @@ export const list = async (params?: SacramentQueryParams): Promise<PaginatedResp
  * @returns Sacrament details
  */
 export const getById = async (id: string): Promise<Sacrament> => {
-  const response = await apiClient.get<Sacrament>(`sacraments/${id}`);
-  return response.data;
+  // The API wraps single records as { data: record }.
+  const response = await apiClient.get<{ data: Sacrament }>(`sacraments/${id}`);
+  return response.data.data;
 };
 
 /**

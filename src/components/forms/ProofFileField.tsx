@@ -80,7 +80,10 @@ export default function ProofFileField({
   const inputId = id ?? generatedId;
   const messageId = useId();
   const [message, setMessage] = useState("");
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  // Preview is read asynchronously and only shown while it matches the current file.
+  const [preview, setPreview] = useState<{ file: File; url: string } | null>(null);
+  const isPhoto = !!value && proofKind(value) === "photo";
+  const previewUrl = isPhoto && preview?.file === value ? preview.url : null;
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -89,14 +92,18 @@ export default function ProofFileField({
   const [cropping, setCropping] = useState(false);
 
   useEffect(() => {
-    if (!value || proofKind(value) !== "photo") {
-      setPreviewUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(value);
-    setPreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [value]);
+    if (!value || !isPhoto) return;
+    let cancelled = false;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (!cancelled && typeof reader.result === "string") setPreview({ file: value, url: reader.result });
+    };
+    reader.readAsDataURL(value);
+    return () => {
+      cancelled = true;
+      reader.abort();
+    };
+  }, [value, isPhoto]);
 
   const closeCrop = () => {
     if (cropSrc) URL.revokeObjectURL(cropSrc);

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import charityFund from "@/assets/images/giving/charity_for_needy.jpg";
 import tithesOfferings from "@/assets/images/giving/tithes-offerings.jpg";
@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/carousel";
 import { cn } from "@/lib/utils";
 
+import { useCarouselValue } from "@/hooks/useCarouselValue";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 const GIVING_CATEGORIES = [
   { title: "Charity Fund", image: charityFund },
   { title: "Tithes & Offerings", image: tithesOfferings },
@@ -31,35 +33,10 @@ const AUTOPLAY_MS = 4500;
 
 const GivingCategorySlider = () => {
   const [api, setApi] = useState<CarouselApi>();
-  const [current, setCurrent] = useState(0);
-  const [snapCount, setSnapCount] = useState(GIVING_CATEGORIES.length);
+  const current = useCarouselValue(api, (carousel) => carousel.selectedScrollSnap(), 0);
+  const snapCount = useCarouselValue(api, (carousel) => carousel.scrollSnapList().length, GIVING_CATEGORIES.length);
   const [paused, setPaused] = useState(false);
-  const [reduceMotion, setReduceMotion] = useState(false);
-
-  const onSelect = useCallback((carousel: CarouselApi) => {
-    if (!carousel) return;
-    setCurrent(carousel.selectedScrollSnap());
-    setSnapCount(carousel.scrollSnapList().length);
-  }, []);
-
-  useEffect(() => {
-    if (!api) return;
-    onSelect(api);
-    api.on("select", onSelect);
-    api.on("reInit", onSelect);
-    return () => {
-      api.off("select", onSelect);
-      api.off("reInit", onSelect);
-    };
-  }, [api, onSelect]);
-
-  useEffect(() => {
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const update = () => setReduceMotion(media.matches);
-    update();
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
-  }, []);
+  const reduceMotion = usePrefersReducedMotion();
 
   useEffect(() => {
     if (!api || paused || reduceMotion) return;
