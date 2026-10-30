@@ -62,7 +62,7 @@ const Voices = () => {
             </div>
             <Button variant="church" size="lg" className="group mt-8" asChild>
               <Link to="/parish-priest">
-                Meet the parish priest
+                Meet our parish priest
                 <ArrowRight className="transition-transform group-hover:translate-x-1" />
               </Link>
             </Button>

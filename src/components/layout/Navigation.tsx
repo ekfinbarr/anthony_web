@@ -81,6 +81,8 @@ const navItems: NavItem[] = [
     href: "/sacraments",
     children: [
       { name: "Sacraments", href: "/sacraments", description: "Baptism, marriage, and more", icon: FontIcon },
+      { name: "Daily Readings", href: "/daily-readings", description: "Today's Mass readings and saint", icon: OpenBookIcon },
+      { name: "Order of Mass & Rites", href: "/order-of-mass", description: "Mass, baptism, wake keep — in your language", icon: ScrollIcon },
       { name: "Bookshop", href: "/bookshop", description: "Visit hours and categories", icon: ShelfIcon },
       { name: "Clinic", href: "/clinic", description: "Parish health care", icon: DoveIcon },
       { name: "Hall & Rentals", href: "/rentals", description: "Spaces for parish gatherings", icon: HallIcon },

@@ -1,11 +1,17 @@
+import type React from "react";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Banknote, CalendarDays, Church, Mail, Phone, Search, Settings2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { apiClient } from "@/lib/apiClient";
 import AmountInput from "@/components/forms/AmountInput";
 import { formatMoney } from "@/services/payment.service";
@@ -15,7 +21,12 @@ import { ExportMenu } from "@/components/admin/data/ExportMenu";
 import { fetchAllPages } from "@/components/admin/data/fetchAllPages";
 import { InsightsPanel } from "@/components/admin/data/InsightsPanel";
 import { rowId, useBulkSelection } from "@/components/admin/data/useBulkSelection";
+import { AdminPagination } from "@/components/admin/shared/AdminPagination";
+import { GenericEmptyState } from "@/components/admin/shared/GenericEmptyState";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useToast } from "@/hooks/use-toast";
 import type { ExportColumn } from "@/lib/export/tableExport";
+import { PAYMENT_METHOD_LABEL, TONE_BADGE, TONE_BORDER_L, TONE_DOT, bookingStatusMeta, paymentStatusMeta } from "@/lib/bookingStatus";
 import { cn } from "@/lib/utils";
 
 type Rules = {
@@ -29,22 +40,59 @@ type Rules = {
   currency: string;
 };
 
+const STATUS_FILTERS = [
+  ["all", "All"],
+  ["pending", "Requested"],
+  ["alternative_required", "Needs new time"],
+  ["approved", "Approved"],
+  ["rejected", "Rejected"],
+  ["cancelled", "Cancelled"],
+] as const;
+
+const PER_PAGE = 15;
+
+function StatusPill({ status, kind = "booking" }: { status: string; kind?: "booking" | "payment" }) {
+  const meta = kind === "booking" ? bookingStatusMeta(status) : paymentStatusMeta(status);
+  return (
+    <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium", TONE_BADGE[meta.tone])}>
+      <span className={cn("h-1.5 w-1.5 rounded-full", TONE_DOT[meta.tone])} aria-hidden />
+      {meta.label}
+    </span>
+  );
+}
+
+function buildQuery(params: Record<string, string | number | undefined>) {
+  const q = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== "" && v !== "all") q.set(k, String(v));
+  });
+  return q.toString();
+}
+
 const MassBookingOrdersPanel = () => {
   const qc = useQueryClient();
+  const { toast } = useToast();
   const selection = useBulkSelection<BookingOrder>(rowId);
-  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const search = useDebouncedValue(searchInput, 350);
+  const [status, setStatus] = useState<string>("all");
+  const [payment, setPayment] = useState<string>("all");
+  const [page, setPage] = useState(1);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const [draftMinOffering, setDraftMinOffering] = useState<number | null | undefined>(undefined);
   const [draftMaxOffering, setDraftMaxOffering] = useState<number | null | undefined>(undefined);
   const [selected, setSelected] = useState<string | null>(null);
   const [reason, setReason] = useState("");
-  const [message, setMessage] = useState("");
+
+  const filters = { search, status, payment_status: payment };
 
   const list = useQuery({
-    queryKey: ["mass-booking-orders", search],
-    queryFn: async () => {
-      const res = await apiClient.get<{ data: BookingOrder[] }>(`mass-booking-orders?search=${encodeURIComponent(search)}`);
-      return res.data.data;
-    },
+    queryKey: ["mass-booking-orders", filters, page],
+    queryFn: async () =>
+      (await apiClient.get<{ data: BookingOrder[]; meta?: { last_page?: number; total?: number } }>(
+        `mass-booking-orders?${buildQuery({ ...filters, page, per_page: PER_PAGE })}`
+      )).data,
+    placeholderData: (prev) => prev,
   });
 
   const rules = useQuery({
@@ -64,22 +112,29 @@ const MassBookingOrdersPanel = () => {
       return res.data.message;
     },
     onSuccess: async (text) => {
-      setMessage(text);
+      toast({ title: "Done", description: text });
+      setReason("");
       await qc.invalidateQueries({ queryKey: ["mass-booking-orders"] });
       await qc.invalidateQueries({ queryKey: ["mass-booking-order", selected] });
+      // Order actions move its intentions too.
+      await qc.invalidateQueries({ queryKey: ["admin-mass-bookings"] });
+      await qc.invalidateQueries({ queryKey: ["admin-mass-bookings-kanban"] });
     },
-    onError: (error: unknown) => setMessage(error instanceof Error ? error.message : "The action failed."),
+    onError: (error: unknown) =>
+      toast({ title: "Action failed", description: error instanceof Error ? error.message : "The action failed.", variant: "destructive" }),
   });
 
   const saveRules = useMutation({
     mutationFn: async (body: Record<string, unknown>) => (await apiClient.put<{ message: string }>("mass-booking-orders/rules", body)).data.message,
     onSuccess: async (text) => {
-      setMessage(text);
+      toast({ title: "Rules saved", description: text });
       setDraftMinOffering(undefined);
       setDraftMaxOffering(undefined);
+      setRulesOpen(false);
       await qc.invalidateQueries({ queryKey: ["mass-booking-rules"] });
     },
-    onError: (error: unknown) => setMessage(error instanceof Error ? error.message : "The rules could not be saved."),
+    onError: (error: unknown) =>
+      toast({ title: "Couldn't save rules", description: error instanceof Error ? error.message : "The rules could not be saved.", variant: "destructive" }),
   });
 
   const minOffering = draftMinOffering === undefined ? (rules.data?.offering.minimum ?? null) : draftMinOffering;
@@ -107,12 +162,17 @@ const MassBookingOrdersPanel = () => {
     { header: "Amount", value: (o) => Number(o.amount), type: "money", total: true },
   ];
   const fetchAllRows = () =>
-    fetchAllPages<BookingOrder>(async (page, per_page) =>
+    fetchAllPages<BookingOrder>(async (p, per_page) =>
       (await apiClient.get<{ data: BookingOrder[]; meta?: { last_page?: number } }>(
-        `mass-booking-orders?search=${encodeURIComponent(search)}&page=${page}&per_page=${per_page}`
+        `mass-booking-orders?${buildQuery({ ...filters, page: p, per_page })}`
       )).data
     );
-  const rows = list.data ?? [];
+  const rows = list.data?.data ?? [];
+  const lastPage = list.data?.meta?.last_page ?? 1;
+  const total = list.data?.meta?.total;
+  const filtered = Boolean(search) || status !== "all" || payment !== "all";
+  const canDecide = order ? ["pending", "alternative_required"].includes(order.status) : false;
+  const canCancel = order ? !["cancelled", "rejected"].includes(order.status) : false;
 
   return (
     <div className="space-y-6">
@@ -126,49 +186,140 @@ const MassBookingOrdersPanel = () => {
         <ExportMenu variant="bar" title="Mass bookings" filename="mass-bookings" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} currency="NGN" />
       </BulkActionBar>
       <InsightsPanel module="mass_bookings" title="Mass booking insights" />
-      {message && <p role="status" className="text-sm">{message}</p>}
+
       <Card>
-        <CardContent className="space-y-3 p-4">
-          <div className="flex flex-wrap items-end justify-between gap-2">
-            <Label htmlFor="order-search">Search bookings</Label>
-            <ExportMenu title="Mass bookings" filename="mass-bookings" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} currency="NGN" size="sm" />
+        <div className="space-y-3 border-b p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="relative md:w-80">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="order-search"
+                value={searchInput}
+                onChange={(event) => {
+                  setSearchInput(event.target.value);
+                  setPage(1);
+                }}
+                placeholder="Name, phone, email or reference"
+                className="pl-9"
+                aria-label="Search bookings"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={payment} onValueChange={(v) => { setPayment(v); setPage(1); }}>
+                <SelectTrigger className="w-[190px]" aria-label="Payment status"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All payments</SelectItem>
+                  <SelectItem value="pending">Unpaid</SelectItem>
+                  <SelectItem value="awaiting_verification">Awaiting verification</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="failed">Payment failed</SelectItem>
+                </SelectContent>
+              </Select>
+              <ExportMenu title="Mass bookings" filename="mass-bookings" columns={exportColumns} fetchAll={fetchAllRows} selected={selection.rows} currency="NGN" size="sm" />
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => setRulesOpen(true)} disabled={!rules.data}>
+                <Settings2 className="h-4 w-4" /> Booking rules
+              </Button>
+            </div>
           </div>
-          <Input id="order-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name, phone, or reference" />
-          {rows.length > 0 && (
-            <label className="flex items-center gap-2 px-1 pt-1 text-xs text-muted-foreground">
-              <SelectAllCheckbox selection={selection} rows={rows} /> Select all shown
-            </label>
-          )}
-          <ul className="divide-y">
-            {rows.map((item) => (
-              <li
-                key={item.id}
-                className={cn(
-                  "flex flex-col gap-2 rounded-md px-1 py-3 transition-[background-color,box-shadow] duration-200 hover:bg-church-gold/[0.06] hover:shadow-[inset_3px_0_0_hsl(var(--church-gold-warm))] sm:flex-row sm:items-center sm:justify-between",
-                  selection.isSelected(item) && "bg-church-gold/[0.10] shadow-[inset_3px_0_0_hsl(var(--church-gold-warm))]"
-                )}
-              >
-                <div className="flex items-start gap-3">
-                  <span className="pt-1"><SelectRowCheckbox selection={selection} row={item} label={`Select ${item.reference}`} /></span>
-                  <div>
-                  <p className="font-medium">{item.reference}</p>
-                  <p className="text-sm text-muted-foreground">{item.contact?.name} · {item.status.replaceAll("_", " ")} · {item.payment_status.replaceAll("_", " ")}</p>
-                  </div>
-                </div>
-                <Button type="button" variant="outline" className="min-h-11" onClick={() => { setSelected(item.id); setMessage(""); }}>Review</Button>
-              </li>
+          <ToggleGroup
+            type="single"
+            value={status}
+            onValueChange={(v) => { if (v) { setStatus(v); setPage(1); } }}
+            className="flex-wrap justify-start"
+            aria-label="Filter by status"
+          >
+            {STATUS_FILTERS.map(([value, label]) => (
+              <ToggleGroupItem key={value} value={value} size="sm" className="gap-1.5">
+                {value !== "all" ? <span className={cn("h-2 w-2 rounded-full", TONE_DOT[bookingStatusMeta(value).tone])} aria-hidden /> : null}
+                {label}
+              </ToggleGroupItem>
             ))}
-            {list.data?.length === 0 && <li className="py-4 text-sm text-muted-foreground">No bookings yet.</li>}
-          </ul>
+          </ToggleGroup>
+        </div>
+
+        <CardContent className="p-0">
+          {list.isLoading ? (
+            <div className="space-y-2 p-4">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}</div>
+          ) : list.error ? (
+            <p className="p-8 text-center text-sm text-destructive">Couldn't load bookings.</p>
+          ) : rows.length === 0 ? (
+            <div className="p-6">
+              <GenericEmptyState
+                title={filtered ? "No bookings match" : "No bookings yet"}
+                description={filtered ? "Try a different search or filter." : "Mass bookings from the website will appear here."}
+                icon="church"
+              />
+            </div>
+          ) : (
+            <>
+              <label className="flex items-center gap-2 border-b px-4 py-2 text-xs text-muted-foreground">
+                <SelectAllCheckbox selection={selection} rows={rows} /> Select all shown
+                {typeof total === "number" ? <span className="ml-auto">{total} bookings</span> : null}
+              </label>
+              <ul className="divide-y">
+                {rows.map((item, i) => {
+                  const tone = bookingStatusMeta(item.status).tone;
+                  return (
+                    <li
+                      key={item.id}
+                      style={{ animationDelay: `${Math.min(i, 10) * 30}ms` }}
+                      className={cn(
+                        "group relative flex cursor-pointer flex-col gap-3 px-4 py-3 transition-colors duration-200 hover:bg-church-gold/[0.05] sm:flex-row sm:items-center",
+                        "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:[animation-fill-mode:both]",
+                        selection.isSelected(item) && "bg-church-gold/[0.08]"
+                      )}
+                      onClick={(e) => {
+                        if ((e.target as HTMLElement).closest("button, input, label, [role=checkbox]")) return;
+                        setSelected(item.id);
+                      }}
+                    >
+                      <span className={cn("absolute inset-y-2 left-0 w-1 rounded-r transition-all group-hover:inset-y-0", TONE_DOT[tone])} aria-hidden />
+                      <div className="flex min-w-0 flex-1 items-start gap-3">
+                        <span className="pt-0.5"><SelectRowCheckbox selection={selection} row={item} label={`Select ${item.reference}`} /></span>
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-medium">{item.contact?.name || "—"}</p>
+                            <span className="font-mono text-xs text-muted-foreground">{item.reference}</span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                            <span className="inline-flex items-center gap-1"><Church className="h-3.5 w-3.5" aria-hidden />{item.intentions?.length ?? 0} intention{(item.intentions?.length ?? 0) === 1 ? "" : "s"}</span>
+                            {item.intentions?.[0] ? (
+                              <span className="inline-flex items-center gap-1"><CalendarDays className="h-3.5 w-3.5" aria-hidden />{item.intentions[0].booking_date}{(item.intentions.length ?? 0) > 1 ? " +" : ""}</span>
+                            ) : null}
+                            <span>{PAYMENT_METHOD_LABEL[item.payment_method] ?? item.payment_method}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 pl-7 sm:pl-0">
+                        <StatusPill status={item.status} />
+                        <StatusPill status={item.payment_status} kind="payment" />
+                        <span className="w-28 text-right text-sm font-semibold tabular-nums">{formatMoney(item.amount, item.currency)}</span>
+                        <Button type="button" variant="outline" size="sm" onClick={() => setSelected(item.id)}>Review</Button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+              {lastPage > 1 ? (
+                <div className="flex items-center justify-between border-t p-4">
+                  <span className="text-sm text-muted-foreground">Page {page} of {lastPage}</span>
+                  <AdminPagination currentPage={page} totalPages={lastPage} onPageChange={setPage} />
+                </div>
+              ) : null}
+            </>
+          )}
         </CardContent>
       </Card>
 
       {rules.data && (
-        <Card>
-          <CardContent className="space-y-3 p-4">
-            <h2 className="font-heading text-lg font-semibold">Booking rules</h2>
+        <Dialog open={rulesOpen} onOpenChange={(open) => !saveRules.isPending && setRulesOpen(open)}>
+          <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Booking rules</DialogTitle>
+              <DialogDescription>How people can book Masses on the website, and where bank transfers go.</DialogDescription>
+            </DialogHeader>
             <form
-              className="grid gap-3 sm:grid-cols-2"
+              className="space-y-6"
               onSubmit={(event) => {
                 event.preventDefault();
                 const form = new FormData(event.currentTarget);
@@ -187,77 +338,151 @@ const MassBookingOrdersPanel = () => {
                 });
               }}
             >
-              <div>
-                <Label htmlFor="min_offering">Minimum offering</Label>
-                <AmountInput id="min_offering" value={minOffering} onValueChange={setDraftMinOffering} />
-              </div>
-              <div>
-                <Label htmlFor="max_offering">Maximum offering</Label>
-                <AmountInput id="max_offering" value={maxOffering} onValueChange={setDraftMaxOffering} />
-              </div>
-              <Field name="horizon_days" label="Horizon in days" defaultValue={rules.data.horizon_days ? String(rules.data.horizon_days) : ""} />
-              <Field name="hold_minutes" label="Checkout hold minutes" defaultValue={String(rules.data.hold_minutes)} />
-              <Field name="bank_name" label="Bank" defaultValue={rules.data.bank_draft.bank_name} />
-              <Field name="account_name" label="Account name" defaultValue={rules.data.bank_draft.account_name} />
-              <Field name="account_number" label="Account number" defaultValue={rules.data.bank_draft.account_number} />
-              <label className="flex min-h-11 items-center gap-2 text-sm sm:col-span-2">
-                <input type="checkbox" name="transfer_proof_required" defaultChecked={rules.data.transfer_proof_required} />
-                Require transfer proof
-              </label>
-              <div className="sm:col-span-2">
-                <Label htmlFor="instructions">Transfer instructions</Label>
-                <Textarea id="instructions" name="instructions" defaultValue={rules.data.bank_draft.instructions} />
-              </div>
-              <Button type="submit" className="min-h-11 sm:col-span-2" disabled={saveRules.isPending}>Save rules</Button>
+              <RulesSection title="Offering" description="The range a single booking's offering must fall within.">
+                <div className="space-y-1.5">
+                  <Label htmlFor="min_offering">Minimum</Label>
+                  <AmountInput id="min_offering" value={minOffering} onValueChange={setDraftMinOffering} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="max_offering">Maximum</Label>
+                  <AmountInput id="max_offering" value={maxOffering} onValueChange={setDraftMaxOffering} />
+                </div>
+              </RulesSection>
+
+              <RulesSection title="Scheduling" description="How far ahead people can book, and how long a slot is held during online payment.">
+                <Field name="horizon_days" type="number" label="Book up to (days ahead)" hint="Leave empty for no limit." placeholder="No limit" defaultValue={rules.data.horizon_days ? String(rules.data.horizon_days) : ""} />
+                <Field name="hold_minutes" type="number" label="Checkout hold (minutes)" hint="A limited Mass slot is reserved this long." defaultValue={String(rules.data.hold_minutes)} />
+              </RulesSection>
+
+              <RulesSection title="Bank transfer" description="Shown to people who choose to pay by transfer.">
+                <Field name="bank_name" label="Bank" defaultValue={rules.data.bank_draft.bank_name} />
+                <Field name="account_name" label="Account name" defaultValue={rules.data.bank_draft.account_name} />
+                <Field name="account_number" label="Account number" inputMode="numeric" defaultValue={rules.data.bank_draft.account_number} />
+                <label className="flex items-center justify-between gap-3 rounded-lg border p-3 sm:col-span-2">
+                  <span>
+                    <span className="block text-sm font-medium">Require transfer proof</span>
+                    <span className="block text-xs text-muted-foreground">People must upload a receipt before their booking is reviewed.</span>
+                  </span>
+                  <Switch name="transfer_proof_required" defaultChecked={rules.data.transfer_proof_required} />
+                </label>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor="instructions">Transfer instructions</Label>
+                  <Textarea id="instructions" name="instructions" rows={3} placeholder="e.g. Use your booking reference as the transfer narration." defaultValue={rules.data.bank_draft.instructions} />
+                </div>
+              </RulesSection>
+
+              <DialogFooter className="gap-2 border-t pt-4">
+                <Button type="button" variant="outline" onClick={() => setRulesOpen(false)} disabled={saveRules.isPending}>Cancel</Button>
+                <Button type="submit" variant="church" disabled={saveRules.isPending}>{saveRules.isPending ? "Saving…" : "Save rules"}</Button>
+              </DialogFooter>
             </form>
-          </CardContent>
-        </Card>
+          </DialogContent>
+        </Dialog>
       )}
 
-      <Dialog open={Boolean(selected)} onOpenChange={(open) => !open && setSelected(null)}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+      <Dialog open={Boolean(selected)} onOpenChange={(open) => { if (!open) { setSelected(null); setReason(""); } }}>
+        <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{order?.reference ?? "Booking"}</DialogTitle>
+            <DialogTitle className="flex flex-wrap items-center gap-2">
+              <span className="font-mono">{order?.reference ?? "Booking"}</span>
+              {order ? <StatusPill status={order.status} /> : null}
+              {order ? <StatusPill status={order.payment_status} kind="payment" /> : null}
+            </DialogTitle>
+            <DialogDescription>{order?.created_at ? `Booked ${new Date(order.created_at).toLocaleString()}` : "Loading…"}</DialogDescription>
           </DialogHeader>
-          {order && (
-            <div className="space-y-3 text-sm">
-              <p>{order.contact?.name}<br />{order.contact?.phone}<br />{order.contact?.email}</p>
-              <p>Offering {formatMoney(order.amount, order.currency)} · {order.payment_method} · {order.payment_status}</p>
-              <ul className="space-y-2">
-                {order.intentions?.map((item) => (
-                  <li key={item.id} className="rounded-md border p-3">
-                    <p className="font-medium">{item.mass_schedule?.title} · {item.booking_date}</p>
-                    <p>{item.offered_by} · {item.status}</p>
-                    {item.intention_labels?.length ? <p>{item.intention_labels.join(", ")}</p> : null}
-                    {item.intention && item.intention !== item.intention_labels?.join(", ") ? <p>{item.intention}</p> : null}
-                  </li>
-                ))}
-              </ul>
-              <Textarea value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Reason, when declining or cancelling" />
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" className="min-h-11" disabled={act.isPending} onClick={() => act.mutate({ path: `mass-booking-orders/${order.id}/confirm` })}>Confirm Masses</Button>
-                <Button type="button" variant="outline" className="min-h-11" disabled={act.isPending || !reason.trim()} onClick={() => act.mutate({ path: `mass-booking-orders/${order.id}/reject`, body: { reason } })}>Decline</Button>
-                <Button type="button" variant="outline" className="min-h-11" disabled={act.isPending} onClick={() => act.mutate({ path: `mass-booking-orders/${order.id}/cancel`, body: { reason } })}>Cancel</Button>
+          {detail.isLoading ? (
+            <div className="space-y-3"><Skeleton className="h-20 w-full" /><Skeleton className="h-32 w-full" /></div>
+          ) : order ? (
+            <div className="space-y-4 text-sm motion-safe:animate-in motion-safe:fade-in-0">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5 rounded-lg border p-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Contact</p>
+                  <p className="flex items-center gap-2 font-medium"><User className="h-4 w-4 text-muted-foreground" />{order.contact?.name || "—"}</p>
+                  {order.contact?.phone ? <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" />{order.contact.phone}</p> : null}
+                  {order.contact?.email ? <p className="flex items-center gap-2 break-all"><Mail className="h-4 w-4 shrink-0 text-muted-foreground" />{order.contact.email}</p> : null}
+                </div>
+                <div className="space-y-1.5 rounded-lg border p-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Offering</p>
+                  <p className="flex items-center gap-2 text-lg font-semibold"><Banknote className="h-4 w-4 text-muted-foreground" />{formatMoney(order.amount, order.currency)}</p>
+                  <p className="text-muted-foreground">{PAYMENT_METHOD_LABEL[order.payment_method] ?? order.payment_method}</p>
+                  {order.receipt_number ? <p className="text-muted-foreground">Receipt {order.receipt_number}</p> : null}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Intentions</p>
+                <ul className="space-y-2">
+                  {order.intentions?.map((item) => (
+                    <li key={item.id} className={cn("rounded-lg border border-l-4 p-3", TONE_BORDER_L[bookingStatusMeta(item.status).tone])}>
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <p className="font-medium">{item.mass_schedule?.title} · {item.booking_date}</p>
+                        <StatusPill status={item.status} />
+                      </div>
+                      <p className="text-muted-foreground">Offered by {item.offered_by || "—"}</p>
+                      {item.intention_labels?.length ? <p>{item.intention_labels.join(", ")}</p> : null}
+                      {item.intention && item.intention !== item.intention_labels?.join(", ") ? <p>{item.intention}</p> : null}
+                      {item.proposed_booking_date ? <p className="text-xs text-violet-700">Proposed new date: {item.proposed_booking_date}</p> : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="flex flex-wrap gap-2 border-t pt-4">
+                <Button type="button" variant="church" disabled={act.isPending || !canDecide} onClick={() => act.mutate({ path: `mass-booking-orders/${order.id}/confirm` })}>Confirm Masses</Button>
                 {order.payment_method === "cash" && order.payment_status !== "paid" && (
-                  <Button type="button" variant="outline" className="min-h-11" disabled={act.isPending} onClick={() => act.mutate({ path: `mass-booking-orders/${order.id}/payments/cash`, body: { amount: order.amount, paid_on: new Date().toISOString().slice(0, 10), reference: "office" } })}>Record cash</Button>
+                  <Button type="button" variant="outline" disabled={act.isPending} onClick={() => act.mutate({ path: `mass-booking-orders/${order.id}/payments/cash`, body: { amount: order.amount, paid_on: new Date().toISOString().slice(0, 10), reference: "office" } })}>Record cash</Button>
                 )}
                 {order.payment_method === "bank_transfer" && order.payment_status !== "paid" && (
-                  <Button type="button" variant="outline" className="min-h-11" disabled={act.isPending} onClick={() => act.mutate({ path: `mass-booking-orders/${order.id}/payments/transfer`, body: { decision: "approve" } })}>Verify transfer</Button>
+                  <Button type="button" variant="outline" disabled={act.isPending} onClick={() => act.mutate({ path: `mass-booking-orders/${order.id}/payments/transfer`, body: { decision: "approve" } })}>Verify transfer</Button>
                 )}
-                <Button type="button" variant="ghost" className="min-h-11" disabled={act.isPending} onClick={() => act.mutate({ path: `mass-booking-orders/${order.id}/notifications`, body: { type: "status" } })}>Resend email</Button>
+                <Button type="button" variant="ghost" disabled={act.isPending} onClick={() => act.mutate({ path: `mass-booking-orders/${order.id}/notifications`, body: { type: "status" } })}>
+                  <Mail className="mr-1.5 h-4 w-4" /> Resend email
+                </Button>
               </div>
+
+              {canCancel ? (
+                <div className="space-y-2 rounded-lg border border-dashed p-3">
+                  <Label htmlFor="order-reason">Decline or cancel</Label>
+                  <Textarea id="order-reason" value={reason} onChange={(event) => setReason(event.target.value)} rows={2} placeholder="Reason, shown to the requester" />
+                  <div className="flex flex-wrap gap-2">
+                    {canDecide ? (
+                      <Button type="button" variant="outline" className="text-destructive" disabled={act.isPending || !reason.trim()} onClick={() => act.mutate({ path: `mass-booking-orders/${order.id}/reject`, body: { reason } })}>Decline</Button>
+                    ) : null}
+                    <Button type="button" variant="outline" disabled={act.isPending} onClick={() => act.mutate({ path: `mass-booking-orders/${order.id}/cancel`, body: { reason } })}>Cancel booking</Button>
+                  </div>
+                </div>
+              ) : null}
             </div>
-          )}
+          ) : null}
         </DialogContent>
       </Dialog>
     </div>
   );
 };
 
-const Field = ({ name, label, defaultValue }: { name: string; label: string; defaultValue: string }) => (
-  <div>
+function RulesSection({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
+  return (
+    <fieldset className="space-y-3">
+      <legend className="space-y-0.5">
+        <span className="block font-heading font-semibold">{title}</span>
+        <span className="block text-xs text-muted-foreground">{description}</span>
+      </legend>
+      <div className="grid gap-3 sm:grid-cols-2">{children}</div>
+    </fieldset>
+  );
+}
+
+const Field = ({
+  name,
+  label,
+  defaultValue,
+  hint,
+  ...props
+}: { name: string; label: string; defaultValue: string; hint?: string } & React.ComponentProps<typeof Input>) => (
+  <div className="space-y-1.5">
     <Label htmlFor={name}>{label}</Label>
-    <Input id={name} name={name} defaultValue={defaultValue} />
+    <Input id={name} name={name} defaultValue={defaultValue} {...props} />
+    {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
   </div>
 );
 

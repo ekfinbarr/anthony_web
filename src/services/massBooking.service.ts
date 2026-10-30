@@ -9,7 +9,7 @@
 
 import { apiClient } from '../lib/apiClient';
 
-export type MassBookingStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+export type MassBookingStatus = 'pending' | 'approved' | 'rejected' | 'cancelled' | 'alternative_required';
 
 export interface MassScheduleSummary {
   id: string;

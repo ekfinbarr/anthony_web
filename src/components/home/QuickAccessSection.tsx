@@ -59,12 +59,12 @@ const QuickAccessSection = () => {
             <Cross className="h-5 w-5 text-church-gold-warm" strokeWidth={2.25} />
             <span className="h-px w-10 bg-church-gold-warm sm:w-14" />
           </div>
-          <h2
+          {/* <h2
             id="quick-access-heading"
             className="font-heading text-2xl font-bold tracking-tight text-church-charcoal sm:text-3xl md:text-4xl"
           >
             Quick Access
-          </h2>
+          </h2> */}
           {/* <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:mt-3 sm:text-base md:text-lg">
             Explore our key services and stay connected with our parish community.
           </p> */}

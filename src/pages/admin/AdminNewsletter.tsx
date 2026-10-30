@@ -11,9 +11,9 @@ import newsletterCampaignService, { NewsletterCampaign } from "@/services/newsle
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Eye, MoreVertical, PencilLine, Save } from "lucide-react";
+import { Eye, MoreVertical, PencilLine, Plus, Save } from "lucide-react";
 
 /**
  * Admin Newsletter
@@ -142,6 +142,7 @@ export default function AdminNewsletter() {
   const [campaigns, setCampaigns] = useState<NewsletterCampaign[]>([]);
 
   // Create form
+  const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("");
   const [htmlContent, setHtmlContent] = useState("<p>Hello!</p>");
@@ -314,6 +315,7 @@ export default function AdminNewsletter() {
         plain_content: plainContent.trim() || undefined,
       });
       toast({ title: "Created", description: "Campaign created successfully." });
+      setCreateOpen(false);
       setName("");
       setSubject("");
       setHtmlContent("<p>Hello!</p>");
@@ -393,18 +395,26 @@ export default function AdminNewsletter() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-3xl font-heading font-bold text-foreground">Newsletter</h1>
-        <p className="text-muted-foreground mt-1">
-          Create and send campaigns to newsletter subscribers (WaitingList source: <code>newsletter</code>).
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-heading font-bold text-foreground">Newsletter</h1>
+          <p className="text-muted-foreground mt-1">
+            Create and send campaigns to newsletter subscribers (WaitingList source: <code>newsletter</code>).
+          </p>
+        </div>
+        <Button variant="church" onClick={() => setCreateOpen(true)} className="gap-2">
+          <Plus className="h-4 w-4" />
+          New campaign
+        </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Create Campaign</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <Dialog open={createOpen} onOpenChange={(open) => !loading && setCreateOpen(open)}>
+        <DialogContent className="max-h-[92vh] max-w-6xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>New campaign</DialogTitle>
+            <DialogDescription>Compose the email and check the live preview. It is saved as a draft.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
               <RequiredLabel htmlFor="nl-name">Name</RequiredLabel>
@@ -559,11 +569,17 @@ export default function AdminNewsletter() {
             <Textarea id="nl-plain" value={plainContent} onChange={(e) => setPlainContent(e.target.value)} rows={3} />
           </div>
 
-          <Button onClick={handleCreate} disabled={!canCreate || loading}>
-            {loading ? "Please wait..." : "Create Campaign"}
-          </Button>
-        </CardContent>
-      </Card>
+          <DialogFooter className="gap-2 border-t pt-4">
+            <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={loading}>
+              Cancel
+            </Button>
+            <Button variant="church" onClick={handleCreate} disabled={!canCreate || loading}>
+              {loading ? "Please wait..." : "Create Campaign"}
+            </Button>
+          </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

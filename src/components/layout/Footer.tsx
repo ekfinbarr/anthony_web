@@ -10,6 +10,8 @@ const exploreLinks = [
   { to: "/serve-others", label: "Serve Others" },
   { to: "/groups", label: "Groups & Organizations" },
   { to: "/sacraments", label: "Sacraments" },
+  { to: "/daily-readings", label: "Daily Readings" },
+  { to: "/order-of-mass", label: "Order of Mass & Rites" },
   { to: "/news", label: "Parish News" },
   { to: "/contact", label: "Contact Us" },
 ];

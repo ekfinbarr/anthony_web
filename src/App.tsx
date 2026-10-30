@@ -65,6 +65,8 @@ const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const CookiePolicy = lazy(() => import("./pages/CookiePolicy"));
 const BulletinDetail = lazy(() => import("./pages/BulletinDetail"));
 const Sacraments = lazy(() => import("./pages/Sacraments"));
+const DailyReadings = lazy(() => import("./pages/DailyReadings"));
+const OrderOfMass = lazy(() => import("./pages/OrderOfMass"));
 const Rentals = lazy(() => import("./pages/Rentals"));
 const RentalStatus = lazy(() => import("./pages/RentalStatus"));
 const CalendarPage = lazy(() => import("./pages/CalendarPage"));
@@ -105,6 +107,8 @@ const AdminGalleryPage = lazy(() => import("./pages/admin/AdminGalleryPage"));
 const AdminGalleryAlbumItemsPage = lazy(() => import("./pages/admin/AdminGalleryAlbumItemsPage"));
 const AdminLeadership = lazy(() => import("./pages/admin/AdminLeadership"));
 const AdminSacraments = lazy(() => import("./pages/admin/AdminSacraments"));
+const AdminLiturgy = lazy(() => import("./pages/admin/AdminLiturgy"));
+const AdminLiturgyEditor = lazy(() => import("./pages/admin/AdminLiturgyEditor"));
 const AdminHalls = lazy(() => import("./pages/admin/AdminHalls"));
 const HallFormPage = lazy(() => import("./pages/admin/HallFormPage"));
 const HallViewPage = lazy(() => import("./pages/admin/HallViewPage"));
@@ -123,6 +127,7 @@ const AdminLivestream = lazy(() => import("./pages/admin/AdminLivestream"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
 const AdminMassBookings = lazy(() => import("./pages/admin/AdminMassBookings"));
 const MassBookingFormPage = lazy(() => import("./pages/admin/MassBookingFormPage"));
+const AdminDonationFormPage = lazy(() => import("./pages/admin/AdminDonationFormPage"));
 const AdminDonations = lazy(() => import("./pages/admin/AdminDonations"));
 const AdminSchedules = lazy(() => import("./pages/admin/AdminSchedules"));
 const AdminSermons = lazy(() => import("./pages/admin/AdminSermons"));
@@ -215,6 +220,8 @@ const AppRoutes = () => {
             <Route path="terms-of-service" element={<TermsOfService />} />
             <Route path="cookies" element={<CookiePolicy />} />
             <Route path="sacraments" element={<Sacraments />} />
+            <Route path="daily-readings" element={<DailyReadings />} />
+            <Route path="order-of-mass" element={<OrderOfMass />} />
             <Route path="rentals" element={<Rentals />} />
             <Route path="rentals/status/:token" element={<RentalStatus />} />
             <Route path="calendar" element={<CalendarPage />} />
@@ -285,6 +292,8 @@ const AppRoutes = () => {
             <Route path="sacraments" element={<AdminSacraments />} />
             <Route path="sacraments/new" element={<SacramentFormPage />} />
             <Route path="sacraments/:id/edit" element={<SacramentFormPage />} />
+            <Route path="liturgy" element={<AdminLiturgy />} />
+            <Route path="liturgy/:id" element={<AdminLiturgyEditor />} />
             <Route path="halls" element={<AdminHalls />} />
             <Route path="halls/new" element={<HallFormPage />} />
             <Route path="halls/:id" element={<HallViewPage />} />
@@ -310,8 +319,10 @@ const AppRoutes = () => {
             <Route path="users" element={<AdminProtectedRoute requireSuperAdmin><AdminUsers /></AdminProtectedRoute>} />
             <Route path="mass-bookings" element={<AdminMassBookings />} />
             <Route path="mass-bookings/new" element={<MassBookingFormPage />} />
-            <Route path="mass-bookings/:id/edit" element={<MassBookingFormPage />} />
+            {/* Intentions are changed from the Orders review; the old edit form only ever created duplicates. */}
+            <Route path="mass-bookings/:id/edit" element={<Navigate to="/admin/mass-bookings" replace />} />
             <Route path="donations" element={<AdminDonations />} />
+            <Route path="donations/new" element={<AdminDonationFormPage />} />
             <Route path="schedules" element={<AdminSchedules />} />
             <Route path="schedules/new" element={<ScheduleFormPage />} />
             <Route path="schedules/:id/edit" element={<ScheduleFormPage />} />

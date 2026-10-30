@@ -169,27 +169,32 @@ const AdminHalls = () => {
     return [
       {
         id: "pending_review",
+        tone: "amber" as const,
         title: "Requested",
         getItems: (all: FacilityBooking[]) =>
           all.filter((b) => b.status === "pending_review" || b.status === "needs_info" || b.status === "pending"),
       },
       {
         id: "approved",
+        tone: "sky" as const,
         title: "Approved",
         getItems: (all: FacilityBooking[]) => all.filter((b) => b.status === "approved"),
       },
       {
         id: "confirmed",
+        tone: "emerald" as const,
         title: "Confirmed",
         getItems: (all: FacilityBooking[]) => all.filter((b) => b.status === "confirmed"),
       },
       {
         id: "rejected",
+        tone: "rose" as const,
         title: "Rejected",
         getItems: (all: FacilityBooking[]) => all.filter((b) => b.status === "rejected"),
       },
       {
         id: "cancelled",
+        tone: "slate" as const,
         title: "Cancelled",
         getItems: (all: FacilityBooking[]) => all.filter((b) => b.status === "cancelled"),
       },

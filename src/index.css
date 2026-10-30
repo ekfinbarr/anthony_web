@@ -530,3 +530,32 @@ All colors MUST be HSL.
   --chart-accent: 38 66% 61%;
   --chart-grid: 222 30% 18%;
 }
+
+/* Mass readings (Daily Readings page) — HTML comes from the backend as <p>/<i>/<b> only. */
+@layer components {
+  .reading-body {
+    @apply font-serif text-[1.0625em] leading-[1.8] text-church-charcoal;
+  }
+
+  .reading-body p + p {
+    @apply mt-4;
+  }
+
+  .reading-body--psalm p,
+  .reading-body--psalm p + p {
+    @apply mt-0 pl-6 -indent-6;
+  }
+
+  .reading-body--psalm p.stanza {
+    @apply mt-4;
+  }
+
+  .reading-body--psalm p.cont {
+    @apply pl-10;
+  }
+
+  /* The response lines are italic in the source — make them stand out. */
+  .reading-body--psalm i {
+    @apply font-semibold not-italic text-church-brown;
+  }
+}

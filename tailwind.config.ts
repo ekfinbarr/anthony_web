@@ -138,6 +138,26 @@ export default {
             opacity: "1"
           }
         },
+        // Kanban: a card that just landed in a new column.
+        "kanban-pop": {
+          "0%": { transform: "scale(0.94)", boxShadow: "0 0 0 0 hsl(var(--church-gold-warm) / 0.55)" },
+          "45%": { transform: "scale(1.03)", boxShadow: "0 0 0 8px hsl(var(--church-gold-warm) / 0)" },
+          "100%": { transform: "scale(1)", boxShadow: "0 0 0 0 hsl(var(--church-gold-warm) / 0)" },
+        },
+        // Kanban: sparks thrown outward from an approved card (direction via --tx/--ty).
+        "kanban-burst": {
+          "0%": { transform: "translate(0, 0) scale(1)", opacity: "1" },
+          "100%": { transform: "translate(var(--tx), var(--ty)) scale(0.3)", opacity: "0" },
+        },
+        // Donations slider: the autoplay timer bar filling up.
+        "grow-x": {
+          "0%": { transform: "scaleX(0)" },
+          "100%": { transform: "scaleX(1)" },
+        },
+        "kanban-float": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-4px)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -145,6 +165,9 @@ export default {
         "fade-in": "fade-in 0.5s ease-out",
         "slide-up": "slide-up 0.3s ease-out",
         "scale-in": "scale-in 0.2s ease-out",
+        "kanban-pop": "kanban-pop 0.7s cubic-bezier(0.22, 1, 0.36, 1)",
+        "kanban-burst": "kanban-burst 0.8s ease-out forwards",
+        "kanban-float": "kanban-float 3.2s ease-in-out infinite",
       },
     },
   },

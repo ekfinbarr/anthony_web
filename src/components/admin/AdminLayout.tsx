@@ -87,6 +87,7 @@ const adminSidebarItems: SidebarItem[] = [
       { name: "Posts", href: "/admin/posts", icon: FileText },
       { name: "Sunday Bulletins", href: "/admin/bulletins", icon: FileText },
       { name: "Sermons", href: "/admin/sermons", icon: BookOpen },
+      { name: "Order of Mass & Rites", href: "/admin/liturgy", icon: BookOpen },
       { name: "Gallery", href: "/admin/gallery", icon: Image },
     ]
   },

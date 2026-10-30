@@ -112,6 +112,24 @@ export const routeSeo: RouteSeo[] = [
     priority: 0.8,
   },
   {
+    path: "/daily-readings",
+    title: "Daily Mass Readings",
+    description:
+      "Today's Catholic Mass readings, psalm and Gospel, with the saint and celebration of the day, following the liturgical calendar of Nigeria.",
+    breadcrumb: "Daily Readings",
+    changefreq: "daily",
+    priority: 0.8,
+  },
+  {
+    path: "/order-of-mass",
+    title: "Order of Mass & Rites",
+    description:
+      "Follow the Order of Mass, the Rite of Baptism, wake keep prayers and more at St. Anthony Catholic Church, Gbaja — in English and other Nigerian languages.",
+    breadcrumb: "Order of Mass",
+    changefreq: "monthly",
+    priority: 0.7,
+  },
+  {
     path: "/marriage-classes",
     title: "Marriage Class Registration",
     description:

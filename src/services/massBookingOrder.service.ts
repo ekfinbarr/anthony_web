@@ -129,6 +129,63 @@ export const submitBookingOrder = async (payload: OrderPayload): Promise<{ messa
   return res.data;
 };
 
+export interface OfficeOrderPayload {
+  idempotency_key: string;
+  user_id?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  payment_method: "cash" | "bank_transfer";
+  amount: number;
+  intentions: BookingIntentionInput[];
+  transfer_reference?: string;
+  transfer_date?: string;
+  transfer_payer_name?: string;
+  evidence?: File | null;
+  /** Record the offering as received (cash) or the transfer as verified. */
+  payment_received?: boolean;
+  paid_on?: string;
+  payment_reference?: string;
+  /** Confirm the Masses straight away instead of leaving them as requests. */
+  confirm_now?: boolean;
+}
+
+export interface OfficeOrderResult {
+  message: string;
+  data: BookingOrder;
+  unavailable: Array<{ intention_id: string }>;
+  warnings: string[];
+}
+
+/** A booking entered by the parish office (admin) for a parishioner or a walk-in guest. */
+export const submitOfficeOrder = async (payload: OfficeOrderPayload): Promise<OfficeOrderResult> => {
+  const form = new FormData();
+  Object.entries(payload).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") return;
+    if (key === "intentions") form.set(key, JSON.stringify(value));
+    else if (typeof value === "boolean") form.set(key, value ? "1" : "0");
+    else if (value instanceof File) form.set(key, value);
+    else form.set(key, String(value));
+  });
+  const res = await apiClient.postForm<OfficeOrderResult>("mass-booking-orders/office", form);
+  return res.data;
+};
+
+export interface OrderReceipt {
+  receipt_number: string;
+  reference: string;
+  amount: number;
+  currency: string;
+  payment_method: string;
+  contact_name: string;
+  intentions: Array<{ mass: string | null; date: string | null; for: string | null; intentions: string[] }>;
+}
+
+export const getOrderReceipt = async (orderId: string): Promise<OrderReceipt> => {
+  const res = await apiClient.get<{ data: OrderReceipt }>(`mass-booking-orders/${orderId}/receipt`);
+  return res.data.data;
+};
+
 export const getOrderByToken = async (token: string): Promise<BookingOrder> => {
   const res = await apiClient.get<{ data: BookingOrder }>(`mass-booking-orders/access/${encodeURIComponent(token)}`);
   return res.data.data;

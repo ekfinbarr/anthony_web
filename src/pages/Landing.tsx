@@ -150,6 +150,9 @@ const Landing = () => {
       <QuickAccessSection />
       <FloatingSocial />
 
+      {/* Celebration and Mass readings of the day */}
+      <CatholicDailyReadings />
+
       <MassLivestreamBanner />
 
       <Voices />

@@ -1,13 +1,9 @@
-import { cloneElement, FormEvent, isValidElement, useEffect, useId, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
+import { FormEvent, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { CheckCircle, ChevronLeft, Copy, Loader2, Plus, Trash2 } from "lucide-react";
+import { CheckCircle, ChevronLeft, Copy, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { MultiSelect } from "@/components/ui/multi-select";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import FieldHint from "@/components/forms/FieldHint";
 import { useAuth } from "@/contexts/AuthContext";
 import { canonicalNigerianPhone } from "@/lib/phone";
@@ -23,20 +19,24 @@ import {
   type BookingOrder,
   type MassOption,
 } from "@/services/massBookingOrder.service";
+import { Field, IntentionFields } from "@/components/mass-booking/bookingShared";
+import {
+  MAX_INTENTIONS,
+  addDays,
+  bookingErrorLines,
+  duplicateIntention,
+  emptyIntention,
+  formatTime,
+  labelFor,
+  normalizeIntention,
+  todayIso,
+  validateIntentions as checkIntentions,
+  type IntentionDraft,
+} from "@/components/mass-booking/bookingHelpers";
 import { redirectToCheckout } from "@/services/payment.service";
 
 const DRAFT_KEY = "mass-booking-draft";
 const KEY_KEY = "mass-booking-idempotency";
-
-type IntentionDraft = {
-  id: string;
-  categories: string[];
-  beneficiaryType: string;
-  beneficiaryName: string;
-  date: string;
-  scheduleId: string;
-  notes: string;
-};
 
 type Draft = {
   name: string;
@@ -50,30 +50,6 @@ type Draft = {
   transferDate: string;
   transferPayer: string;
   companyWebsite: string;
-};
-
-const emptyIntention = (): IntentionDraft => ({
-  id: crypto.randomUUID(),
-  categories: [],
-  beneficiaryType: "",
-  beneficiaryName: "",
-  date: "",
-  scheduleId: "",
-  notes: "",
-});
-
-const normalizeIntention = (item: Partial<IntentionDraft> & { category?: string }): IntentionDraft => {
-  const legacy = item.category ? [item.category] : [];
-  const categories = Array.isArray(item.categories) ? item.categories.filter(Boolean) : legacy;
-  return {
-    id: item.id || crypto.randomUUID(),
-    categories,
-    beneficiaryType: item.beneficiaryType || "",
-    beneficiaryName: item.beneficiaryName || "",
-    date: item.date || "",
-    scheduleId: item.scheduleId || "",
-    notes: item.notes || "",
-  };
 };
 
 const emptyDraft: Draft = {
@@ -109,88 +85,6 @@ function loadDraft(): Draft {
   } catch {
     return emptyDraft;
   }
-}
-
-function todayIso() {
-  const now = new Date();
-  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
-  return local.toISOString().slice(0, 10);
-}
-
-function addDays(iso: string, days: number) {
-  const date = new Date(`${iso}T12:00:00`);
-  date.setDate(date.getDate() + days);
-  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-  return local.toISOString().slice(0, 10);
-}
-
-function weekday(iso: string) {
-  return new Date(`${iso}T12:00:00`).toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
-}
-
-const BOOKING_FIELD_LABELS: Record<string, string> = {
-  intention_categories: "intentions",
-  intention_category: "intentions",
-  booking_date: "date",
-  mass_schedule_id: "time",
-  beneficiary_type: "offered for",
-  beneficiary_name: "name",
-  notes: "notes",
-  amount: "Offering",
-  name: "Full name",
-  phone: "Phone number",
-  email: "Email address",
-  payment_method: "Payment method",
-  transfer_reference: "Transfer reference",
-  transfer_date: "Transfer date",
-  evidence: "Proof of payment",
-};
-
-function bookingFieldLabel(key: string): string {
-  const mass = key.match(/^intentions\.(\d+)\.([a-z_]+)/);
-  if (mass) {
-    const number = Number(mass[1]) + 1;
-    const name = BOOKING_FIELD_LABELS[mass[2]] ?? mass[2].replaceAll("_", " ");
-    return `Mass ${number} ${name}`;
-  }
-  return BOOKING_FIELD_LABELS[key] ?? key.replaceAll("_", " ");
-}
-
-function readableBookingError(key: string, message: string): string {
-  const label = bookingFieldLabel(key);
-  const stripped = message.replace(/^The .+? field/i, label);
-  if (stripped !== message) {
-    return stripped.charAt(0).toUpperCase() + stripped.slice(1);
-  }
-  return `${label}: ${message}`;
-}
-
-function bookingErrorLines(caught: unknown): string[] {
-  const data = caught && typeof caught === "object" && "data" in caught
-    ? (caught as { data?: unknown }).data
-    : undefined;
-  if (data && typeof data === "object" && data !== null && "errors" in data) {
-    const errors = (data as { errors?: unknown }).errors;
-    if (errors && typeof errors === "object") {
-      const lines = Object.entries(errors as Record<string, unknown>).flatMap(([key, value]) => {
-        const messages = Array.isArray(value) ? value : [value];
-        return messages
-          .filter((item): item is string => typeof item === "string" && item.trim() !== "")
-          .map((message) => readableBookingError(key, message));
-      });
-      if (lines.length > 0) return lines;
-    }
-  }
-  if (caught instanceof Error && caught.message) return [caught.message];
-  return ["The booking could not be submitted. Your entries are still here."];
-}
-
-function formatTime(value?: string | null) {
-  if (!value) return "";
-  const [hour, minute] = value.split(":");
-  const date = new Date();
-  date.setHours(Number(hour), Number(minute || 0));
-  return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
 const MassBookingWizard = () => {
@@ -249,15 +143,6 @@ const MassBookingWizard = () => {
     }));
   }
 
-  const schedulesFor = (date: string) => {
-    if (!options || !date) return [];
-    const day = weekday(date);
-    return options.schedules.filter((schedule) => schedule.day_of_week.toLowerCase() === day);
-  };
-
-  const labelFor = (list: { value: string; label: string }[] | undefined, value: string) =>
-    list?.find((item) => item.value === value)?.label || value;
-
   const scheduleById = (id: string): MassOption | undefined => options?.schedules.find((schedule) => schedule.id === id);
 
   const amountNumber = Number(draft.amount);
@@ -270,29 +155,7 @@ const MassBookingWizard = () => {
     }));
   };
 
-  const validateIntentions = () => {
-    const errors: Record<string, string> = {};
-    draft.intentions.forEach((item, index) => {
-      const prefix = `intention-${item.id}`;
-      if (item.categories.length === 0) errors[`${prefix}-category`] = "Choose at least one intention.";
-      if (!item.beneficiaryType) errors[`${prefix}-beneficiary`] = "Say who this Mass is for.";
-      if (item.beneficiaryType !== "myself" && item.beneficiaryName.trim().length < 2) {
-        errors[`${prefix}-name`] = "Enter the person's or family's name.";
-      }
-      if (!item.date) errors[`${prefix}-date`] = "Choose a date.";
-      if (item.date && item.date < todayIso()) errors[`${prefix}-date`] = "Choose today or a future date.";
-      if (options?.horizon_days && item.date > addDays(todayIso(), options.horizon_days)) {
-        errors[`${prefix}-date`] = `Bookings can be made up to ${options.horizon_days} days ahead.`;
-      }
-      const masses = schedulesFor(item.date);
-      if (item.date && masses.length === 0) errors[`${prefix}-mass`] = "No Mass is scheduled that day.";
-      if (item.date && masses.length > 0 && !masses.some((mass) => mass.id === item.scheduleId)) {
-        errors[`${prefix}-mass`] = "Choose a Mass celebrated on that day.";
-      }
-      if (!errors[`${prefix}-category`] && item.categories.length === 0) errors[`${prefix}-category`] = `Mass ${index + 1} needs an intention.`;
-    });
-    return errors;
-  };
+  const validateIntentions = () => checkIntentions(draft.intentions, options);
 
   const validateStep = (target: number) => {
     const errors: Record<string, string> = {};
@@ -325,18 +188,15 @@ const MassBookingWizard = () => {
   };
 
   const duplicateLast = () => {
-    const source = draft.intentions[draft.intentions.length - 1];
-    if (!source?.date || !source.scheduleId || draft.intentions.length >= 12) return;
-    const nextDate = addDays(source.date, 7);
-    if (options?.horizon_days && nextDate > addDays(todayIso(), options.horizon_days)) {
-      setFieldErrors({ duplicate: "No later date is open for that Mass." });
+    if (draft.intentions.length >= MAX_INTENTIONS) return;
+    const next = duplicateIntention(draft.intentions[draft.intentions.length - 1], options);
+    if (!next) return;
+    if ("error" in next) {
+      setFieldErrors({ duplicate: next.error });
       return;
     }
     setFieldErrors({});
-    setDraft((current) => ({
-      ...current,
-      intentions: [...current.intentions, { ...source, id: crypto.randomUUID(), date: nextDate }],
-    }));
+    setDraft((current) => ({ ...current, intentions: [...current.intentions, next.item] }));
   };
 
   const goNext = () => {
@@ -515,71 +375,17 @@ const MassBookingWizard = () => {
             </div>
           )}
 
-          {step === 2 && draft.intentions.map((item, index) => {
-            const masses = schedulesFor(item.date);
-            const prefix = `intention-${item.id}`;
-            return (
-              <fieldset key={item.id} className="space-y-4 rounded-lg border p-4">
-                <legend className="px-1 text-sm font-medium">Mass {index + 1}</legend>
-                <Field label="Intentions" required error={fieldErrors[`${prefix}-category`]} hint="Choose every intention for this Mass.">
-                  <MultiSelect
-                    options={options?.categories ?? []}
-                    value={item.categories}
-                    onValueChange={(categories) => setIntention(item.id, { categories })}
-                    placeholder="Choose intentions"
-                    searchPlaceholder="Search intentions"
-                    className="min-h-11"
-                  />
-                </Field>
-                <Field label="Offered for" required error={fieldErrors[`${prefix}-beneficiary`]} hint="You, another person, or a family.">
-                  <Select value={item.beneficiaryType} onValueChange={(value) => setIntention(item.id, { beneficiaryType: value })}>
-                    <SelectTrigger><SelectValue placeholder="Who is this for?" /></SelectTrigger>
-                    <SelectContent>
-                      {options?.beneficiaries.map((beneficiary) => <SelectItem key={beneficiary.value} value={beneficiary.value}>{beneficiary.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </Field>
-                {item.beneficiaryType && item.beneficiaryType !== "myself" && (
-                  <Field
-                    label={item.beneficiaryType === "family_or_group" ? "Family or group" : "Name"}
-                    required
-                    error={fieldErrors[`${prefix}-name`]}
-                    hint="The name the priest should read."
-                  >
-                    <Input value={item.beneficiaryName} onChange={(event) => setIntention(item.id, { beneficiaryName: event.target.value })} />
-                  </Field>
-                )}
-                <Field label="Date" required error={fieldErrors[`${prefix}-date`]} hint="Today or a later day in the booking period.">
-                  <IsoDatePicker
-                    value={item.date}
-                    min={todayIso()}
-                    max={options?.horizon_days ? addDays(todayIso(), options.horizon_days) : undefined}
-                    onChange={(value) => setIntention(item.id, { date: value, scheduleId: "" })}
-                  />
-                </Field>
-                <Field label="Mass" required error={fieldErrors[`${prefix}-mass`]} hint="Choose the date first, then the time.">
-                  <Select value={item.scheduleId} onValueChange={(value) => setIntention(item.id, { scheduleId: value })} disabled={!item.date || masses.length === 0}>
-                    <SelectTrigger><SelectValue placeholder={item.date ? "Choose a Mass" : "Choose a date first"} /></SelectTrigger>
-                    <SelectContent>
-                      {masses.map((mass) => (
-                        <SelectItem key={mass.id} value={mass.id}>
-                          {mass.title} {formatTime(mass.start_time)} {mass.language ? `(${mass.language})` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
-                <Field label="Notes" hint="Optional. Anything else for the office.">
-                  <Textarea value={item.notes} maxLength={2000} onChange={(event) => setIntention(item.id, { notes: event.target.value })} />
-                </Field>
-                {draft.intentions.length > 1 && (
-                  <Button type="button" variant="outline" className="min-h-11 border-2 border-destructive text-destructive" onClick={() => setDraft({ ...draft, intentions: draft.intentions.filter((row) => row.id !== item.id) })}>
-                    <Trash2 className="mr-2 h-4 w-4" aria-hidden /> Remove this Mass
-                  </Button>
-                )}
-              </fieldset>
-            );
-          })}
+          {step === 2 && draft.intentions.map((item, index) => (
+            <IntentionFields
+              key={item.id}
+              item={item}
+              index={index}
+              options={options}
+              errors={fieldErrors}
+              onChange={(patch) => setIntention(item.id, patch)}
+              onRemove={draft.intentions.length > 1 ? () => setDraft({ ...draft, intentions: draft.intentions.filter((row) => row.id !== item.id) }) : undefined}
+            />
+          ))}
 
           {step === 2 && (
             <div className="flex flex-col gap-3 sm:flex-row">
@@ -587,7 +393,7 @@ const MassBookingWizard = () => {
                 type="button"
                 variant="outline"
                 className="min-h-11 border-2 border-primary"
-                disabled={draft.intentions.length >= 12}
+                disabled={draft.intentions.length >= MAX_INTENTIONS}
                 onClick={() => setDraft({ ...draft, intentions: [...draft.intentions, emptyIntention()] })}
               >
                 <Plus className="mr-2 h-4 w-4" aria-hidden /> Add another Mass intention
@@ -596,7 +402,7 @@ const MassBookingWizard = () => {
                 type="button"
                 variant="outline"
                 className="min-h-11"
-                disabled={draft.intentions.length >= 12 || !draft.intentions.at(-1)?.date || !draft.intentions.at(-1)?.scheduleId}
+                disabled={draft.intentions.length >= MAX_INTENTIONS || !draft.intentions.at(-1)?.date || !draft.intentions.at(-1)?.scheduleId}
                 onClick={duplicateLast}
               >
                 <Copy className="mr-2 h-4 w-4" aria-hidden /> Duplicate last Mass
@@ -696,33 +502,6 @@ const MassBookingWizard = () => {
         <input id="company-website" name="company_website" tabIndex={-1} autoComplete="off" value={draft.companyWebsite} onChange={(event) => setDraft({ ...draft, companyWebsite: event.target.value })} />
       </div>
     </form>
-  );
-};
-
-const Field = ({ label, error, hint, required, children }: { label: string; error?: string; hint?: string; required?: boolean; children: ReactNode }) => {
-  const id = useId();
-  const errorId = useId();
-  const control = isValidElement(children)
-    ? cloneElement(children as ReactElement<{ id?: string; "aria-describedby"?: string; "aria-invalid"?: boolean; "aria-required"?: boolean }>, {
-      id,
-      "aria-invalid": Boolean(error) || undefined,
-      "aria-describedby": error ? errorId : undefined,
-      "aria-required": required || undefined,
-    })
-    : children;
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-1.5">
-        <Label htmlFor={id}>
-          {label}
-          {required ? <span className="text-destructive" aria-hidden="true"> *</span> : null}
-        </Label>
-        {hint ? <FieldHint text={hint} /> : null}
-      </div>
-      {control}
-      {error && <p id={errorId} className="text-sm text-destructive" role="alert">{error}</p>}
-    </div>
   );
 };
 

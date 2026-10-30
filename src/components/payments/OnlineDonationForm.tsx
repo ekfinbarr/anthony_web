@@ -12,8 +12,8 @@ import { getApiErrorMessage } from "@/lib/api-error";
 import { notify } from "@/lib/notify";
 import paymentService, { DonationType, formatMoney } from "@/services/payment.service";
 import { cn } from "@/lib/utils";
+import { PRESET_AMOUNTS } from "@/components/donations/givingCategories";
 
-const PRESET_AMOUNTS = [1000, 5000, 10000, 20000, 50000];
 
 interface OnlineDonationFormProps {
   donationType: DonationType;
@@ -150,9 +150,24 @@ const OnlineDonationForm = ({ donationType, purposeLabel }: OnlineDonationFormPr
         Give anonymously (your name won't appear in parish records)
       </label>
 
-      <Button type="submit" variant="church" size="lg" className="w-full gap-2" disabled={isSubmitting || configQuery.isLoading}>
+      {/* Long fund names wrap onto a second line on phones instead of spilling out. */}
+      <Button
+        type="submit"
+        variant="church"
+        size="lg"
+        className="h-auto min-h-11 w-full gap-2 whitespace-normal py-3 text-center leading-snug"
+        disabled={isSubmitting || configQuery.isLoading}
+      >
         {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <CreditCard className="h-5 w-5" />}
-        {isSubmitting ? "Opening secure checkout…" : `Give ${Number(amount) > 0 ? formatMoney(Number(amount), currency) : ""} to ${purposeLabel}`}
+        {isSubmitting ? (
+          "Opening secure checkout…"
+        ) : (
+          <span>
+            Give{" "}
+            {Number(amount) > 0 ? <span className="whitespace-nowrap">{formatMoney(Number(amount), currency)}</span> : null}{" "}
+            to {purposeLabel}
+          </span>
+        )}
       </Button>
       <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
         <Lock className="h-3 w-3" /> Secure payment by Flutterwave · Card, bank transfer and USSD
