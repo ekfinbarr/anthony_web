@@ -3,11 +3,13 @@ import { Link } from "react-router-dom";
 import PageHeader from "@/components/layout/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
+import useFeatures from "@/hooks/useFeatures";
 import { getMyOrders, type BookingOrder } from "@/services/massBookingOrder.service";
 import { formatMoney } from "@/services/payment.service";
 
 const MassBookingHistory = () => {
   const { user, isLoading } = useAuth();
+  const { isOn } = useFeatures();
   const [orders, setOrders] = useState<BookingOrder[]>([]);
   const [error, setError] = useState("");
 
@@ -26,7 +28,7 @@ const MassBookingHistory = () => {
           <Card>
             <CardContent className="space-y-3 pt-6">
               <p>Sign in to see bookings linked to your account. Guest bookings stay on the private link shown after you submit.</p>
-              <Link className="text-primary underline" to="/auth/login?redirect=/my-mass-bookings">Sign in</Link>
+              {isOn("login") && <Link className="text-primary underline" to="/auth/login?redirect=/my-mass-bookings">Sign in</Link>}
             </CardContent>
           </Card>
         )}

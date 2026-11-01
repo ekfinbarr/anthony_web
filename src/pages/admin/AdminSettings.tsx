@@ -130,9 +130,8 @@ const AdminSettings = () => {
   const allSettings: SiteSetting[] = useMemo(() => {
     const rawData = settingsQuery.data?.data;
     if (!rawData) return [];
-    if (Array.isArray(rawData)) return rawData;
-    // Flatten grouped record
-    return Object.values(rawData).flat();
+    const rows = Array.isArray(rawData) ? rawData : Object.values(rawData).flat();
+    return rows.filter((setting) => (setting.group || "").toLowerCase() !== "features");
   }, [settingsQuery.data]);
 
   // Roles & Permissions (optional / deployment-dependent)

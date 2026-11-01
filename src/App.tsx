@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -10,6 +10,7 @@ import ApprovalsProtectedRoute from "@/components/auth/ApprovalsProtectedRoute";
 import ErrorBoundary from "@/components/common/ErrorBoundary";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import RouteSEO from "@/components/seo/RouteSEO";
+import { FeatureGate } from "@/components/features/FeatureGate";
 import { routeRedirects } from "@/config/routes.seo";
 import Layout from "./components/layout/Layout";
 // The home page is the most common landing page, so it ships in the main bundle.
@@ -136,6 +137,7 @@ const AdminBulletins = lazy(() => import("./pages/admin/AdminBulletins"));
 const LeadershipFormPage = lazy(() => import("./pages/admin/LeadershipFormPage"));
 const AdminContact = lazy(() => import("./pages/admin/AdminContact"));
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
+const AdminFeatures = lazy(() => import("./pages/admin/AdminFeatures"));
 const AdminApprovalsOverview = lazy(() => import("./pages/admin/approvals/AdminApprovalsOverview"));
 const AdminApprovalQueue = lazy(() => import("./pages/admin/approvals/AdminApprovalQueue"));
 const AdminApprovalRequestDetail = lazy(() => import("./pages/admin/approvals/AdminApprovalRequestDetail"));
@@ -162,6 +164,10 @@ const ConditionalChatbot = () => {
   );
 };
 
+const gate = (feature: string, page: ReactNode) => (
+  <FeatureGate feature={feature}>{page}</FeatureGate>
+);
+
 const AppRoutes = () => {
   const { pathname } = useLocation();
 
@@ -177,60 +183,60 @@ const AppRoutes = () => {
               <Route key={from} path={from.slice(1)} element={<Navigate to={to} replace />} />
             ))}
             <Route path="about" element={<About />} />
-            <Route path="parish-priest" element={<ParishPriest />} />
-            <Route path="sermons" element={<Sermons />} />
-            <Route path="events" element={<Events />} />
-            <Route path="events/:slug" element={<EventDetail />} />
+            <Route path="parish-priest" element={gate("parish_priest", <ParishPriest />)} />
+            <Route path="sermons" element={gate("sermons", <Sermons />)} />
+            <Route path="events" element={gate("events", <Events />)} />
+            <Route path="events/:slug" element={gate("events", <EventDetail />)} />
             <Route path="visit" element={<Visit />} />
             <Route path="blog" element={<Blog />} />
             <Route path="contact" element={<Contact />} />
-            <Route path="live" element={<Live />} />
-            <Route path="live/:id" element={<Live />} />
+            <Route path="live" element={gate("livestream", <Live />)} />
+            <Route path="live/:id" element={gate("livestream", <Live />)} />
             <Route path="facilities" element={<Facilities />} />
             <Route path="charity" element={<Charity />} />
-            <Route path="bulletin" element={<Bulletin />} />
-            <Route path="bulletin/:slug" element={<BulletinDetail />} />
-            <Route path="gallery" element={<Gallery />} />
-            <Route path="gallery/:slug" element={<GalleryAlbumPage />} />
-            <Route path="news" element={<News />} />
-            <Route path="news/:slug" element={<NewsView />} />
-            <Route path="parish-anthem" element={<ParishAnthemPage />} />
-            <Route path="book-mass" element={<MassBookingPage />} />
+            <Route path="bulletin" element={gate("bulletins", <Bulletin />)} />
+            <Route path="bulletin/:slug" element={gate("bulletins", <BulletinDetail />)} />
+            <Route path="gallery" element={gate("galleries", <Gallery />)} />
+            <Route path="gallery/:slug" element={gate("galleries", <GalleryAlbumPage />)} />
+            <Route path="news" element={gate("news", <News />)} />
+            <Route path="news/:slug" element={gate("news", <NewsView />)} />
+            <Route path="parish-anthem" element={gate("parish_anthem", <ParishAnthemPage />)} />
+            <Route path="book-mass" element={gate("mass_bookings", <MassBookingPage />)} />
             <Route path="book-mass/guest" element={<GuestMassBookingPage />} />
-            <Route path="my-mass-bookings" element={<MassBookingHistory />} />
+            <Route path="my-mass-bookings" element={gate("mass_bookings", <MassBookingHistory />)} />
             <Route path="marriage-bans" element={<MarriageBansPage />} />
             <Route path="marriage-classes" element={<MarriageClassRegistrationPage />} />
             <Route path="faq" element={<FaqPage />} />
             <Route path="payment/complete" element={<PaymentComplete />} />
-            <Route path="register" element={<Registration />} />
+            <Route path="register" element={gate("parish_registration", <Registration />)} />
             <Route path="login" element={<LoginPage />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="profile-settings" element={<ProfileSettings />} />
             <Route path="notification-settings" element={<NotificationSettings />} />
             <Route path="settings" element={<Settings />} />
-            <Route path="bookshop" element={<BookshopPage />} />
-            <Route path="clinic" element={<Clinic />} />
+            <Route path="bookshop" element={gate("bookshop", <BookshopPage />)} />
+            <Route path="clinic" element={gate("clinic", <Clinic />)} />
             <Route path="booking-history" element={<BookingHistory />} />
-            <Route path="donations" element={<Donations />} />
-            <Route path="registration" element={<Registration />} />
-            <Route path="serve-others" element={<ServeOthers />} />
-            <Route path="serve-others/:slug" element={<ServeOthersDetail />} />
-            <Route path="groups" element={<Groups />} />
+            <Route path="donations" element={gate("donations", <Donations />)} />
+            <Route path="registration" element={gate("parish_registration", <Registration />)} />
+            <Route path="serve-others" element={gate("serve_others", <ServeOthers />)} />
+            <Route path="serve-others/:slug" element={gate("serve_others", <ServeOthersDetail />)} />
+            <Route path="groups" element={gate("service_groups", <Groups />)} />
             <Route path="privacy-policy" element={<PrivacyPolicy />} />
             <Route path="terms-of-service" element={<TermsOfService />} />
             <Route path="cookies" element={<CookiePolicy />} />
-            <Route path="sacraments" element={<Sacraments />} />
-            <Route path="daily-readings" element={<DailyReadings />} />
+            <Route path="sacraments" element={gate("sacraments", <Sacraments />)} />
+            <Route path="daily-readings" element={gate("daily_readings", <DailyReadings />)} />
             <Route path="order-of-mass" element={<OrderOfMass />} />
-            <Route path="rentals" element={<Rentals />} />
-            <Route path="rentals/status/:token" element={<RentalStatus />} />
-            <Route path="calendar" element={<CalendarPage />} />
+            <Route path="rentals" element={gate("rentals", <Rentals />)} />
+            <Route path="rentals/status/:token" element={gate("rentals", <RentalStatus />)} />
+            <Route path="calendar" element={gate("calendar", <CalendarPage />)} />
             <Route path="*" element={<NotFound />} />
           </Route>
 
           {/* Auth Routes */}
           <Route path="/auth/login" element={<Login />} />
-          <Route path="/auth/register" element={<Register />} />
+          <Route path="/auth/register" element={gate("account_registration", <Register />)} />
           <Route path="/auth/forgot-password" element={<ForgotPassword />} />
           <Route path="/auth/reset-password" element={<ResetPassword />} />
 
@@ -248,11 +254,11 @@ const AppRoutes = () => {
             <Route path="settings" element={<Settings />} />
             <Route path="parish-card" element={<ParishCard />} />
             <Route path="notifications" element={<Notifications />} />
-            <Route path="mass-bookings" element={<MyMassBookings />} />
-            <Route path="donations" element={<MyDonations />} />
-            <Route path="sacraments" element={<SacramentsPage />} />
+            <Route path="mass-bookings" element={gate("mass_bookings", <MyMassBookings />)} />
+            <Route path="donations" element={gate("donations", <MyDonations />)} />
+            <Route path="sacraments" element={gate("sacraments", <SacramentsPage />)} />
             <Route path="prayer-requests" element={<PrayerRequestsPage />} />
-            <Route path="groups" element={<MyGroups />} />
+            <Route path="groups" element={gate("groups", <MyGroups />)} />
             <Route path="announcements" element={<AnnouncementsPage />} />
           </Route>
 
@@ -333,6 +339,7 @@ const AppRoutes = () => {
             <Route path="leadership/new" element={<LeadershipFormPage />} />
             <Route path="leadership/:id/edit" element={<LeadershipFormPage />} />
             <Route path="contact" element={<AdminContact />} />
+            <Route path="features" element={<AdminFeatures />} />
             <Route path="settings" element={<AdminSettings />} />
           </Route>
 

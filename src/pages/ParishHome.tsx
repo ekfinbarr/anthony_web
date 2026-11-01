@@ -13,6 +13,7 @@ import VisitStrip from "@/components/parish-home/VisitStrip";
 import FloatingSocial from "@/components/parish-home/FloatingSocial";
 import MassScheduleBand from "@/components/home/MassScheduleBand";
 import SocialPlatforms from "@/components/home/SocialPlatforms";
+import { FeatureShow } from "@/components/features/FeatureGate";
 
 const ParishHome = () => {
   return (
@@ -22,14 +23,14 @@ const ParishHome = () => {
       <MassScheduleBand />
       <FloatingSocial />
       <HistoryMission />
-      <MassLivestreamBanner />
-      <EventsPreview />
-      <GroupsPreview />
-      <MinistriesPreview />
-      <LeadershipPreview />
-      <NewsPreview />
-      <GalleryPreview />
-      <Voices />
+      <FeatureShow feature="livestream"><MassLivestreamBanner /></FeatureShow>
+      <FeatureShow feature="events"><EventsPreview /></FeatureShow>
+      <FeatureShow feature="service_groups"><GroupsPreview /></FeatureShow>
+      <FeatureShow feature="serve_others"><MinistriesPreview /></FeatureShow>
+      <FeatureShow feature="parish_priest"><LeadershipPreview /></FeatureShow>
+      <FeatureShow feature="news"><NewsPreview /></FeatureShow>
+      <FeatureShow feature="galleries"><GalleryPreview /></FeatureShow>
+      <FeatureShow feature="parish_priest"><Voices /></FeatureShow>
       <SocialPlatforms />
       <VisitStrip />
     </div>

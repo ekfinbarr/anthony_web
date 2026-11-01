@@ -1,6 +1,7 @@
 import { cloneElement, FormEvent, isValidElement, useEffect, useId, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import useFeatures from "@/hooks/useFeatures";
 import { format } from "date-fns";
 import { CheckCircle, ChevronLeft, Church, HandCoins, Loader2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -156,7 +157,15 @@ function groupKey(type: string, id: string) {
   return `${type}:${id}`;
 }
 
+const REGISTRATION_INTENTS = [
+  ["new", "I am new to the parish", "Create a parish record. No password is required.", "parish_registration_new"],
+  ["complete", "I already have an account, but my parish record is incomplete", "We will email a code before opening your record.", "parish_registration_returning"],
+  ["update", "I am a parishioner and want to update my details", "We will email a code. Your record is changed only after that code is confirmed.", "parish_registration_update"],
+] as const;
+
 const RegistrationWizard = () => {
+  const { isOn } = useFeatures();
+  const registrationIntents = REGISTRATION_INTENTS.filter((item) => isOn(item[3]));
   const [step, setStep] = useState(1);
   const [draft, setDraft] = useState<Draft>(loadDraft);
   const [code, setCode] = useState("");
@@ -513,11 +522,10 @@ const RegistrationWizard = () => {
             <fieldset className="space-y-4">
               <legend className="sr-only">Registration type</legend>
               <RadioGroup value={draft.intent ?? ""} onValueChange={(value) => patch({ intent: value as Intent, token: null })} className="gap-3">
-                {[
-                  ["new", "I am new to the parish", "Create a parish record. No password is required."],
-                  ["complete", "I already have an account, but my parish record is incomplete", "We will email a code before opening your record."],
-                  ["update", "I am a parishioner and want to update my details", "We will email a code. Your record is changed only after that code is confirmed."],
-                ].map(([value, title, help]) => (
+                {registrationIntents.length === 0 && (
+                  <p className="text-sm text-muted-foreground">Parish registration is not open right now. Please contact the parish office.</p>
+                )}
+                {registrationIntents.map(([value, title, help]) => (
                   <label key={value} className="flex min-h-11 cursor-pointer gap-3 rounded-md border p-4 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring">
                     <RadioGroupItem value={value} id={`intent-${value}`} className="mt-1" />
                     <span>

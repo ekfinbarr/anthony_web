@@ -93,8 +93,11 @@ class ApiClient {
    * Automatically includes the Bearer token in the Authorization header
    * if a token is found in localStorage.
    */
-  private buildHeaders(customHeaders?: Record<string, string>): HeadersInit {
+  private buildHeaders(customHeaders?: Record<string, string>, auth = true): HeadersInit {
     const headers: Record<string, string> = { ...this.defaultHeaders, ...customHeaders };
+    if (!auth) {
+      return headers;
+    }
     const token = this.getAuthToken();
 
     if (token) {
@@ -197,10 +200,11 @@ class ApiClient {
    */
   private async makeRequest<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    auth = true,
   ): Promise<ApiResponse<T>> {
     const url = this.buildURL(endpoint);
-    const headers = this.buildHeaders(options.headers as Record<string, string>);
+    const headers = this.buildHeaders(options.headers as Record<string, string>, auth);
 
     // If sending FormData, DO NOT set Content-Type manually; the browser will set the multipart boundary.
     // Keeping 'application/json' here breaks file uploads on many servers.
@@ -243,7 +247,7 @@ class ApiClient {
    * TypeScript never treats an `interface` as assignable to an index signature).
    * null/undefined values are omitted; other values are stringified.
    */
-  async get<T = unknown>(endpoint: string, params?: object): Promise<ApiResponse<T>> {
+  async get<T = unknown>(endpoint: string, params?: object, options?: { auth?: boolean }): Promise<ApiResponse<T>> {
     let url = endpoint;
     if (params) {
       const searchParams = new URLSearchParams();
@@ -254,7 +258,7 @@ class ApiClient {
       });
       url += `?${searchParams.toString()}`;
     }
-    return this.makeRequest<T>(url, { method: 'GET' });
+    return this.makeRequest<T>(url, { method: 'GET' }, options?.auth !== false);
   }
 
   /**

@@ -11,6 +11,7 @@ import type { ParishIconProps } from "@/components/icons/ParishIcon";
 import Reveal from "@/components/parish-home/Reveal";
 import SectionWaveTransition from "@/components/home/SectionWaveTransition";
 import { cn } from "@/lib/utils";
+import useFeatures from "@/hooks/useFeatures";
 
 type QuickAccessItem = {
   label: string;
@@ -47,6 +48,10 @@ const quickAccessItems: QuickAccessItem[] = [
 ];
 
 const QuickAccessSection = () => {
+  const { showNav } = useFeatures();
+  const items = quickAccessItems.filter((item) => showNav(item.to));
+  if (items.length === 0) return null;
+
   return (
     <section
       className="relative bg-church-ivory"
@@ -72,7 +77,7 @@ const QuickAccessSection = () => {
 
         {/* Mobile: stacked list · Tablet: 2-up · Desktop: 4-up — all use the same compact horizontal card */}
         <ul className="mx-auto grid max-w-6xl list-none grid-cols-1 gap-3 p-0 md:grid-cols-2 md:gap-4 xl:grid-cols-4">
-          {quickAccessItems.map(({ label, description, to, Icon }, index) => (
+          {items.map(({ label, description, to, Icon }, index) => (
             <li key={label} className="min-w-0">
               <Reveal delay={index * 50} className="h-full">
                 <Link

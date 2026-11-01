@@ -21,6 +21,7 @@ import {
 } from "@/components/donations/givingCategories";
 import { cn } from "@/lib/utils";
 import GivingImpactSlider from "@/components/donations/GivingImpactSlider";
+import useFeatures from "@/hooks/useFeatures";
 
 const PAYMENT_TABS = [
   { value: "online", icon: CreditCard, label: "Give Online", short: "Online" },
@@ -42,6 +43,8 @@ function GivingSparkles({ className }: { className?: string }) {
 }
 
 const Donations = () => {
+  const { isOn } = useFeatures();
+  const onlineGiving = isOn("online_donations");
   const [selectedCategory, setSelectedCategory] = useState(donationCategories[0]);
   const [copiedAccount, setCopiedAccount] = useState("");
   const [receiptAmount, setReceiptAmount] = useState<number | null>(null);
@@ -52,6 +55,8 @@ const Donations = () => {
   const formRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLSpanElement>(null);
   const selectedTone = FUND_TONE[fundMeta(selectedCategory.type).tone];
+  const publishedAccounts = isOn("donation_accounts") ? donationAccounts : [];
+  const paymentTabs = PAYMENT_TABS.filter((tab) => tab.value !== "online" || onlineGiving);
 
   // Picking a fund takes the giver straight to the form, so they see what changed.
   const chooseCategory = (category: GivingCategory) => {
@@ -214,10 +219,10 @@ const Donations = () => {
               <CardDescription className="relative">{selectedCategory.description}</CardDescription>
             </CardHeader>
             <CardContent className="px-4 pt-6 sm:px-6">
-              <Tabs defaultValue="online" className="w-full">
+              <Tabs key={onlineGiving ? "with-online" : "offline"} defaultValue={onlineGiving ? "online" : "bank"} className="w-full">
                 {/* On phones each method stacks a short label under its icon so all three fit. */}
-                <TabsList className="grid h-auto w-full grid-cols-3 gap-1">
-                  {PAYMENT_TABS.map(({ value, icon: TabIcon, label, short }) => (
+                <TabsList className={cn("grid h-auto w-full gap-1", paymentTabs.length === 3 ? "grid-cols-3" : "grid-cols-2")}>
+                  {paymentTabs.map(({ value, icon: TabIcon, label, short }) => (
                     <TabsTrigger
                       key={value}
                       value={value}
@@ -230,24 +235,26 @@ const Donations = () => {
                   ))}
                 </TabsList>
 
+                {onlineGiving && (
                 <TabsContent value="online" className="pt-2">
                   <OnlineDonationForm
                     donationType={selectedCategory.type}
                     purposeLabel={selectedCategory.name}
                   />
                 </TabsContent>
+                )}
 
                 <TabsContent value="bank" className="space-y-4">
                   <div className="bg-muted rounded-lg p-6 space-y-4">
                     <h4 className="font-semibold">Bank Account Details</h4>
 
-                    {donationAccounts.length === 0 ? (
+                    {publishedAccounts.length === 0 ? (
                       <div className="text-sm text-muted-foreground">
                         Donation accounts are not available right now. Please contact the parish office for bank details.
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {donationAccounts.map((acc) => (
+                        {publishedAccounts.map((acc) => (
                           <div key={acc.id} className="p-4 bg-background rounded-md space-y-3">
                             <div className="flex items-center justify-between">
                               <div className="font-medium">{acc.name}</div>

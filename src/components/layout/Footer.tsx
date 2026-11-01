@@ -4,6 +4,7 @@ import { Separator } from "@/components/ui/separator";
 import logo from "@/assets/images/logo-128.webp";
 import SocialMediaLinks from "@/components/ui/SocialMediaLinks";
 import { formatAddress, mapsSearchUrl, site } from "@/config/site";
+import useFeatures from "@/hooks/useFeatures";
 
 const exploreLinks = [
   { to: "/visit", label: "Mass Times & Visit" },
@@ -17,6 +18,9 @@ const exploreLinks = [
 ];
 
 const Footer = () => {
+  const { showNav } = useFeatures();
+  const links = exploreLinks.filter((link) => showNav(link.to));
+
   return (
     <footer className="border-t border-church-pearl/10 bg-church-charcoal text-church-pearl">
       <div className="container mx-auto px-4 pt-14 pb-8">
@@ -47,7 +51,7 @@ const Footer = () => {
               Explore
             </h2>
             <ul className="space-y-2.5">
-              {exploreLinks.map((link) => (
+              {links.map((link) => (
                 <li key={link.to}>
                   <Link
                     to={link.to}

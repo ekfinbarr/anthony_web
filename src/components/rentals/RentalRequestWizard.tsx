@@ -13,6 +13,7 @@ import { IsoDatePicker } from "@/components/ui/date-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import useFeatures from "@/hooks/useFeatures";
 import { useAuth } from "@/contexts/AuthContext";
 import facilityService, { Facility, FacilityTimeBlockDto } from "@/services/facility.service";
 import facilityBookingService from "@/services/facilityBooking.service";
@@ -64,6 +65,8 @@ function timeLabel(t: string) {
 export default function RentalRequestWizard({ open, onOpenChange, facilitySlug }: Props) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { isOn } = useFeatures();
+  const loginOpen = isOn("login");
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [venues, setVenues] = useState<Facility[]>([]);
@@ -259,6 +262,7 @@ export default function RentalRequestWizard({ open, onOpenChange, facilitySlug }
                       <p>
                         <strong>Continue as a guest</strong> — no account required. Fill in your details below and submit your request.
                       </p>
+                      {loginOpen && (
                       <p className="text-muted-foreground">
                         Already registered?{" "}
                         <Link
@@ -270,6 +274,7 @@ export default function RentalRequestWizard({ open, onOpenChange, facilitySlug }
                         </Link>{" "}
                         to prefill your profile, then return here to book.
                       </p>
+                      )}
                     </>
                   )}
                 </div>

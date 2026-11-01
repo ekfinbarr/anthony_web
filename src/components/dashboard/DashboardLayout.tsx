@@ -34,6 +34,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import useFeatures from "@/hooks/useFeatures";
 
 const sidebarItems = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
@@ -77,11 +78,13 @@ const SidebarContent = ({
   locationPathname,
   user,
   unreadCount,
+  showPage,
 }: {
   onItemClick?: () => void;
   locationPathname: string;
   user: AuthUser | null;
   unreadCount: number;
+  showPage: (href: string) => boolean;
 }) => (
   <div className="flex flex-col h-full">
     {/* Logo */}
@@ -99,7 +102,7 @@ const SidebarContent = ({
 
     {/* Navigation */}
     <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-      {sidebarItems.map((item) => {
+      {sidebarItems.filter((item) => showPage(item.href)).map((item) => {
         const isActive = isActivePath(locationPathname, item.href);
         return (
           <Link
@@ -142,6 +145,7 @@ const SidebarContent = ({
 
 const DashboardLayout = () => {
   const { user, logout } = useAuth();
+  const { showPage } = useFeatures();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -161,7 +165,7 @@ const DashboardLayout = () => {
     <div className="parish-dashboard min-h-screen flex bg-muted">
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-sidebar text-sidebar-foreground">
-        <SidebarContent user={user} locationPathname={location.pathname} unreadCount={unreadCount} />
+        <SidebarContent user={user} locationPathname={location.pathname} unreadCount={unreadCount} showPage={showPage} />
       </aside>
 
       {/* Mobile Sidebar */}
@@ -171,6 +175,7 @@ const DashboardLayout = () => {
             user={user}
             locationPathname={location.pathname}
             unreadCount={unreadCount}
+            showPage={showPage}
             onItemClick={() => setSidebarOpen(false)}
           />
         </SheetContent>

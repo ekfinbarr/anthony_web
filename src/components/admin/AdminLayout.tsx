@@ -31,6 +31,7 @@ import {
   Mail,
   Bell,
   Settings,
+  SlidersHorizontal,
   LogOut,
   Menu,
   ChevronRight,
@@ -130,6 +131,7 @@ const adminSidebarItems: SidebarItem[] = [
   { name: "Donations", href: "/admin/donations", icon: CreditCard },
   { name: "Schedules", href: "/admin/schedules", icon: Clock },
   { name: "Contact Messages", href: "/admin/contact", icon: MessageSquare },
+  { name: "Features", href: "/admin/features", icon: SlidersHorizontal },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
 

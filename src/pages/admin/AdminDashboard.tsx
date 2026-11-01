@@ -133,9 +133,14 @@ const AdminDashboard = () => {
           <h1 className="text-2xl font-heading font-bold text-foreground">Admin Dashboard</h1>
           <p className="text-muted-foreground">Live overview of parish activity.</p>
         </div>
-        <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
-          {isFetching ? "Refreshing..." : "Refresh"}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link to="/admin/features">Features</Link>
+          </Button>
+          <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
+            {isFetching ? "Refreshing..." : "Refresh"}
+          </Button>
+        </div>
       </div>
 
       {error ? (

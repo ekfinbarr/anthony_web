@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { FeatureShow } from "@/components/features/FeatureGate";
 import { useQuery } from "@tanstack/react-query";
 import { Calendar, Clock, Mail, Play, Download, ArrowRight, Image as ImageIcon } from "lucide-react";
 import { CandleIcon, ChaliceIcon, ChurchFrontIcon, CoinsIcon, CommunityIcon, HandsIcon, MusicIcon, PriestIcon, PulpitIcon, ReadingsIcon } from "@/components/icons/ParishIcons";
@@ -151,11 +152,17 @@ const Landing = () => {
       <FloatingSocial />
 
       {/* Celebration and Mass readings of the day */}
-      <CatholicDailyReadings />
+      <FeatureShow feature="daily_readings">
+        <CatholicDailyReadings />
+      </FeatureShow>
 
-      <MassLivestreamBanner />
+      <FeatureShow feature="livestream">
+        <MassLivestreamBanner />
+      </FeatureShow>
 
-      <Voices />
+      <FeatureShow feature="parish_priest">
+        <Voices />
+      </FeatureShow>
 
       <MassConfessionsSection />
 
@@ -206,7 +213,9 @@ const Landing = () => {
 
       {/* Latest News and Events */}
       {/* <LatestNews /> */}
-      <UpcomingEvents />
+      <FeatureShow feature="events">
+        <UpcomingEvents />
+      </FeatureShow>
 
       <WhatsAppCommunitySection />
 
@@ -220,6 +229,7 @@ const Landing = () => {
 
 
       {/* Donations */}
+      <FeatureShow feature="donations">
       <section className="py-16 bg-gradient-church">
         <div className="container mx-auto px-4 text-center">
           <div className="max-w-3xl mx-auto">
@@ -245,6 +255,7 @@ const Landing = () => {
           </div>
         </div>
       </section>
+      </FeatureShow>
 
       {/* Latest Sermons — enable when desired; data is live via sermonService.getLatest */}
       {/* <section className="py-16 bg-church-pearl">

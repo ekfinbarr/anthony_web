@@ -39,6 +39,7 @@ import {
 import { site } from "@/config/site";
 import ministryService from "@/services/ministry.service";
 import ministryCategoryService from "@/services/ministryCategory.service";
+import useFeatures from "@/hooks/useFeatures";
 
 type IconComponent = ComponentType<ParishIconProps>;
 
@@ -260,6 +261,7 @@ const ChildLink = forwardRef<
 ChildLink.displayName = "ChildLink";
 
 const Navigation = () => {
+  const { showNav } = useFeatures();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [scrolled, setScrolled] = useState(() => typeof window !== "undefined" && window.scrollY > 16);
@@ -298,15 +300,20 @@ const Navigation = () => {
       icon: PeopleIcon,
     }));
 
-    return navItems.map((item) => {
-      if (item.name !== "Serve Others") return item;
-      const base = item.children || [];
-      const extras = [...categoryChildren, ...featuredChildren];
-      // Avoid overcrowding: keep All Ministries + Groups, then categories/featured
-      const merged = [base[0], ...extras, base[1]].filter(Boolean) as NavChild[];
-      return { ...item, children: merged };
+    return navItems.flatMap((item) => {
+      let children = item.children;
+      if (item.name === "Serve Others") {
+        const base = item.children || [];
+        const extras = showNav("/serve-others") ? [...categoryChildren, ...featuredChildren] : [];
+        children = [base[0], ...extras, base[1]].filter(Boolean) as NavChild[];
+      }
+      if (children) {
+        const visible = children.filter((child) => showNav(child.href));
+        return visible.length > 0 ? [{ ...item, children: visible }] : [];
+      }
+      return showNav(item.href) ? [item] : [];
     });
-  }, [categoriesQuery.data, featuredQuery.data]);
+  }, [categoriesQuery.data, featuredQuery.data, showNav]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 16);
@@ -407,7 +414,7 @@ const Navigation = () => {
               </NavigationMenuList>
             </NavigationMenu>
             <EventSearch id="event-search-desktop" overlay={overlay} collapsible />
-            <Link
+            {showNav("/registration") && <Link
               to="/registration"
               className={cn(
                 "px-2 py-2 text-sm font-medium transition-colors xl:px-3",
@@ -415,10 +422,12 @@ const Navigation = () => {
               )}
             >
               Register
-            </Link>
-            <Button variant="church" size="sm" asChild>
-              <Link to="/donations">Giving</Link>
-            </Button>
+            </Link>}
+            {showNav("/donations") && (
+              <Button variant="church" size="sm" asChild>
+                <Link to="/donations">Giving</Link>
+              </Button>
+            )}
           </div>
 
           <button
@@ -494,12 +503,16 @@ const Navigation = () => {
                 </div>
               ))}
               <div className="flex gap-2 px-1 pt-4">
-                <Button variant="outline" className="flex-1" asChild>
-                  <Link to="/registration" onClick={closeMobile}>Register</Link>
-                </Button>
-                <Button variant="church" className="flex-1" asChild>
-                  <Link to="/donations" onClick={closeMobile}>Giving</Link>
-                </Button>
+                {showNav("/registration") && (
+                  <Button variant="outline" className="flex-1" asChild>
+                    <Link to="/registration" onClick={closeMobile}>Register</Link>
+                  </Button>
+                )}
+                {showNav("/donations") && (
+                  <Button variant="church" className="flex-1" asChild>
+                    <Link to="/donations" onClick={closeMobile}>Giving</Link>
+                  </Button>
+                )}
               </div>
             </div>
           </nav>

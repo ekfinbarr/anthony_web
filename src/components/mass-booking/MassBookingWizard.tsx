@@ -34,6 +34,7 @@ import {
   type IntentionDraft,
 } from "@/components/mass-booking/bookingHelpers";
 import { redirectToCheckout } from "@/services/payment.service";
+import useFeatures from "@/hooks/useFeatures";
 
 const DRAFT_KEY = "mass-booking-draft";
 const KEY_KEY = "mass-booking-idempotency";
@@ -89,6 +90,10 @@ function loadDraft(): Draft {
 
 const MassBookingWizard = () => {
   const { user, updateProfile } = useAuth();
+  const { isOn } = useFeatures();
+  const requestsOpen = isOn("mass_booking_requests");
+  const onlinePayment = isOn("mass_booking_online_payment");
+  const loginOpen = isOn("login");
   const navigate = useNavigate();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const errorId = useId();
@@ -269,6 +274,18 @@ const MassBookingWizard = () => {
   };
 
   const summary = useMemo(() => draft.intentions.length, [draft.intentions.length]);
+  const paymentMethods = (options?.payment_methods ?? []).filter((method) => onlinePayment || method !== "flutterwave");
+
+  if (!requestsOpen && !result) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Mass booking is not open</CardTitle>
+          <CardDescription>The parish is not taking Mass intention requests right now. Please contact the parish office.</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
 
   if (result) {
     const paid = result.payment_status === "paid";
@@ -354,7 +371,11 @@ const MassBookingWizard = () => {
             <div className="space-y-4">
               {!user && (
                 <p className="text-sm">
-                  Parishioners can <Link className="text-primary underline" to="/auth/login?redirect=/book-mass">sign in</Link>. Guests can continue without an account.
+                  {loginOpen ? (
+                    <>Parishioners can <Link className="text-primary underline" to="/auth/login?redirect=/book-mass">sign in</Link>. Guests can continue without an account.</>
+                  ) : (
+                    <>Guests can continue without an account.</>
+                  )}
                 </p>
               )}
               <Field label="Full name" required error={fieldErrors.name} hint="First name and surname.">
@@ -426,13 +447,13 @@ const MassBookingWizard = () => {
                   <FieldHint text="Card, cash at the office, or a bank transfer." />
                 </legend>
                 {fieldErrors.method && <p className="text-sm text-destructive">{fieldErrors.method}</p>}
-                {(options?.payment_methods.length ? options.payment_methods : []).map((method) => (
+                {paymentMethods.map((method) => (
                   <label key={method} className="flex min-h-11 items-center gap-2 rounded-md border px-3">
                     <input type="radio" name="payment-method" checked={draft.method === method} onChange={() => setDraft({ ...draft, method })} />
                     {method === "flutterwave" ? "Card or Flutterwave" : method === "cash" ? "Cash at the parish office" : "Bank transfer"}
                   </label>
                 ))}
-                {options && options.payment_methods.length === 0 && <p className="text-sm text-muted-foreground">No payment method is available yet.</p>}
+                {options && paymentMethods.length === 0 && <p className="text-sm text-muted-foreground">No payment method is available yet.</p>}
               </fieldset>
               {fieldErrors.email && <p className="text-sm text-destructive">{fieldErrors.email}</p>}
               {draft.method === "bank_transfer" && options?.bank && (

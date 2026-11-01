@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import type { ParishIconProps } from "@/components/icons/ParishIcon";
 import { ChaliceIcon, ChurchFrontIcon, OpenBookIcon, PlayIcon } from "@/components/icons/ParishIcons";
 import { cn } from "@/lib/utils";
+import useFeatures from "@/hooks/useFeatures";
 
 type IconComponent = ComponentType<ParishIconProps>;
 
@@ -14,6 +15,10 @@ const links: { label: string; href: string; icon: IconComponent }[] = [
 ];
 
 const HeroQuickLinks = () => {
+  const { showNav } = useFeatures();
+  const items = links.filter((item) => showNav(item.href));
+  if (items.length === 0) return null;
+
   return (
     <nav aria-label="Parish shortcuts" className="relative z-10 bg-church-charcoal">
       <ul className="grid grid-cols-2 lg:grid-cols-4 bg-primary text-primary-foreground"
@@ -23,7 +28,7 @@ const HeroQuickLinks = () => {
         }}
       >
 
-        {links.map((item, index) => {
+        {items.map((item, index) => {
           const Icon = item.icon;
           return (
             <li
@@ -33,7 +38,7 @@ const HeroQuickLinks = () => {
                 index % 2 === 0 && "border-r",
                 index < 2 && "border-b",
                 "lg:border-b-5",
-                index < links.length - 1 && "lg:border-r",
+                index < items.length - 1 && "lg:border-r",
               )}
             >
               <Link
